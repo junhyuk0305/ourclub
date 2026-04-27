@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(tasklist)",
-      "Bash(npx tsc *)",
-      "Bash(npx next *)",
-      "Bash(node -e ' *)"
+      "Bash(npm run *)"
     ]
   }
 }
