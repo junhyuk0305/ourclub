@@ -19,7 +19,7 @@ interface PulseResponse {
   created_at: string;
   user_profiles: {
     display_name: string | null;
-  } | null;
+  }[];
 }
 
 interface SurveyDetail {
@@ -221,7 +221,7 @@ export default function FeedbackAdmin() {
                                         <div className="flex items-center gap-1">
                                           {stars(response.score)}
                                           <span className="text-sm font-bold text-gray-500 ml-1">
-                                            {response.user_profiles?.display_name ?? '익명'}
+                                            {response.user_profiles?.[0]?.display_name ?? '익명'}
                                           </span>
                                         </div>
                                         <p className="text-xs text-gray-400">

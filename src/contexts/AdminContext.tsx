@@ -64,12 +64,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (adminClubId) {
-      console.log("Admin user is logged in for club ID:", adminClubId, "and club name:", adminClub?.name);
+    if (adminClub?.id) {
+      console.log("Admin user is logged in for club ID:", adminClub.id, "and club name:", adminClub?.name);
     } else {
       console.log("Admin user not detected.");
     }
-  }, [adminClubId, adminClub]);
+  }, [adminClub?.id, adminClub]);
 
   const refreshClub = async () => {
     await fetchAdminClub();

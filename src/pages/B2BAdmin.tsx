@@ -190,7 +190,7 @@ export default function B2BAdmin() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5">{proj.b2b_projects?.category ?? proj.category}</span>
+                            <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5">{proj.category}</span>
                             <span className="text-xs font-bold text-gray-400">{proj.corporations?.name}</span>
                           </div>
                           <h3 className="font-black text-xl mb-1">{proj.title}</h3>

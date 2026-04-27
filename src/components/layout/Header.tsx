@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { Bell, User } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { useAuth } from '../contexts/AuthContext';
-import { useAdmin } from '../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
 
 export const Header = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
