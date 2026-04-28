@@ -22,7 +22,7 @@ export interface AdminClub {
 interface AdminContextValue {
   adminClub: AdminClub | null;
   adminClubId: string | null;
-  membershipId: string | null;   // club_members.id — 세션 생성 등에 필요
+  membershipId: string | null;
   isAdmin: boolean;
   loading: boolean;
   refreshClub: () => Promise<void>;
@@ -38,37 +38,26 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAdminClub = async () => {
     if (!user) {
-      console.log("AdminContext: No user logged in, cannot fetch admin club."); // ADDED
+      setAdminClub(null);
+      setMembershipId(null);
       setLoading(false);
       return;
     }
 
-    console.log("AdminContext: Attempting to fetch admin club for user ID:", user.id, "isMaster:", isMaster); // ADDED
-
     if (isMaster) {
-      // 마스터 계정: 모든 동아리 조회, 첫 번째 동아리로 초기화
       const { data, error } = await supabase
         .from('clubs')
         .select('*')
         .limit(1);
 
-      if (error) {
-        console.error("AdminContext: Error fetching first club for master:", error.message); // ADDED
-        setLoading(false);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setAdminClub(data[0] as AdminClub);
-        setMembershipId(null); // 수정됨: 가짜 ID 대신 null 처리
-        console.log("AdminContext: Master user initialized with club:", data[0].name); // ADDED
-      } else {
+      if (error || !data || data.length === 0) {
         setAdminClub(null);
         setMembershipId(null);
-        console.log("AdminContext: No clubs found for master user"); // ADDED
+      } else {
+        setAdminClub(data[0] as AdminClub);
+        setMembershipId(null);
       }
     } else {
-      // 일반 운영진: 본인이 운영진인 동아리 조회
       const { data, error } = await supabase
         .from('club_members')
         .select('id, clubs(*)')
@@ -78,18 +67,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error("AdminContext: Error fetching admin club:", error.message); // ADDED
-      }
-
-      if (data) {
-        setMembershipId(data.id);
-        setAdminClub(data.clubs as unknown as AdminClub);
-        console.log("AdminContext: Admin club found:", data.clubs?.name, "Club ID:", data.clubs?.id); // ADDED
-      } else {
+      if (error || !data) {
         setMembershipId(null);
         setAdminClub(null);
-        console.log("AdminContext: No admin club found for user ID:", user.id); // ADDED
+      } else {
+        setMembershipId(data.id);
+        setAdminClub(data.clubs as unknown as AdminClub);
       }
     }
 
@@ -99,15 +82,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setLoading(true);
     fetchAdminClub();
-  }, [user, isMaster]);
-
-  useEffect(() => {
-    if (adminClub?.id) {
-      console.log("Admin user is logged in for club ID:", adminClub.id, "and club name:", adminClub?.name);
-    } else {
-      console.log("Admin user not detected.");
-    }
-  }, [adminClub?.id, adminClub]);
+    // user?.id 기준 비교: TOKEN_REFRESHED로 user 객체 참조만 바뀔 때 재실행 방지
+  }, [user?.id, isMaster]);
 
   const refreshClub = async () => {
     await fetchAdminClub();

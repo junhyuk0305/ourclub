@@ -53,7 +53,7 @@ export default function FormBuilder() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-  // 파이프라인(프로세스) 편집
+  // 파이프라인 편집
   const [editingPipeline, setEditingPipeline] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<string[]>([]);
   const [newStage, setNewStage] = useState('');
@@ -66,18 +66,6 @@ export default function FormBuilder() {
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState('');
   const [creating, setCreating] = useState(false);
-
-  // 공고 수정 모달
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editGeneration, setEditGeneration] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editDeadline, setEditDeadline] = useState('');
-  const [editPipelineStages, setEditPipelineStages] = useState<string[]>([]);
-  const [editNewStage, setEditNewStage] = useState('');
-  const [editingPipelineInModal, setEditingPipelineInModal] = useState(false);
-  const [updating, setUpdating] = useState(false);
 
   // 삭제 확인
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -276,82 +264,6 @@ export default function FormBuilder() {
     showToast('삭제되었습니다.');
   };
 
-  const openEditModal = (recruitment: Recruitment) => {
-    setEditTitle(recruitment.title);
-    setEditGeneration(recruitment.generation || '');
-    setEditCategory(recruitment.category || '');
-    setEditDescription(recruitment.description || '');
-    setEditDeadline(recruitment.deadline || '');
-    setEditPipelineStages(recruitment.pipeline_stages || ['서류접수', '면접', '최종합격', '불합격']);
-    setEditNewStage('');
-    setEditingPipelineInModal(false);
-    setShowEditModal(true);
-  };
-
-  const handleUpdateRecruitment = async () => {
-    if (!selectedRecruitment) return;
-    if (!editTitle.trim()) {
-      showToast('공고 제목은 필수입니다.', false);
-      return;
-    }
-
-    setUpdating(true);
-    const { error } = await supabase
-      .from('recruitments')
-      .update({
-        title: editTitle.trim(),
-        generation: editGeneration.trim() || null,
-        category: editCategory.trim() || null,
-        description: editDescription.trim() || null,
-        deadline: editDeadline || null,
-        pipeline_stages: editPipelineStages,
-      })
-      .eq('id', selectedRecruitment.id);
-
-    setUpdating(false);
-    if (error) {
-      showToast(`수정 실패: ${error.message}`, false);
-      return;
-    }
-
-    setRecruitments(prev =>
-      prev.map(r =>
-        r.id === selectedRecruitment.id
-          ? {
-              ...r,
-              title: editTitle.trim(),
-              generation: editGeneration.trim() || null,
-              category: editCategory.trim() || null,
-              description: editDescription.trim() || null,
-              deadline: editDeadline || null,
-              pipeline_stages: editPipelineStages,
-            }
-          : r
-      )
-    );
-    setPipelineStages(editPipelineStages);
-    setShowEditModal(false);
-    showToast('공고가 수정되었습니다.');
-  };
-
-  const addEditPipelineStage = () => {
-    if (!editNewStage.trim()) return;
-    setEditPipelineStages(prev => [...prev, editNewStage.trim()]);
-    setEditNewStage('');
-  };
-
-  const removeEditPipelineStage = (index: number) => {
-    setEditPipelineStages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const moveEditPipelineStage = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= editPipelineStages.length) return;
-    const newStages = [...editPipelineStages];
-    const [moved] = newStages.splice(fromIndex, 1);
-    newStages.splice(toIndex, 0, moved);
-    setEditPipelineStages(newStages);
-  };
-
   const addQuestion = (type: 'text' | 'textarea') => {
     setQuestions(prev => [...prev, {
       id: Date.now().toString(),
@@ -505,28 +417,15 @@ export default function FormBuilder() {
                             )}
                           </div>
                           {selectedRecruitmentId === recruitment.id && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  openEditModal(recruitment);
-                                }}
-                                className="p-1 hover:bg-blue-50 text-blue-600 rounded transition-colors"
-                                title="공고 수정"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  setShowDeleteConfirm(recruitment.id);
-                                }}
-                                className="p-1 hover:bg-red-50 text-red-500 rounded transition-colors"
-                                title="공고 삭제"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                setShowDeleteConfirm(recruitment.id);
+                              }}
+                              className="p-1 hover:bg-red-50 text-red-500 rounded transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mb-3">
@@ -562,11 +461,11 @@ export default function FormBuilder() {
               {/* 폼 빌더 & 파이프라인 */}
               {selectedRecruitment && (
                 <>
-                  {/* 프로세스 설정 */}
+                  {/* 파이프라인 설정 */}
                   <div className="bg-white border-2 border-black p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-black flex items-center gap-2">
-                        📋 프로세스 설정
+                        📊 파이프라인 설정
                       </h3>
                       <button
                         onClick={() => setEditingPipeline(!editingPipeline)}
@@ -881,142 +780,6 @@ export default function FormBuilder() {
               >
                 {saving && <Loader className="w-4 h-4 animate-spin" />}
                 재배포하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 공고 수정 모달 */}
-      {showEditModal && selectedRecruitment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-4 p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black">공고 수정</h2>
-              <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <Field label="공고 제목 *">
-                <input
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className={inp}
-                />
-              </Field>
-              <Field label="기수">
-                <input
-                  value={editGeneration}
-                  onChange={e => setEditGeneration(e.target.value)}
-                  placeholder="14기"
-                  className={inp}
-                />
-              </Field>
-              <Field label="모집 분야/카테고리">
-                <input
-                  value={editCategory}
-                  onChange={e => setEditCategory(e.target.value)}
-                  placeholder="기획, 개발, 디자인 등"
-                  className={inp}
-                />
-              </Field>
-              <Field label="상세 설명">
-                <textarea
-                  value={editDescription}
-                  onChange={e => setEditDescription(e.target.value)}
-                  rows={3}
-                  className={`${inp} resize-none`}
-                />
-              </Field>
-              <Field label="모집 마감일">
-                <input
-                  type="datetime-local"
-                  value={editDeadline}
-                  onChange={e => setEditDeadline(e.target.value)}
-                  className={inp}
-                />
-              </Field>
-
-              {/* 프로세스 단계 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="font-black text-sm">프로세스 단계</label>
-                  <button
-                    onClick={() => setEditingPipelineInModal(!editingPipelineInModal)}
-                    className={`px-2 py-1 text-xs font-bold border rounded transition-colors ${
-                      editingPipelineInModal ? 'bg-orange-500 text-white border-orange-500' : 'border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {editingPipelineInModal ? '✓ 완료' : '편집'}
-                  </button>
-                </div>
-
-                {editingPipelineInModal ? (
-                  <div className="space-y-2">
-                    {editPipelineStages.map((stage, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-xs font-black bg-gray-200 px-2 py-1 rounded w-6 text-center">{idx + 1}</span>
-                        <input
-                          value={stage}
-                          onChange={e => {
-                            const s = [...editPipelineStages];
-                            s[idx] = e.target.value;
-                            setEditPipelineStages(s);
-                          }}
-                          className="flex-1 border border-black p-2 font-bold outline-none focus:border-orange-500 text-sm"
-                        />
-                        <button onClick={() => moveEditPipelineStage(idx, idx - 1)} disabled={idx === 0} className="p-1 hover:bg-gray-200 disabled:opacity-30 rounded text-sm">↑</button>
-                        <button onClick={() => moveEditPipelineStage(idx, idx + 1)} disabled={idx === editPipelineStages.length - 1} className="p-1 hover:bg-gray-200 disabled:opacity-30 rounded text-sm">↓</button>
-                        <button onClick={() => removeEditPipelineStage(idx)} className="p-1 hover:bg-red-100 text-red-500 rounded">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="flex gap-2 pt-2 border-t border-gray-200">
-                      <input
-                        value={editNewStage}
-                        onChange={e => setEditNewStage(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addEditPipelineStage()}
-                        placeholder="새 단계 이름"
-                        className="flex-1 border border-black p-2 font-bold outline-none focus:border-orange-500 text-sm"
-                      />
-                      <button
-                        onClick={addEditPipelineStage}
-                        disabled={!editNewStage.trim()}
-                        className="px-3 py-2 bg-orange-500 text-white font-bold text-sm rounded hover:bg-orange-600 disabled:opacity-50"
-                      >
-                        추가
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {editPipelineStages.map((stage, idx) => (
-                      <span key={idx} className="px-2.5 py-1 bg-gray-100 border border-gray-300 font-bold text-xs rounded">
-                        {stage}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleUpdateRecruitment}
-                disabled={updating || !editTitle.trim()}
-                className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {updating && <Loader className="w-4 h-4 animate-spin" />}
-                저장하기
               </button>
             </div>
           </div>

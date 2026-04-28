@@ -36,33 +36,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-        console.log("AuthContext: Fetching profile for user ID:", userId); // ADDED
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-
-    if (error) {
-      console.error("AuthContext: Error fetching profile:", error.message); // ADDED
-    }
     setProfile(data ?? null);
   };
 
   const checkMasterStatus = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('global_admins')
         .select('id')
         .eq('id', userId)
         .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error("AuthContext: Error checking master status:", error.message);
-      }
       setIsMaster(!!data);
-    } catch (err) {
-      console.error("AuthContext: Exception checking master status:", err);
+    } catch {
       setIsMaster(false);
     }
   };
@@ -72,31 +62,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (session?.user) {
-        console.log("AuthContext: Initial session found. User ID:", session.user.id); // MODIFIED
-        fetchProfile(session.user.id);
-        checkMasterStatus(session.user.id);
-        setLoading(false);
-      }
-      else {
-        console.log("AuthContext: No initial user session found."); // MODIFIED
-        setIsMaster(false);
-        setLoading(false);
-      }
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // 세션은 항상 업데이트 (JWT 토큰 갱신 반영)
+      setSession(s);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        console.log("AuthContext: Auth state changed. User ID:", session.user.id); // ADDED
-        fetchProfile(session.user.id);
-        checkMasterStatus(session.user.id);
+      if (event === 'TOKEN_REFRESHED') {
+        // 토큰 갱신만 일어난 경우: user 객체를 교체하지 않음
+        // → AdminContext 등 user에 의존하는 effect가 재실행되지 않음
+        return;
       }
-      else {
-        console.log("AuthContext: Auth state changed. User logged out."); // ADDED
+
+      setUser(s?.user ?? null);
+
+      if (s?.user) {
+        Promise.all([fetchProfile(s.user.id), checkMasterStatus(s.user.id)])
+          .finally(() => setLoading(false));
+      } else {
         setProfile(null);
         setIsMaster(false);
+        setLoading(false);
       }
     });
 

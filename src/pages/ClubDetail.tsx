@@ -53,7 +53,7 @@ export default function ClubDetail() {
              <Calendar className="w-5 h-5 text-orange-500" /> D-14 (14기 모집중)
            </div>
            
-           <Link to={`/clubs/${id || 'majesty'}/apply`} className={`px-10 py-3 text-lg font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all ${isRecruiting ? 'bg-orange-500 text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
+           <Link to={`/clubs/${id || 'majesty'}/recruit`} className={`px-10 py-3 text-lg font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all ${isRecruiting ? 'bg-orange-500 text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
              {isRecruiting ? '14기 지원서 작성하기' : '모집 마감'}
            </Link>
         </div>
@@ -112,7 +112,7 @@ export default function ClubDetail() {
                <h3 className="text-2xl font-black text-black mb-2">마제스티 14기 지원하기</h3>
                <p className="font-bold text-orange-900 mb-8">열정 있는 예비 실무자들의 지원을 기다립니다.</p>
              </div>
-             <Link to={`/clubs/${id || 'majesty'}/apply`} className="bg-white text-black font-black py-4 px-6 border-2 border-black flex justify-between items-center hover:bg-black hover:text-white transition-colors">
+             <Link to={`/clubs/${id || 'majesty'}/recruit`} className="bg-white text-black font-black py-4 px-6 border-2 border-black flex justify-between items-center hover:bg-black hover:text-white transition-colors">
                지원서 작성하러 가기 <ArrowLeft className="w-5 h-5 rotate-180" />
              </Link>
            </div>

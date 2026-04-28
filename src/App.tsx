@@ -12,6 +12,7 @@ import TextPage from './pages/TextPage';
 import Stories from './pages/Stories';
 import ClubDetail from './pages/ClubDetail';
 import ClubApply from './pages/ClubApply';
+import ClubRecruit from './pages/ClubRecruit';
 import MyPage from './pages/MyPage';
 import Workspace from './pages/Workspace';
 import RecruitAdmin from './pages/RecruitAdmin';
@@ -73,6 +74,7 @@ function AppRoutes() {
           <Route path="/"               element={<Home />} />
           <Route path="/clubs"          element={<Clubs />} />
           <Route path="/clubs/:id"      element={<ClubDetail />} />
+          <Route path="/clubs/:id/recruit" element={<ClubRecruit />} />
           <Route path="/clubs/:id/apply" element={<ClubApply />} />
           <Route path="/b2b"            element={<B2BLounge />} />
           <Route path="/stories"        element={<Stories />} />
