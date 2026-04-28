@@ -3,12 +3,14 @@ import { NavLink, Link } from 'react-router-dom';
 import { Bell, User } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCorp } from '../../contexts/CorpContext';
 import { useAdmin } from '../../contexts/AdminContext';
 
 export const Header = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const { user } = useAuth();
   const { isAdmin } = useAdmin();
+  const { isCorpUser } = useCorp();
 
   return (
     <header className="h-16 border-b border-black flex items-center justify-between px-6 bg-white sticky top-0 z-50">
@@ -21,7 +23,7 @@ export const Header = () => {
           to="/clubs"
           className={({ isActive }) =>
             `transition-colors ${isActive ? 'text-orange-500 border-b-2 border-orange-500 pb-1' : 'hover:text-orange-500'}`
-          }
+          } 
         >
           동아리 찾기
         </NavLink>
@@ -45,19 +47,25 @@ export const Header = () => {
       <div className="flex gap-2 items-center">
         {user ? (
           <>
-            {isAdmin ? (
+            {/* 항상 학생 마이페이지는 보이도록 처리 */}
+            <Link to="/mypage" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
+              학생 마이페이지
+            </Link>
+            
+            {/* 운영진일 경우 운영진 워크스페이스 링크 표시 */}
+            {isAdmin && (
               <Link to="/admin/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
                 운영진 워크스페이스
               </Link>
-            ) : (
-              <Link to="/mypage" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
-                학생 마이페이지
+            )}
+
+            {/* 기업 담당자일 경우 기업 비즈니스 센터 링크 표시 */}
+            {isCorpUser && (
+              <Link to="/corp/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors">
+                기업 비즈니스 센터
               </Link>
             )}
-            {/* Assuming corp/dashboard has its own auth logic, keeping it for now */}
-            <Link to="/corp/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors">
-              기업 비즈니스 센터
-            </Link>
+            
             <div className="hidden lg:block w-px h-4 bg-gray-300 mx-2"></div>
             <button onClick={() => setIsAlertOpen(true)} className="p-2 hover:bg-orange-500 border border-transparent hover:border-black transition-colors" title="알림">
               <Bell className="w-5 h-5" />

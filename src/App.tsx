@@ -1,8 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-import { AdminProvider } from './contexts/AdminContext';
-import { useAdmin } from './contexts/AdminContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AdminProvider, useAdmin } from './contexts/AdminContext';
+import { CorpProvider, useCorp } from './contexts/CorpContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import Home from './pages/Home';
@@ -26,7 +26,6 @@ import PostsAdmin from './pages/PostsAdmin';
 import SettingsAdmin from './pages/SettingsAdmin';
 import Onboarding from './pages/Onboarding';
 import CorpDashboard from './pages/CorpDashboard';
-import CorpScouts from './pages/CorpScouts';
 
 // 로그인 전용 보호 라우트
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -44,6 +43,17 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   if (authLoading || adminLoading) return null;
   if (!session) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+// 기업담당자 전용 보호 라우트
+function CorpRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading: authLoading } = useAuth();
+  const { isCorpUser, loading: corpLoading } = useCorp();
+
+  if (authLoading || corpLoading) return null;
+  if (!session) return <Navigate to="/login" replace />;
+  if (!isCorpUser) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -85,8 +95,7 @@ function AppRoutes() {
           <Route path="/admin/settings"       element={<AdminRoute><SettingsAdmin /></AdminRoute>} />
 
           {/* 기업 */}
-          <Route path="/corp/dashboard" element={<CorpDashboard />} />
-          <Route path="/corp/scouts"    element={<CorpScouts />} />
+          <Route path="/corp/dashboard" element={<CorpRoute><CorpDashboard /></CorpRoute>} />
           <Route path="/corp/*"         element={<Navigate to="/corp/dashboard" replace />} />
 
           {/* 약관 */}
@@ -104,8 +113,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AdminProvider>
-      <AppRoutes />
-    </AdminProvider>
+    <AuthProvider>
+      <AdminProvider>
+        <CorpProvider>
+          <AppRoutes />
+        </CorpProvider>
+      </AdminProvider>
+    </AuthProvider>
   );
 }

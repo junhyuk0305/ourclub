@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS public.b2b_applications    CASCADE;
 DROP TABLE IF EXISTS public.b2b_projects        CASCADE;
 DROP TABLE IF EXISTS public.corp_members        CASCADE;
 DROP TABLE IF EXISTS public.corporations        CASCADE;
+DROP TABLE IF EXISTS public.global_admins       CASCADE;
 DROP TABLE IF EXISTS public.posts               CASCADE;
 DROP TABLE IF EXISTS public.pulse_responses     CASCADE;
 DROP TABLE IF EXISTS public.pulse_surveys       CASCADE;
@@ -64,6 +65,17 @@ CREATE TRIGGER on_auth_user_created
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "본인 프로필 조회 허용"  ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "본인 프로필 수정 허용"  ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- ==========================================
+-- 1.5. 시스템 관리자 (마스터 계정)
+-- ==========================================
+CREATE TABLE public.global_admins (
+  id         uuid REFERENCES public.profiles(id) ON DELETE CASCADE PRIMARY KEY,
+  created_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
+);
+
+ALTER TABLE public.global_admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "본인 마스터 여부 조회" ON public.global_admins FOR SELECT USING (auth.uid() = id);
 
 -- ==========================================
 -- 2. 동아리 & 운영진
@@ -236,9 +248,11 @@ CREATE TABLE public.pulse_surveys (
 CREATE TABLE public.pulse_responses (
   id           uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   survey_id    uuid REFERENCES public.pulse_surveys(id) ON DELETE CASCADE NOT NULL,
+  user_id      uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   score        integer CHECK (score BETWEEN 1 AND 5),
   feedback     text,
-  submitted_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL
+  submitted_at timestamp with time zone DEFAULT timezone('utc', now()) NOT NULL,
+  UNIQUE(survey_id, user_id)
 );
 
 ALTER TABLE public.sessions       ENABLE ROW LEVEL SECURITY;
@@ -258,8 +272,21 @@ CREATE POLICY "운영진 세션 수정" ON public.sessions FOR UPDATE
   ));
 
 CREATE POLICY "출석 조회"        ON public.attendances FOR SELECT USING (true);
-CREATE POLICY "출석 등록"        ON public.attendances FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "운영진 출석 수정" ON public.attendances FOR UPDATE USING (true);
+CREATE POLICY "출석 등록"        ON public.attendances FOR INSERT
+  WITH CHECK (
+    auth.uid() IS NOT NULL AND
+    EXISTS (
+      SELECT 1 FROM public.club_members cm
+      JOIN public.sessions s ON s.club_id = cm.club_id
+      WHERE cm.id = attendances.member_id AND cm.user_id = auth.uid()
+    )
+  );
+CREATE POLICY "운영진 출석 수정" ON public.attendances FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM public.club_members cm
+    JOIN public.sessions s ON s.club_id = cm.club_id
+    WHERE s.id = attendances.session_id AND cm.user_id = auth.uid() AND cm.role = '운영진'
+  ));
 
 CREATE POLICY "설문 조회"        ON public.pulse_surveys FOR SELECT USING (true);
 CREATE POLICY "운영진 설문 생성" ON public.pulse_surveys FOR INSERT
@@ -273,7 +300,8 @@ CREATE POLICY "운영진 설문 수정" ON public.pulse_surveys FOR UPDATE
     WHERE club_id = pulse_surveys.club_id AND user_id = auth.uid() AND role = '운영진'
   ));
 
-CREATE POLICY "설문 응답 등록"   ON public.pulse_responses FOR INSERT WITH CHECK (true);
+CREATE POLICY "설문 응답 등록"   ON public.pulse_responses FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL AND auth.uid() = user_id);
 CREATE POLICY "설문 응답 조회"   ON public.pulse_responses FOR SELECT USING (true);
 
 -- ==========================================
@@ -354,10 +382,78 @@ CREATE TABLE public.b2b_applications (
 );
 
 ALTER TABLE public.corporations    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.corp_members    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.b2b_projects    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.b2b_applications ENABLE ROW LEVEL SECURITY;
 
+-- corporations 정책
+CREATE POLICY "기업 정보 조회" ON public.corporations FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.corp_members
+    WHERE corp_id = corporations.id AND user_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+  )
+);
+CREATE POLICY "기업담당자 정보 수정" ON public.corporations FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM public.corp_members
+    WHERE corp_id = corporations.id AND user_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+  ));
+
+-- corp_members 정책
+CREATE POLICY "기업 멤버 조회" ON public.corp_members FOR SELECT USING (
+  auth.uid() = user_id
+  OR EXISTS (
+    SELECT 1 FROM public.corp_members cm
+    WHERE cm.corp_id = corp_members.corp_id AND cm.user_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+  )
+);
+CREATE POLICY "기업 멤버 추가" ON public.corp_members FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.corp_members cm
+      WHERE cm.corp_id = corp_members.corp_id AND cm.user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+    )
+  );
+CREATE POLICY "기업 멤버 수정" ON public.corp_members FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.corp_members cm
+      WHERE cm.corp_id = corp_members.corp_id AND cm.user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+    )
+  );
+
 CREATE POLICY "B2B 프로젝트 조회"  ON public.b2b_projects FOR SELECT USING (true);
+CREATE POLICY "기업담당자 B2B 생성" ON public.b2b_projects FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.corp_members
+    WHERE corp_id = b2b_projects.corp_id AND user_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+  ));
+CREATE POLICY "기업담당자 B2B 수정" ON public.b2b_projects FOR UPDATE
+  USING (EXISTS (
+    SELECT 1 FROM public.corp_members
+    WHERE corp_id = b2b_projects.corp_id AND user_id = auth.uid()
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.global_admins WHERE id = auth.uid()
+  ));
 
 CREATE POLICY "B2B 지원 조회"      ON public.b2b_applications FOR SELECT
   USING (EXISTS (

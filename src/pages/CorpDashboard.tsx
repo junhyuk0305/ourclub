@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CorpHeader } from '../components/corp/CorpHeader';
 import { CorpSidebar } from '../components/corp/CorpSidebar';
+import { useCorp } from '../contexts/CorpContext';
 import { Plus, Search, ChevronRight, MessageCircle } from 'lucide-react';
 
 const MOCK_APPLICANTS = [
@@ -10,11 +11,15 @@ const MOCK_APPLICANTS = [
 ];
 
 export default function CorpDashboard() {
+  const { corporation } = useCorp();
   const [activeProject, setActiveProject] = useState('20대 타겟 FGI 리서치 및 UX 테스트');
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <CorpHeader>
+      <CorpHeader
+        corpName={corporation?.name}
+        creditBalance={corporation?.credit_balance}
+      >
         <button className="ml-4 px-6 py-2 border border-black bg-black text-white font-black hover:bg-purple-600 hover:text-white transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-px text-sm flex items-center gap-2">
           <Plus className="w-4 h-4" /> 새 프로젝트 의뢰하기
         </button>

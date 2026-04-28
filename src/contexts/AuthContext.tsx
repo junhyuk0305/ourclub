@@ -18,6 +18,7 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  isMaster: boolean;
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -31,15 +32,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+        console.log("AuthContext: Fetching profile for user ID:", userId); // ADDED
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
+
+    if (error) {
+      console.error("AuthContext: Error fetching profile:", error.message); // ADDED
+    }
     setProfile(data ?? null);
+  };
+
+  const checkMasterStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('global_admins')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("AuthContext: Error checking master status:", error.message);
+      }
+      setIsMaster(!!data);
+    } catch (err) {
+      console.error("AuthContext: Exception checking master status:", err);
+      setIsMaster(false);
+    }
   };
 
   const refreshProfile = async () => {
@@ -47,18 +72,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+    if (session?.user) {
+        console.log("AuthContext: Initial session found. User ID:", session.user.id); // MODIFIED
+        fetchProfile(session.user.id);
+        checkMasterStatus(session.user.id);
+        setLoading(false);
+      }
+      else {
+        console.log("AuthContext: No initial user session found."); // MODIFIED
+        setIsMaster(false);
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        console.log("AuthContext: Auth state changed. User ID:", session.user.id); // ADDED
+        fetchProfile(session.user.id);
+        checkMasterStatus(session.user.id);
+      }
+      else {
+        console.log("AuthContext: Auth state changed. User logged out."); // ADDED
+        setProfile(null);
+        setIsMaster(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -83,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, isMaster, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

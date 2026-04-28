@@ -4,10 +4,11 @@ import { Link } from 'react-router-dom';
 
 interface CorpHeaderProps {
   corpName?: string;
+  creditBalance?: number;
   children?: React.ReactNode;
 }
 
-export function CorpHeader({ corpName = '토스', children }: CorpHeaderProps) {
+export function CorpHeader({ corpName = '기업명', creditBalance = 0, children }: CorpHeaderProps) {
   return (
     <header className="h-14 border-b border-black bg-white flex items-center justify-between px-6 flex-shrink-0 z-20">
       <div className="flex items-center gap-4">
@@ -22,7 +23,7 @@ export function CorpHeader({ corpName = '토스', children }: CorpHeaderProps) {
         </div>
         <div className="h-6 w-px bg-gray-300"></div>
         <div className="text-sm font-bold">
-           잔여 크레딧: <span className="text-purple-600 font-black">150,000 C</span>
+           잔여 크레딧: <span className="text-purple-600 font-black">{creditBalance.toLocaleString()} C</span>
         </div>
         {children}
       </div>
