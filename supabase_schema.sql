@@ -1,260 +1,293 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
+| routine_name    | return_type   |
+| --------------- | ------------- |
+| handle_new_user | trigger       |
+| is_master       | boolean       |
+| rls_auto_enable | event_trigger |
 
-CREATE TABLE public.applications (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  club_id uuid,
-  project_id uuid,
-  status text DEFAULT 'pending'::text,
-  proposal_url text,
-  submitted_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT applications_pkey PRIMARY KEY (id),
-  CONSTRAINT applications_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id)
-);
-CREATE TABLE public.attendances (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  session_id uuid NOT NULL,
-  member_id uuid NOT NULL,
-  status text NOT NULL CHECK (status = ANY (ARRAY['출석'::text, '지각'::text, '결석'::text])),
-  recorded_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT attendances_pkey PRIMARY KEY (id),
-  CONSTRAINT attendances_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id),
-  CONSTRAINT attendances_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.club_members(id)
-);
-CREATE TABLE public.b2b_applications (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  project_id uuid NOT NULL,
-  club_id uuid NOT NULL,
-  proposal_text text,
-  status text DEFAULT '미열람'::text CHECK (status = ANY (ARRAY['미열람'::text, '검토중'::text, '미팅요청'::text, '매칭완료'::text, '거절'::text])),
-  submitted_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT b2b_applications_pkey PRIMARY KEY (id),
-  CONSTRAINT b2b_applications_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.b2b_projects(id),
-  CONSTRAINT b2b_applications_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
-);
-CREATE TABLE public.b2b_projects (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  corp_id uuid NOT NULL,
-  title text NOT NULL,
-  category text NOT NULL,
-  budget integer,
-  description text,
-  status text DEFAULT '모집중'::text CHECK (status = ANY (ARRAY['모집중'::text, '진행중'::text, '완료'::text])),
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT b2b_projects_pkey PRIMARY KEY (id),
-  CONSTRAINT b2b_projects_corp_id_fkey FOREIGN KEY (corp_id) REFERENCES public.corporations(id)
-);
-CREATE TABLE public.bookmarks (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  user_id uuid NOT NULL,
-  target_type text NOT NULL CHECK (target_type = ANY (ARRAY['CLUB'::text, 'B2B_PROJECT'::text, 'POST'::text])),
-  target_id uuid NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT bookmarks_pkey PRIMARY KEY (id),
-  CONSTRAINT bookmarks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.club_members (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  role text NOT NULL CHECK (role = ANY (ARRAY['운영진'::text, '부원'::text])),
-  generation text,
-  position text,
-  status text DEFAULT '활동중'::text CHECK (status = ANY (ARRAY['활동중'::text, '수료'::text, '탈퇴'::text, '활동정지'::text])),
-  joined_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT club_members_pkey PRIMARY KEY (id),
-  CONSTRAINT club_members_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
-  CONSTRAINT club_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.club_pages (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  blocks jsonb NOT NULL DEFAULT '[]'::jsonb,
-  published_at timestamp with time zone,
-  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT club_pages_pkey PRIMARY KEY (id),
-  CONSTRAINT club_pages_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
-);
-CREATE TABLE public.clubs (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  slug text NOT NULL UNIQUE,
-  name text NOT NULL,
-  type text NOT NULL CHECK (type = ANY (ARRAY['연합 동아리'::text, '교내 동아리'::text, '학회/프로젝트팀'::text])),
-  theme_color text DEFAULT 'orange-500'::text,
-  one_line_desc text,
-  description text,
-  logo_url text,
-  location text,
-  recruit_fee integer,
-  instagram_url text,
-  notion_url text,
-  kakao_url text,
-  is_certified boolean DEFAULT false,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT clubs_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.corp_members (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  corp_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  role text DEFAULT '담당자'::text,
-  CONSTRAINT corp_members_pkey PRIMARY KEY (id),
-  CONSTRAINT corp_members_corp_id_fkey FOREIGN KEY (corp_id) REFERENCES public.corporations(id),
-  CONSTRAINT corp_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.corporations (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  name text NOT NULL,
-  business_number text,
-  credit_balance integer DEFAULT 0,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT corporations_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.event_registrations (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event_id uuid,
-  user_id uuid,
-  status text DEFAULT 'registered'::text,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT event_registrations_pkey PRIMARY KEY (id),
-  CONSTRAINT event_registrations_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT event_registrations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.events (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  host_club_id uuid,
-  title text NOT NULL,
-  date timestamp with time zone,
-  capacity integer,
-  status text DEFAULT 'open'::text,
-  co_host_ids ARRAY,
-  cover_url text,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT events_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.global_admins (
-  id uuid NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT global_admins_pkey PRIMARY KEY (id),
-  CONSTRAINT global_admins_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.posts (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  author_id uuid,
-  title text NOT NULL,
-  content text NOT NULL,
-  view_count integer DEFAULT 0,
-  is_published boolean DEFAULT false,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT posts_pkey PRIMARY KEY (id),
-  CONSTRAINT posts_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id),
-  CONSTRAINT posts_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.club_members(id)
-);
-CREATE TABLE public.profiles (
-  id uuid NOT NULL,
-  name text NOT NULL DEFAULT ''::text,
-  email text NOT NULL DEFAULT ''::text UNIQUE,
-  phone text,
-  university text,
-  major text,
-  skills ARRAY,
-  resume_url text,
-  portfolio_url text,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT profiles_pkey PRIMARY KEY (id),
-  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.projects (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  corp_id uuid,
-  title text NOT NULL,
-  description text,
-  budget integer,
-  deadline date,
-  status text DEFAULT 'open'::text,
-  tags ARRAY,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT projects_pkey PRIMARY KEY (id),
-  CONSTRAINT projects_corp_id_fkey FOREIGN KEY (corp_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.pulse_responses (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  survey_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  score integer CHECK (score >= 1 AND score <= 5),
-  feedback text,
-  submitted_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT pulse_responses_pkey PRIMARY KEY (id),
-  CONSTRAINT pulse_responses_survey_id_fkey FOREIGN KEY (survey_id) REFERENCES public.pulse_surveys(id),
-  CONSTRAINT pulse_responses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.pulse_surveys (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  title text NOT NULL,
-  status text DEFAULT '진행중'::text CHECK (status = ANY (ARRAY['진행중'::text, '종료'::text])),
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT pulse_surveys_pkey PRIMARY KEY (id),
-  CONSTRAINT pulse_surveys_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
-);
-CREATE TABLE public.recruitment_applications (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  recruitment_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  answers jsonb NOT NULL DEFAULT '{}'::jsonb,
-  status text DEFAULT '서류심사'::text CHECK (status = ANY (ARRAY['서류심사'::text, '면접'::text, '최종합격'::text, '불합격'::text])),
-  score integer CHECK (score >= 0 AND score <= 100),
-  interviewer_note text,
-  interview_at timestamp with time zone,
-  submitted_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT recruitment_applications_pkey PRIMARY KEY (id),
-  CONSTRAINT recruitment_applications_recruitment_id_fkey FOREIGN KEY (recruitment_id) REFERENCES public.recruitments(id),
-  CONSTRAINT recruitment_applications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
-);
-CREATE TABLE public.recruitments (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  title text NOT NULL,
-  generation text,
-  max_applicants integer,
-  form_schema jsonb NOT NULL DEFAULT '[]'::jsonb,
-  status text DEFAULT '모집중'::text CHECK (status = ANY (ARRAY['준비중'::text, '모집중'::text, '마감'::text])),
-  deadline timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT recruitments_pkey PRIMARY KEY (id),
-  CONSTRAINT recruitments_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
-);
-CREATE TABLE public.sessions (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  club_id uuid NOT NULL,
-  title text NOT NULL,
-  attendance_code text NOT NULL,
-  expires_at timestamp with time zone,
-  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT sessions_pkey PRIMARY KEY (id),
-  CONSTRAINT sessions_club_id_fkey FOREIGN KEY (club_id) REFERENCES public.clubs(id)
-);
-CREATE TABLE public.users (
-  id uuid NOT NULL,
-  role text NOT NULL DEFAULT 'student'::text,
-  name text,
-  phone text,
-  school text,
-  major text,
-  verified_at timestamp with time zone,
-  created_at timestamp with time zone DEFAULT now(),
-  email text,
-  CONSTRAINT users_pkey PRIMARY KEY (id),
-  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.verification_requests (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  club_id uuid NOT NULL,
-  status text DEFAULT 'pending'::text,
-  answers jsonb DEFAULT '{}'::jsonb,
-  reviewer_note text,
-  submitted_at timestamp with time zone DEFAULT now(),
-  reviewed_at timestamp with time zone,
-  CONSTRAINT verification_requests_pkey PRIMARY KEY (id)
-);
+
+
+| routine_name    | return_type   |
+| --------------- | ------------- |
+| handle_new_user | trigger       |
+| is_master       | boolean       |
+| rls_auto_enable | event_trigger |
+
+
+
+| tablename                | policyname          | permissive | roles    | cmd    | qual                                                                                                                                                                                                                                                                                                                                                                 | with_check                                                                                                                                                                                                                                                              |
+| ------------------------ | ------------------- | ---------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| applications             | 동아리만 지원             | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | true                                                                                                                                                                                                                                                                    |
+| applications             | 전체 조회 가능            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| attendances              | 운영진 출석 수정           | PERMISSIVE | {public} | UPDATE | (EXISTS ( SELECT 1
+   FROM (club_members cm
+     JOIN sessions s ON ((s.club_id = cm.club_id)))
+  WHERE ((s.id = attendances.session_id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text))))                                                                                                                                                                | null                                                                                                                                                                                                                                                                    |
+| attendances              | 출석 등록               | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | ((auth.uid() IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM (club_members cm
+     JOIN sessions s ON ((s.club_id = cm.club_id)))
+  WHERE ((cm.id = attendances.member_id) AND (cm.user_id = auth.uid())))))                                                                |
+| attendances              | 출석 조회               | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| b2b_applications         | B2B 지원 조회           | PERMISSIVE | {public} | SELECT | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = b2b_applications.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                                                                                                                  | null                                                                                                                                                                                                                                                                    |
+| b2b_applications         | 운영진 B2B 지원 제출       | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = b2b_applications.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                     |
+| b2b_projects             | B2B 프로젝트 조회         | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| b2b_projects             | 기업담당자 B2B 생성        | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | ((EXISTS ( SELECT 1
+   FROM corp_members
+  WHERE ((corp_members.corp_id = b2b_projects.corp_id) AND (corp_members.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                       |
+| b2b_projects             | 기업담당자 B2B 수정        | PERMISSIVE | {public} | UPDATE | ((EXISTS ( SELECT 1
+   FROM corp_members
+  WHERE ((corp_members.corp_id = b2b_projects.corp_id) AND (corp_members.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+| bookmarks                | 본인 북마크 조회           | PERMISSIVE | {public} | SELECT | (auth.uid() = user_id)                                                                                                                                                                                                                                                                                                                                               | null                                                                                                                                                                                                                                                                    |
+| bookmarks                | 북마크 삭제              | PERMISSIVE | {public} | DELETE | (auth.uid() = user_id)                                                                                                                                                                                                                                                                                                                                               | null                                                                                                                                                                                                                                                                    |
+| bookmarks                | 북마크 추가              | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (auth.uid() = user_id)                                                                                                                                                                                                                                                  |
+| club_members             | 부원 전체 조회            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| club_members             | 운영진 부원 수정           | PERMISSIVE | {public} | UPDATE | (EXISTS ( SELECT 1
+   FROM club_members cm
+  WHERE ((cm.club_id = club_members.club_id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text))))                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| club_members             | 운영진 부원 추가           | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (EXISTS ( SELECT 1
+   FROM club_members cm
+  WHERE ((cm.club_id = club_members.club_id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text))))                                                                                                                    |
+| club_pages               | 동아리 페이지 전체 조회       | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| club_pages               | 운영진 페이지 수정          | PERMISSIVE | {public} | UPDATE | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = club_pages.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                                                                                                                        | null                                                                                                                                                                                                                                                                    |
+| club_pages               | 운영진 페이지 저장          | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = club_pages.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                           |
+| clubs                    | 동아리 전체 조회           | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| clubs                    | 운영진 및 마스터 동아리 수정    | PERMISSIVE | {public} | UPDATE | (is_master() OR (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = clubs.id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))))                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| corp_members             | 기업 멤버 수정            | PERMISSIVE | {public} | UPDATE | ((EXISTS ( SELECT 1
+   FROM corp_members cm
+  WHERE ((cm.corp_id = corp_members.corp_id) AND (cm.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                                                                                     | null                                                                                                                                                                                                                                                                    |
+| corp_members             | 기업 멤버 조회            | PERMISSIVE | {public} | SELECT | ((auth.uid() = user_id) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                                                                                                                                                                                       | null                                                                                                                                                                                                                                                                    |
+| corp_members             | 기업 멤버 추가            | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | ((EXISTS ( SELECT 1
+   FROM corp_members cm
+  WHERE ((cm.corp_id = corp_members.corp_id) AND (cm.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                        |
+| corporations             | 기업 정보 조회            | PERMISSIVE | {public} | SELECT | ((EXISTS ( SELECT 1
+   FROM corp_members
+  WHERE ((corp_members.corp_id = corporations.id) AND (corp_members.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                                                                         | null                                                                                                                                                                                                                                                                    |
+| corporations             | 기업담당자 정보 수정         | PERMISSIVE | {public} | UPDATE | ((EXISTS ( SELECT 1
+   FROM corp_members
+  WHERE ((corp_members.corp_id = corporations.id) AND (corp_members.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                                                                         | null                                                                                                                                                                                                                                                                    |
+| event_registrations      | 본인 신청 조회            | PERMISSIVE | {public} | SELECT | (auth.uid() = user_id)                                                                                                                                                                                                                                                                                                                                               | null                                                                                                                                                                                                                                                                    |
+| event_registrations      | 신청 가능               | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (auth.uid() = user_id)                                                                                                                                                                                                                                                  |
+| events                   | 동아리만 생성             | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | true                                                                                                                                                                                                                                                                    |
+| events                   | 전체 조회 가능            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| global_admins            | 본인 마스터 여부 조회        | PERMISSIVE | {public} | SELECT | (auth.uid() = id)                                                                                                                                                                                                                                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+| posts                    | 공개 포스트 조회           | PERMISSIVE | {public} | SELECT | (is_published = true)                                                                                                                                                                                                                                                                                                                                                | null                                                                                                                                                                                                                                                                    |
+| posts                    | 운영진 및 마스터 포스트 삭제    | PERMISSIVE | {public} | DELETE | (is_master() OR (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = posts.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))))                                                                                                                                                                            | null                                                                                                                                                                                                                                                                    |
+| posts                    | 운영진 및 마스터 포스트 생성    | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (is_master() OR (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = posts.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))))                                                                               |
+| posts                    | 운영진 및 마스터 포스트 수정    | PERMISSIVE | {public} | UPDATE | (is_master() OR (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = posts.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))))                                                                                                                                                                            | null                                                                                                                                                                                                                                                                    |
+| posts                    | 운영진 포스트 전체조회        | PERMISSIVE | {public} | SELECT | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = posts.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                                                                                                                             | null                                                                                                                                                                                                                                                                    |
+| profiles                 | profiles_admin_read | PERMISSIVE | {public} | SELECT | ((EXISTS ( SELECT 1
+   FROM ((recruitment_applications ra
+     JOIN recruitments r ON ((r.id = ra.recruitment_id)))
+     JOIN club_members cm ON ((cm.club_id = r.club_id)))
+  WHERE ((ra.user_id = profiles.id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text)))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid())))) | null                                                                                                                                                                                                                                                                    |
+| profiles                 | 본인 프로필 수정 허용        | PERMISSIVE | {public} | UPDATE | (auth.uid() = id)                                                                                                                                                                                                                                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+| profiles                 | 본인 프로필 조회 허용        | PERMISSIVE | {public} | SELECT | (auth.uid() = id)                                                                                                                                                                                                                                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+| projects                 | 기업만 등록              | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (auth.uid() = corp_id)                                                                                                                                                                                                                                                  |
+| projects                 | 전체 조회 가능            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| pulse_responses          | 설문 응답 등록            | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | ((auth.uid() IS NOT NULL) AND (auth.uid() = user_id))                                                                                                                                                                                                                   |
+| pulse_responses          | 설문 응답 조회            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| pulse_surveys            | 설문 조회               | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| pulse_surveys            | 운영진 설문 생성           | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = pulse_surveys.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                        |
+| pulse_surveys            | 운영진 설문 수정           | PERMISSIVE | {public} | UPDATE | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = pulse_surveys.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                                                                                                                     | null                                                                                                                                                                                                                                                                    |
+| recruitment_applications | 본인 지원 내역 조회         | PERMISSIVE | {public} | SELECT | ((auth.uid() = user_id) OR (EXISTS ( SELECT 1
+   FROM (recruitments r
+     JOIN club_members cm ON ((cm.club_id = r.club_id)))
+  WHERE ((r.id = recruitment_applications.recruitment_id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text)))))                                                                                                               | null                                                                                                                                                                                                                                                                    |
+| recruitment_applications | 운영진 지원서 수정          | PERMISSIVE | {public} | UPDATE | ((EXISTS ( SELECT 1
+   FROM (recruitments r
+     JOIN club_members cm ON ((cm.club_id = r.club_id)))
+  WHERE ((r.id = recruitment_applications.recruitment_id) AND (cm.user_id = auth.uid()) AND (cm.role = '운영진'::text)))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                   | null                                                                                                                                                                                                                                                                    |
+| recruitment_applications | 지원서 제출              | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (auth.uid() = user_id)                                                                                                                                                                                                                                                  |
+| recruitments             | 공개 모집 조회            | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| recruitments             | 운영진 모집 생성           | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | ((EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = recruitments.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid())))) |
+| recruitments             | 운영진 모집 수정           | PERMISSIVE | {public} | UPDATE | ((EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = recruitments.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text)))) OR (EXISTS ( SELECT 1
+   FROM global_admins
+  WHERE (global_admins.id = auth.uid()))))                                                                                              | null                                                                                                                                                                                                                                                                    |
+| sessions                 | 세션 조회               | PERMISSIVE | {public} | SELECT | true                                                                                                                                                                                                                                                                                                                                                                 | null                                                                                                                                                                                                                                                                    |
+| sessions                 | 운영진 세션 생성           | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = sessions.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                             |
+| sessions                 | 운영진 세션 수정           | PERMISSIVE | {public} | UPDATE | (EXISTS ( SELECT 1
+   FROM club_members
+  WHERE ((club_members.club_id = sessions.club_id) AND (club_members.user_id = auth.uid()) AND (club_members.role = '운영진'::text))))                                                                                                                                                                                          | null                                                                                                                                                                                                                                                                    |
+| users                    | 본인만 삽입              | PERMISSIVE | {public} | INSERT | null                                                                                                                                                                                                                                                                                                                                                                 | (auth.uid() = id)                                                                                                                                                                                                                                                       |
+| users                    | 본인만 수정              | PERMISSIVE | {public} | UPDATE | (auth.uid() = id)                                                                                                                                                                                                                                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+| users                    | 본인만 조회              | PERMISSIVE | {public} | SELECT | (auth.uid() = id)                                                                                                                                                                                                                                                                                                                                                    | null                                                                                                                                                                                                                                                                    |
+
+
+
+| table_name               |
+| ------------------------ |
+| applications             |
+| attendances              |
+| b2b_applications         |
+| b2b_projects             |
+| bookmarks                |
+| club_members             |
+| club_pages               |
+| clubs                    |
+| corp_members             |
+| corporations             |
+| event_registrations      |
+| events                   |
+| global_admins            |
+| posts                    |
+| profiles                 |
+| projects                 |
+| pulse_responses          |
+| pulse_surveys            |
+| recruitment_applications |
+| recruitments             |
+| sessions                 |
+| users                    |
+| verification_requests    |
+
+
+| table_name          | column_name     | data_type                | is_nullable | column_default               | max_length |
+| ------------------- | --------------- | ------------------------ | ----------- | ---------------------------- | ---------- |
+| applications        | id              | uuid                     | NO          | gen_random_uuid()            | null       |
+| applications        | club_id         | uuid                     | YES         | null                         | null       |
+| applications        | project_id      | uuid                     | YES         | null                         | null       |
+| applications        | status          | text                     | YES         | 'pending'::text              | null       |
+| applications        | proposal_url    | text                     | YES         | null                         | null       |
+| applications        | submitted_at    | timestamp with time zone | YES         | now()                        | null       |
+| attendances         | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| attendances         | session_id      | uuid                     | NO          | null                         | null       |
+| attendances         | member_id       | uuid                     | NO          | null                         | null       |
+| attendances         | status          | text                     | NO          | null                         | null       |
+| attendances         | recorded_at     | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| b2b_applications    | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| b2b_applications    | project_id      | uuid                     | NO          | null                         | null       |
+| b2b_applications    | club_id         | uuid                     | NO          | null                         | null       |
+| b2b_applications    | proposal_text   | text                     | YES         | null                         | null       |
+| b2b_applications    | status          | text                     | YES         | '미열람'::text                  | null       |
+| b2b_applications    | submitted_at    | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| b2b_projects        | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| b2b_projects        | corp_id         | uuid                     | NO          | null                         | null       |
+| b2b_projects        | title           | text                     | NO          | null                         | null       |
+| b2b_projects        | category        | text                     | NO          | null                         | null       |
+| b2b_projects        | budget          | integer                  | YES         | null                         | null       |
+| b2b_projects        | description     | text                     | YES         | null                         | null       |
+| b2b_projects        | status          | text                     | YES         | '모집중'::text                  | null       |
+| b2b_projects        | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| bookmarks           | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| bookmarks           | user_id         | uuid                     | NO          | null                         | null       |
+| bookmarks           | target_type     | text                     | NO          | null                         | null       |
+| bookmarks           | target_id       | uuid                     | NO          | null                         | null       |
+| bookmarks           | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| club_members        | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| club_members        | club_id         | uuid                     | NO          | null                         | null       |
+| club_members        | user_id         | uuid                     | NO          | null                         | null       |
+| club_members        | role            | text                     | NO          | null                         | null       |
+| club_members        | generation      | text                     | YES         | null                         | null       |
+| club_members        | position        | text                     | YES         | null                         | null       |
+| club_members        | status          | text                     | YES         | '활동중'::text                  | null       |
+| club_members        | joined_at       | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| club_pages          | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| club_pages          | club_id         | uuid                     | NO          | null                         | null       |
+| club_pages          | blocks          | jsonb                    | NO          | '[]'::jsonb                  | null       |
+| club_pages          | published_at    | timestamp with time zone | YES         | null                         | null       |
+| club_pages          | updated_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| clubs               | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| clubs               | slug            | text                     | NO          | null                         | null       |
+| clubs               | name            | text                     | NO          | null                         | null       |
+| clubs               | type            | text                     | NO          | null                         | null       |
+| clubs               | theme_color     | text                     | YES         | 'orange-500'::text           | null       |
+| clubs               | one_line_desc   | text                     | YES         | null                         | null       |
+| clubs               | description     | text                     | YES         | null                         | null       |
+| clubs               | logo_url        | text                     | YES         | null                         | null       |
+| clubs               | location        | text                     | YES         | null                         | null       |
+| clubs               | recruit_fee     | integer                  | YES         | null                         | null       |
+| clubs               | instagram_url   | text                     | YES         | null                         | null       |
+| clubs               | notion_url      | text                     | YES         | null                         | null       |
+| clubs               | kakao_url       | text                     | YES         | null                         | null       |
+| clubs               | is_certified    | boolean                  | YES         | false                        | null       |
+| clubs               | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| corp_members        | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| corp_members        | corp_id         | uuid                     | NO          | null                         | null       |
+| corp_members        | user_id         | uuid                     | NO          | null                         | null       |
+| corp_members        | role            | text                     | YES         | '담당자'::text                  | null       |
+| corporations        | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| corporations        | name            | text                     | NO          | null                         | null       |
+| corporations        | business_number | text                     | YES         | null                         | null       |
+| corporations        | credit_balance  | integer                  | YES         | 0                            | null       |
+| corporations        | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| event_registrations | id              | uuid                     | NO          | gen_random_uuid()            | null       |
+| event_registrations | event_id        | uuid                     | YES         | null                         | null       |
+| event_registrations | user_id         | uuid                     | YES         | null                         | null       |
+| event_registrations | status          | text                     | YES         | 'registered'::text           | null       |
+| event_registrations | created_at      | timestamp with time zone | YES         | now()                        | null       |
+| events              | id              | uuid                     | NO          | gen_random_uuid()            | null       |
+| events              | host_club_id    | uuid                     | YES         | null                         | null       |
+| events              | title           | text                     | NO          | null                         | null       |
+| events              | date            | timestamp with time zone | YES         | null                         | null       |
+| events              | capacity        | integer                  | YES         | null                         | null       |
+| events              | status          | text                     | YES         | 'open'::text                 | null       |
+| events              | co_host_ids     | ARRAY                    | YES         | null                         | null       |
+| events              | cover_url       | text                     | YES         | null                         | null       |
+| events              | created_at      | timestamp with time zone | YES         | now()                        | null       |
+| global_admins       | id              | uuid                     | NO          | null                         | null       |
+| global_admins       | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| posts               | id              | uuid                     | NO          | uuid_generate_v4()           | null       |
+| posts               | club_id         | uuid                     | NO          | null                         | null       |
+| posts               | author_id       | uuid                     | YES         | null                         | null       |
+| posts               | title           | text                     | NO          | null                         | null       |
+| posts               | content         | text                     | NO          | null                         | null       |
+| posts               | view_count      | integer                  | YES         | 0                            | null       |
+| posts               | is_published    | boolean                  | YES         | false                        | null       |
+| posts               | created_at      | timestamp with time zone | NO          | timezone('utc'::text, now()) | null       |
+| profiles            | id              | uuid                     | NO          | null                         | null       |
+| profiles            | name            | text                     | NO          | ''::text                     | null       |
+| profiles            | email           | text                     | NO          | ''::text                     | null       |
+| profiles            | phone           | text                     | YES         | null                         | null       |
+| profiles            | university      | text                     | YES         | null                         | null       |
+| profiles            | major           | text                     | YES         | null                         | null       |
+| profiles            | skills          | ARRAY                    | YES         | null                         | null       |
+| profiles            | resume_url      | text                     | YES         | null                         | null       |
+| profiles            | portfolio_url   | text                     | YES         | null                         | null       |
+
