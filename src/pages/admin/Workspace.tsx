@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Type, Image as ImageIcon, CheckSquare, Plus, Layout, ArrowLeft, Briefcase, Users, Calendar, MapPin, AlignLeft, Loader, Check, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { WorkspaceProperties } from '../components/admin/WorkspaceProperties';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { WorkspaceProperties } from '../../components/admin/WorkspaceProperties';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 const DEFAULT_BLOCKS: any[] = [
   {

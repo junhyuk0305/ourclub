@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, ChevronRight, Loader, FileOutput, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 type AppStatus = '미열람' | '검토중' | '미팅요청' | '매칭완료' | '거절';
 

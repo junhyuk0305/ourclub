@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Search, Mail, UserCheck, X, Edit2, Loader,
   MessageSquare, ChevronDown, GripVertical, Users, Plus, HelpCircle, Download,
+  LayoutGrid, List, ChevronUp, ArrowUpDown, CheckSquare, Square, Inbox,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface Recruitment {
   id: string;
@@ -45,6 +46,10 @@ interface EmailModalState {
   body: string;
 }
 
+type ViewMode = 'kanban' | 'list';
+type SortKey = 'name' | 'submitted_at' | 'status' | 'score';
+type SortDir = 'asc' | 'desc';
+
 export default function RecruitAdmin() {
   const { adminClubId } = useAdmin();
 
@@ -58,6 +63,17 @@ export default function RecruitAdmin() {
 
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [emailModal, setEmailModal] = useState<EmailModalState | null>(null);
+
+  // 뷰 모드
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+
+  // 리스트뷰 정렬
+  const [sortKey, setSortKey] = useState<SortKey>('submitted_at');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  // 리스트뷰 다중선택
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStage, setBulkStage] = useState('');
 
   // 드래그앤드롭
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -100,6 +116,7 @@ export default function RecruitAdmin() {
       .order('submitted_at', { ascending: false });
 
     setApplicants((data as unknown as Applicant[]) ?? []);
+    setSelectedIds(new Set());
     setFetching(false);
   };
 
@@ -148,11 +165,12 @@ export default function RecruitAdmin() {
     if (selectedApplicant?.id === id) setSelectedApplicant(prev => prev ? { ...prev, interview_questions: questions } : null);
   };
 
-  const exportToCSV = () => {
-    if (applicants.length === 0) return;
-    const allKeys = Array.from(new Set(applicants.flatMap(a => Object.keys(a.answers ?? {}))));
+  const exportToCSV = (targets?: Applicant[]) => {
+    const list = targets ?? applicants;
+    if (list.length === 0) return;
+    const allKeys = Array.from(new Set(list.flatMap(a => Object.keys(a.answers ?? {}))));
     const headers = ['이름', '이메일', '전화번호', '학교', '전공', '상태', '점수', '지원일', ...allKeys];
-    const rows = applicants.map(a => [
+    const rows = list.map(a => [
       a.profiles?.name ?? '',
       a.profiles?.email ?? '',
       a.profiles?.phone ?? '',
@@ -195,6 +213,17 @@ export default function RecruitAdmin() {
     setEmailModal(null);
   };
 
+  // 일괄 단계 이동
+  const bulkChangeStatus = async () => {
+    if (!bulkStage || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    await supabase.from('recruitment_applications').update({ status: bulkStage }).in('id', ids);
+    setApplicants(prev => prev.map(a => selectedIds.has(a.id) ? { ...a, status: bulkStage } : a));
+    showToast(`${ids.length}명 → '${bulkStage}' 이동 완료`);
+    setSelectedIds(new Set());
+    setBulkStage('');
+  };
+
   // DnD handlers
   const handleDragStart = (e: React.DragEvent, applicantId: string) => {
     setDraggingId(applicantId);
@@ -222,12 +251,48 @@ export default function RecruitAdmin() {
     setDragOverStage(null);
   };
 
+  // 리스트뷰 정렬 토글
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
   const stages = selectedRecruitment?.pipeline_stages ?? [];
   const filtered = applicants.filter(a =>
     !search ||
     (a.profiles?.name ?? '').includes(search) ||
     (a.profiles?.major ?? '').includes(search)
   );
+
+  // 정렬된 리스트
+  const sorted = [...filtered].sort((a, b) => {
+    let av: string | number = '';
+    let bv: string | number = '';
+    if (sortKey === 'name') { av = a.profiles?.name ?? ''; bv = b.profiles?.name ?? ''; }
+    if (sortKey === 'submitted_at') { av = a.submitted_at; bv = b.submitted_at; }
+    if (sortKey === 'status') { av = stages.indexOf(a.status); bv = stages.indexOf(b.status); }
+    if (sortKey === 'score') { av = a.score ?? -1; bv = b.score ?? -1; }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const allSelected = sorted.length > 0 && sorted.every(a => selectedIds.has(a.id));
+  const toggleAll = () => {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sorted.map(a => a.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
@@ -247,14 +312,14 @@ export default function RecruitAdmin() {
 
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* 상단 바 */}
-          <div className="px-8 pt-6 pb-4 border-b border-gray-200 bg-white flex items-center justify-between gap-4 shrink-0">
+          <div className="px-8 pt-6 pb-4 border-b border-gray-200 bg-white flex items-center justify-between gap-4 shrink-0 flex-wrap">
             <div>
               <h2 className="text-2xl font-black">리크루팅 파이프라인</h2>
               <p className="text-gray-500 font-bold text-sm mt-0.5">
-                지원자 카드를 드래그하여 단계를 이동하세요.
+                {viewMode === 'kanban' ? '지원자 카드를 드래그하여 단계를 이동하세요.' : '지원자 전체를 표 형태로 관리합니다.'}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               {/* 공고 선택 */}
               {recruitments.length > 1 && (
                 <div className="relative">
@@ -279,16 +344,34 @@ export default function RecruitAdmin() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="이름, 전공 검색"
-                  className="pl-9 pr-4 py-2 border border-black font-bold outline-none focus:border-orange-500 w-48 text-sm"
+                  className="pl-9 pr-4 py-2 border border-black font-bold outline-none focus:border-orange-500 w-44 text-sm"
                 />
+              </div>
+              {/* 뷰 토글 */}
+              <div className="flex border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  title="칸반 뷰"
+                  className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  title="리스트 뷰"
+                  className={`p-2 transition-colors border-l border-black ${viewMode === 'list' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
               </div>
               {/* CSV 내보내기 */}
               <button
-                onClick={exportToCSV}
+                onClick={() => exportToCSV(selectedIds.size > 0 ? sorted.filter(a => selectedIds.has(a.id)) : undefined)}
                 disabled={applicants.length === 0}
                 className="px-4 py-2 border border-black font-bold text-sm bg-white hover:bg-green-500 transition-colors flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <Download className="w-4 h-4" /> CSV
+                <Download className="w-4 h-4" />
+                {selectedIds.size > 0 ? `CSV (${selectedIds.size}명)` : 'CSV'}
               </button>
               {/* 전체 지원자 수 */}
               <span className="text-sm font-bold text-gray-500 border border-gray-200 px-3 py-2 bg-white">
@@ -297,7 +380,7 @@ export default function RecruitAdmin() {
             </div>
           </div>
 
-          {/* 칸반 보드 */}
+          {/* 콘텐츠 */}
           {fetching ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader className="w-8 h-8 animate-spin text-orange-500" />
@@ -309,15 +392,13 @@ export default function RecruitAdmin() {
                 <h3 className="text-lg font-black text-gray-400 mb-2">
                   {recruitments.length === 0 ? '진행 중인 공고가 없습니다' : '프로세스 단계가 설정되지 않았습니다'}
                 </h3>
-                <Link
-                  to="/admin/form-builder"
-                  className="text-orange-500 font-bold hover:underline text-sm"
-                >
+                <Link to="/admin/form-builder" className="text-orange-500 font-bold hover:underline text-sm">
                   폼 빌더에서 공고 및 프로세스 설정하기 →
                 </Link>
               </div>
             </div>
-          ) : (
+          ) : viewMode === 'kanban' ? (
+            /* ── 칸반 뷰 ── */
             <div className="flex-1 overflow-x-auto overflow-y-hidden">
               <div className="flex h-full" style={{ minWidth: `${stages.length * 280}px` }}>
                 {stages.map((stage, idx) => {
@@ -333,35 +414,19 @@ export default function RecruitAdmin() {
                       onDragOver={e => handleDragOver(e, stage)}
                       onDrop={e => handleDrop(e, stage)}
                       onDragLeave={e => {
-                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                          setDragOverStage(null);
-                        }
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverStage(null);
                       }}
                     >
-                      {/* 컬럼 헤더 */}
-                      <div className={`px-4 py-3 border-b-2 border-black flex items-center justify-between shrink-0 ${
-                        isLast ? 'bg-green-500' : 'bg-white'
-                      }`}>
-                        <h3 className={`font-black text-sm ${isLast ? 'text-white' : 'text-black'}`}>
-                          {stage}
-                        </h3>
-                        <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                          isLast ? 'bg-white text-green-700' : 'bg-black text-white'
-                        }`}>
+                      <div className={`px-4 py-3 border-b-2 border-black flex items-center justify-between shrink-0 ${isLast ? 'bg-green-500' : 'bg-white'}`}>
+                        <h3 className={`font-black text-sm ${isLast ? 'text-white' : 'text-black'}`}>{stage}</h3>
+                        <span className={`text-xs font-black px-2 py-0.5 rounded-full ${isLast ? 'bg-white text-green-700' : 'bg-black text-white'}`}>
                           {stageCards.length}
                         </span>
                       </div>
 
-                      {/* 카드 목록 */}
-                      <div className={`flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 ${
-                        isDropTarget ? 'outline-2 outline-dashed outline-orange-400 outline-offset-[-4px]' : ''
-                      }`}>
+                      <div className={`flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 ${isDropTarget ? 'outline-2 outline-dashed outline-orange-400 outline-offset-[-4px]' : ''}`}>
                         {stageCards.length === 0 && (
-                          <div className={`border-2 border-dashed rounded p-6 text-center text-xs font-bold ${
-                            isDropTarget
-                              ? 'border-orange-400 text-orange-400 bg-orange-50'
-                              : 'border-gray-200 text-gray-300'
-                          }`}>
+                          <div className={`border-2 border-dashed rounded p-6 text-center text-xs font-bold ${isDropTarget ? 'border-orange-400 text-orange-400 bg-orange-50' : 'border-gray-200 text-gray-300'}`}>
                             {isDropTarget ? '여기에 놓기' : '없음'}
                           </div>
                         )}
@@ -381,13 +446,132 @@ export default function RecruitAdmin() {
                 })}
               </div>
             </div>
+          ) : (
+            /* ── 리스트 뷰 ── */
+            <div className="flex-1 overflow-auto">
+              {/* 일괄 처리 바 */}
+              {selectedIds.size > 0 && (
+                <div className="px-8 py-3 bg-orange-50 border-b border-orange-200 flex items-center gap-4 shrink-0">
+                  <span className="text-sm font-black text-orange-700">{selectedIds.size}명 선택됨</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={bulkStage}
+                      onChange={e => setBulkStage(e.target.value)}
+                      className="px-3 py-1.5 border border-black font-bold text-sm outline-none focus:border-orange-500 bg-white"
+                    >
+                      <option value="">단계 선택...</option>
+                      {stages.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button
+                      onClick={bulkChangeStatus}
+                      disabled={!bulkStage}
+                      className="px-4 py-1.5 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-40"
+                    >
+                      일괄 이동
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => exportToCSV(sorted.filter(a => selectedIds.has(a.id)))}
+                    className="flex items-center gap-1.5 px-4 py-1.5 border border-black font-bold text-sm bg-white hover:bg-green-500 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> 선택 CSV
+                  </button>
+                  <button onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-500 font-bold hover:text-black ml-auto">
+                    선택 해제
+                  </button>
+                </div>
+              )}
+
+              <table className="w-full min-w-[700px] border-collapse">
+                <thead className="sticky top-0 bg-white z-10 border-b-2 border-black">
+                  <tr>
+                    <th className="w-12 px-4 py-3">
+                      <button onClick={toggleAll}>
+                        {allSelected ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-400" />}
+                      </button>
+                    </th>
+                    <SortTh label="이름" sortKey="name" current={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">학교·전공</th>
+                    <SortTh label="지원일" sortKey="submitted_at" current={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortTh label="단계" sortKey="status" current={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortTh label="점수" sortKey="score" current={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-16 text-gray-400 font-bold">
+                        <Inbox className="w-10 h-10 mx-auto mb-2 text-gray-200" />
+                        지원자가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                  {sorted.map((app, i) => {
+                    const isSelected = selectedIds.has(app.id);
+                    const isLast = app.status === stages[stages.length - 1];
+                    return (
+                      <tr
+                        key={app.id}
+                        className={`border-b border-gray-100 transition-colors cursor-pointer ${isSelected ? 'bg-orange-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-orange-50`}
+                      >
+                        <td className="px-4 py-3" onClick={e => { e.stopPropagation(); toggleOne(app.id); }}>
+                          {isSelected ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
+                        </td>
+                        <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-sm">{app.profiles?.name ?? '—'}</span>
+                            {app.score != null && <span className="text-xs font-black text-orange-500">{app.score}점</span>}
+                            {app.interviewer_note && <MessageSquare className="w-3 h-3 text-orange-400" />}
+                          </div>
+                          <p className="text-xs text-gray-400 font-medium">{app.profiles?.email}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 font-medium" onClick={() => setSelectedApplicant(app)}>
+                          {[app.profiles?.university, app.profiles?.major].filter(Boolean).join(' · ') || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-gray-500" onClick={() => setSelectedApplicant(app)}>
+                          {new Date(app.submitted_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </td>
+                        <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
+                          <span className={`inline-block text-xs font-black px-2.5 py-1 border ${isLast ? 'bg-green-100 border-green-400 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
+                            {app.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
+                          {app.score != null ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${app.score}%` }} />
+                              </div>
+                              <span className="text-xs font-black text-gray-600">{app.score}</span>
+                            </div>
+                          ) : <span className="text-xs text-gray-300 font-bold">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {stages.map(s => (
+                              <button
+                                key={s}
+                                onClick={e => { e.stopPropagation(); if (app.status !== s) openEmailModal(app, s); }}
+                                title={s}
+                                className={`w-2 h-2 rounded-full border transition-all ${app.status === s ? 'bg-orange-500 border-orange-500 scale-125' : 'bg-gray-200 border-gray-300 hover:bg-orange-300'}`}
+                              />
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </main>
       </div>
 
-      {/* 지원서 상세 패널 */}
+      {/* 지원서 상세 Extended Modal */}
       {selectedApplicant && !emailModal && (
-        <ApplicantPanel
+        <ApplicantModal
           key={selectedApplicant.id}
           applicant={selectedApplicant}
           stages={stages}
@@ -411,9 +595,7 @@ export default function RecruitAdmin() {
               <h3 className="text-xl font-black flex items-center gap-2">
                 <Mail className="w-5 h-5 text-orange-500" /> 단계 이동 알림
               </h3>
-              <button onClick={() => setEmailModal(null)}>
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setEmailModal(null)}><X className="w-5 h-5" /></button>
             </div>
 
             <div className="p-6 flex flex-col gap-4">
@@ -475,13 +657,37 @@ export default function RecruitAdmin() {
   );
 }
 
+// ── 테이블 정렬 헤더 ─────────────────────────────────────────────────────────
+function SortTh({ label, sortKey, current, dir, onToggle }: {
+  label: string;
+  sortKey: SortKey;
+  current: SortKey;
+  dir: SortDir;
+  onToggle: (k: SortKey) => void;
+}) {
+  const active = current === sortKey;
+  return (
+    <th
+      className="px-4 py-3 text-left cursor-pointer select-none group"
+      onClick={() => onToggle(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        <span className={`text-xs font-black uppercase tracking-wider transition-colors ${active ? 'text-orange-500' : 'text-gray-500 group-hover:text-gray-800'}`}>
+          {label}
+        </span>
+        {active ? (
+          dir === 'asc' ? <ChevronUp className="w-3 h-3 text-orange-500" /> : <ChevronDown className="w-3 h-3 text-orange-500" />
+        ) : (
+          <ArrowUpDown className="w-3 h-3 text-gray-300 group-hover:text-gray-500" />
+        )}
+      </div>
+    </th>
+  );
+}
+
 // ── 칸반 카드 ────────────────────────────────────────────────────────────────
 function KanbanCard({
-  applicant,
-  isDragging,
-  onDragStart,
-  onDragEnd,
-  onClick,
+  applicant, isDragging, onDragStart, onDragEnd, onClick,
 }: {
   applicant: Applicant;
   isDragging: boolean;
@@ -503,20 +709,17 @@ function KanbanCard({
           : 'shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5'
       }`}
     >
-      {/* 이름 + 드래그 핸들 */}
       <div className="flex items-center justify-between mb-2">
         <span className="font-black text-sm">{applicant.profiles?.name ?? '—'}</span>
         <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
       </div>
 
-      {/* 전공/학교 */}
       {(applicant.profiles?.university || applicant.profiles?.major) && (
         <p className="text-xs text-gray-500 font-bold mb-2.5 truncate">
           {[applicant.profiles?.university, applicant.profiles?.major].filter(Boolean).join(' · ')}
         </p>
       )}
 
-      {/* 하단 메타 */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
         <span className="text-xs text-gray-400 font-bold">
           {daysAgo === 0 ? '오늘 접수' : `${daysAgo}일 전`}
@@ -534,15 +737,11 @@ function KanbanCard({
   );
 }
 
-// ── 지원서 상세 패널 ──────────────────────────────────────────────────────────
-function ApplicantPanel({
-  applicant,
-  stages,
-  onClose,
-  onStatusChange,
-  onSaveNote,
-  onAddMemo,
-  onSaveQuestions,
+// ── 지원서 상세 Extended Modal (탭 UI) ────────────────────────────────────────
+type DetailTab = 'application' | 'evaluation' | 'interview';
+
+function ApplicantModal({
+  applicant, stages, onClose, onStatusChange, onSaveNote, onAddMemo, onSaveQuestions,
 }: {
   applicant: Applicant;
   stages: string[];
@@ -552,6 +751,7 @@ function ApplicantPanel({
   onAddMemo: (id: string, content: string) => void;
   onSaveQuestions: (id: string, questions: string[]) => void;
 }) {
+  const [tab, setTab] = useState<DetailTab>('application');
   const [score, setScore] = useState(applicant.score != null ? String(applicant.score) : '');
   const [note, setNote] = useState(applicant.interviewer_note ?? '');
   const [noteSaved, setNoteSaved] = useState(false);
@@ -587,194 +787,227 @@ function ApplicantPanel({
     setNewMemo('');
   };
 
+  const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'application', label: '지원서', icon: <Users className="w-4 h-4" /> },
+    { key: 'evaluation', label: '평가 및 메모', icon: <MessageSquare className="w-4 h-4" /> },
+    { key: 'interview', label: '면접 풀', icon: <HelpCircle className="w-4 h-4" /> },
+  ];
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-end bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white h-full border-l-2 border-black flex flex-col shadow-[-10px_0_20px_rgba(0,0,0,0.1)]"
-        style={{ animation: 'slideLeft 0.3s cubic-bezier(0.16,1,0.3,1) forwards' }}
+        className="bg-white border-2 border-black flex flex-col shadow-[16px_16px_0px_0px_rgba(0,0,0,1)]"
+        style={{ width: '85vw', height: '90vh', maxWidth: '1100px' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-black flex justify-between items-center bg-gray-50 shrink-0">
-          <h3 className="text-2xl font-black">지원서 상세</h3>
-          <button onClick={onClose}><X className="w-6 h-6" /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
-          {/* 기본 정보 */}
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-3xl font-black">{applicant.profiles?.name ?? '—'}</h2>
-                <span className="text-sm font-bold bg-black text-white px-3 py-1">{applicant.status}</span>
-              </div>
-              <p className="text-gray-600 font-bold">
-                {[applicant.profiles?.university, applicant.profiles?.major].filter(Boolean).join(' · ')}
-              </p>
+        {/* 헤더 */}
+        <div className="px-8 py-5 border-b-2 border-black bg-gray-50 flex items-start justify-between gap-4 shrink-0">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-2xl font-black">{applicant.profiles?.name ?? '—'}</h2>
+              <span className="text-xs font-black bg-black text-white px-3 py-1">{applicant.status}</span>
             </div>
-            <div className="text-right text-gray-500 font-bold text-sm shrink-0">
-              <p>{applicant.profiles?.phone}</p>
-              <p>{applicant.profiles?.email}</p>
+            <p className="text-gray-500 font-bold text-sm">
+              {[applicant.profiles?.university, applicant.profiles?.major].filter(Boolean).join(' · ')}
+            </p>
+            <div className="flex items-center gap-4 mt-1 text-sm text-gray-400 font-medium">
+              <span>{applicant.profiles?.phone}</span>
+              <span>{applicant.profiles?.email}</span>
+              {applicant.profiles?.portfolio_url && (
+                <a href={applicant.profiles.portfolio_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline font-bold">
+                  포트폴리오 →
+                </a>
+              )}
             </div>
           </div>
+          <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded shrink-0">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
 
-          {/* 운영진 평가 + 팀 메모 */}
-          <div className="border-2 border-black p-6 bg-gray-50">
-            <h4 className="font-black text-sm mb-4 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-orange-500" /> 운영진 평가
-            </h4>
-            <div className="flex gap-4 mb-5">
-              <div className="w-32 shrink-0">
-                <label className="font-black text-xs block mb-1">점수 (0~100)</label>
-                <input
-                  type="number"
-                  value={score}
-                  onChange={e => setScore(e.target.value)}
-                  onBlur={handleScoreBlur}
-                  min={0}
-                  max={100}
-                  className="w-full p-2 border border-black font-bold outline-none focus:border-orange-500"
-                  placeholder="85"
-                />
+        {/* 탭 네비게이션 */}
+        <div className="flex border-b-2 border-black shrink-0 bg-white">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-2 px-6 py-3.5 text-sm font-black border-r border-gray-200 transition-colors ${
+                tab === t.key
+                  ? 'bg-orange-500 text-black border-b-2 border-black -mb-0.5'
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 탭 콘텐츠 */}
+        <div className="flex-1 overflow-y-auto">
+          {/* 지원서 탭 */}
+          {tab === 'application' && (
+            <div className="p-8 flex flex-col gap-5">
+              {Object.entries(applicant.answers ?? {}).length === 0 ? (
+                <div className="text-center py-12 text-gray-400 font-bold">
+                  <Inbox className="w-10 h-10 mx-auto mb-2 text-gray-200" />
+                  제출된 응답이 없습니다.
+                </div>
+              ) : (
+                Object.entries(applicant.answers ?? {}).map(([key, val]) => (
+                  <div key={key} className="border border-black p-6 bg-orange-50">
+                    <h4 className="font-black text-sm text-orange-600 mb-2">{key}</h4>
+                    <p className="font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{val}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* 평가 및 메모 탭 */}
+          {tab === 'evaluation' && (
+            <div className="p-8 flex flex-col gap-6">
+              {/* 점수 + 내부 메모 */}
+              <div className="border-2 border-black p-6 bg-gray-50">
+                <h4 className="font-black text-sm mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-orange-500" /> 운영진 평가
+                </h4>
+                <div className="flex gap-4 mb-6">
+                  <div className="w-36 shrink-0">
+                    <label className="font-black text-xs block mb-1">점수 (0~100)</label>
+                    <input
+                      type="number"
+                      value={score}
+                      onChange={e => setScore(e.target.value)}
+                      onBlur={handleScoreBlur}
+                      min={0}
+                      max={100}
+                      className="w-full p-2 border border-black font-bold outline-none focus:border-orange-500"
+                      placeholder="85"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="font-black text-xs block mb-1">
+                      내부 메모 (단독)
+                      {noteSaved && <span className="text-green-500 font-bold text-xs ml-2">저장됨 ✓</span>}
+                    </label>
+                    <textarea
+                      value={note}
+                      onChange={e => handleNoteChange(e.target.value)}
+                      rows={4}
+                      className="w-full p-2 border border-black font-bold outline-none focus:border-orange-500 resize-none"
+                      placeholder="내부 검토 메모 (자동 저장)"
+                    />
+                  </div>
+                </div>
+
+                {/* 팀 메모 쓰레드 */}
+                <div>
+                  <p className="font-black text-xs text-gray-500 uppercase tracking-wider mb-3">팀 메모</p>
+                  {(applicant.memos ?? []).length > 0 && (
+                    <div className="flex flex-col gap-2 mb-3 max-h-56 overflow-y-auto">
+                      {(applicant.memos ?? []).map((m, i) => (
+                        <div key={i} className="bg-white border border-gray-200 p-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-black text-xs text-orange-600">{m.author}</span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-700 whitespace-pre-wrap">{m.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <textarea
+                      value={newMemo}
+                      onChange={e => setNewMemo(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitMemo(); }}
+                      rows={2}
+                      className="flex-1 p-2 border border-black font-medium text-sm outline-none focus:border-orange-500 resize-none"
+                      placeholder="팀 메모 남기기… (Ctrl+Enter)"
+                    />
+                    <button
+                      onClick={submitMemo}
+                      disabled={!newMemo.trim()}
+                      className="px-4 py-2 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors self-end disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      등록
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <label className="font-black text-xs block mb-1">
-                  내부 메모 (단독)
-                  {noteSaved && <span className="text-green-500 font-bold text-xs ml-2">저장됨 ✓</span>}
-                </label>
-                <textarea
-                  value={note}
-                  onChange={e => handleNoteChange(e.target.value)}
-                  rows={3}
-                  className="w-full p-2 border border-black font-bold outline-none focus:border-orange-500 resize-none"
-                  placeholder="내부 검토 메모 (자동 저장)"
-                />
+
+              {/* 단계 이동 */}
+              <div className="border-2 border-black p-6">
+                <p className="font-black text-xs text-gray-500 uppercase tracking-widest mb-3">단계 이동</p>
+                <div className="flex gap-2 flex-wrap">
+                  {stages.map(stage => (
+                    <button
+                      key={stage}
+                      onClick={() => onStatusChange(applicant.id, stage)}
+                      className={`px-4 py-2 border border-black font-bold text-sm transition-colors ${
+                        applicant.status === stage
+                          ? 'bg-black text-white cursor-default'
+                          : 'bg-white hover:bg-orange-500 hover:text-black'
+                      }`}
+                    >
+                      {stage}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+          )}
 
-            {/* 팀 메모 쓰레드 */}
-            <div>
-              <p className="font-black text-xs text-gray-500 uppercase tracking-wider mb-2">팀 메모</p>
-              {(applicant.memos ?? []).length > 0 && (
-                <div className="flex flex-col gap-2 mb-3 max-h-44 overflow-y-auto">
-                  {(applicant.memos ?? []).map((m, i) => (
-                    <div key={i} className="bg-white border border-gray-200 p-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-black text-xs text-orange-600">{m.author}</span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(m.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-700 whitespace-pre-wrap">{m.content}</p>
+          {/* 면접 풀 탭 */}
+          {tab === 'interview' && (
+            <div className="p-8">
+              <div className="border-2 border-black p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h4 className="font-black text-sm flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-blue-500" /> 면접 질문 풀
+                  </h4>
+                  <button
+                    onClick={handleSaveQuestions}
+                    className="text-xs font-black text-white bg-blue-500 px-4 py-1.5 hover:bg-blue-600 transition-colors"
+                  >
+                    저장
+                  </button>
+                </div>
+                {localQuestions.length === 0 && (
+                  <p className="text-gray-400 font-bold text-sm mb-4">아직 등록된 질문이 없습니다. 아래에서 추가하세요.</p>
+                )}
+                <div className="flex flex-col gap-3 mb-4">
+                  {localQuestions.map((q, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs font-black text-gray-400 w-6 shrink-0 text-right">{i + 1}.</span>
+                      <input
+                        value={q}
+                        onChange={e => updateQuestion(i, e.target.value)}
+                        className="flex-1 p-2.5 border border-black font-medium text-sm outline-none focus:border-orange-500"
+                        placeholder={`면접 질문 ${i + 1}`}
+                      />
+                      <button onClick={() => removeQuestion(i)} className="p-1.5 hover:text-red-500 shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
-              )}
-              <div className="flex gap-2">
-                <textarea
-                  value={newMemo}
-                  onChange={e => setNewMemo(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitMemo(); }}
-                  rows={2}
-                  className="flex-1 p-2 border border-black font-medium text-sm outline-none focus:border-orange-500 resize-none"
-                  placeholder="팀 메모 남기기… (Ctrl+Enter)"
-                />
                 <button
-                  onClick={submitMemo}
-                  disabled={!newMemo.trim()}
-                  className="px-4 py-2 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors self-end disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={addQuestion}
+                  className="text-sm font-bold text-blue-500 hover:underline flex items-center gap-1"
                 >
-                  등록
+                  <Plus className="w-4 h-4" /> 질문 추가
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* 면접 질문 풀 */}
-          <div className="border-2 border-black p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-black text-sm flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-blue-500" /> 면접 질문 풀
-              </h4>
-              <button
-                onClick={handleSaveQuestions}
-                className="text-xs font-black text-white bg-blue-500 px-3 py-1 hover:bg-blue-600 transition-colors"
-              >
-                저장
-              </button>
-            </div>
-            <div className="flex flex-col gap-2 mb-3">
-              {localQuestions.map((q, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-xs font-black text-gray-400 w-5 shrink-0 text-right">{i + 1}.</span>
-                  <input
-                    value={q}
-                    onChange={e => updateQuestion(i, e.target.value)}
-                    className="flex-1 p-2 border border-black font-medium text-sm outline-none focus:border-orange-500"
-                    placeholder={`면접 질문 ${i + 1}`}
-                  />
-                  <button onClick={() => removeQuestion(i)} className="p-1 hover:text-red-500 shrink-0">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={addQuestion}
-              className="text-sm font-bold text-blue-500 hover:underline flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" /> 질문 추가
-            </button>
-          </div>
-
-          {/* 지원서 답변 */}
-          {Object.entries(applicant.answers ?? {}).map(([key, val]) => (
-            <div key={key} className="border border-black p-6 bg-orange-50">
-              <h4 className="font-black text-sm text-orange-600 mb-2">{key}</h4>
-              <p className="font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{val}</p>
-            </div>
-          ))}
-
-          {applicant.profiles?.portfolio_url && (
-            <div className="border border-black p-4">
-              <a
-                href={applicant.profiles.portfolio_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 font-bold hover:underline flex items-center gap-2"
-              >
-                포트폴리오 보기 →
-              </a>
-            </div>
           )}
         </div>
-
-        {/* 단계 이동 */}
-        <div className="p-6 border-t border-black bg-gray-50 shrink-0">
-          <p className="font-black text-xs text-gray-500 uppercase tracking-widest mb-3">단계 이동</p>
-          <div className="flex gap-2 flex-wrap">
-            {stages.map(stage => (
-              <button
-                key={stage}
-                onClick={() => onStatusChange(applicant.id, stage)}
-                className={`px-4 py-2 border border-black font-bold text-sm transition-colors ${
-                  applicant.status === stage
-                    ? 'bg-black text-white cursor-default'
-                    : 'bg-white hover:bg-orange-500 hover:text-black'
-                }`}
-              >
-                {stage}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{
-        __html: `@keyframes slideLeft { from{transform:translateX(100%)} to{transform:translateX(0)} }`
-      }} />
     </div>
   );
 }

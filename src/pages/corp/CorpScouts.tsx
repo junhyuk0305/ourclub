@@ -1,6 +1,6 @@
 import React from 'react';
-import { CorpHeader } from '../components/corp/CorpHeader';
-import { CorpSidebar } from '../components/corp/CorpSidebar';
+import { CorpHeader } from '../../components/corp/CorpHeader';
+import { CorpSidebar } from '../../components/corp/CorpSidebar';
 import { Search, Star, Send } from 'lucide-react';
 
 const SCOUT_POOLS = [

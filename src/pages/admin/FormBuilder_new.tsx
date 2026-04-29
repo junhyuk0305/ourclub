@@ -14,9 +14,9 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface Question {
   id: string;

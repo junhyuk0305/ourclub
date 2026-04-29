@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Star, Loader, X, Check, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface PulseSurvey {
   id: string;

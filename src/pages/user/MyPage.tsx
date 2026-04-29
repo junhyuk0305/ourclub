@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 type Tab = 'applications' | 'attendance' | 'scraps' | 'notifications';
 
@@ -290,14 +290,14 @@ function AttendanceSection() {
     const { data: session } = await supabase
       .from('sessions')
       .select('id, club_id, expires_at')
-      .eq('attendance_code', code.toUpperCase())
+      .eq('attendance_code', code.trim())
       .maybeSingle();
 
     if (!session) {
-      setStatus('error'); setMsg('유효하지 않은 출석 코드입니다.'); return;
+      setStatus('error'); setMsg('유효하지 않은 코드입니다.'); return;
     }
     if (session.expires_at && new Date(session.expires_at) < new Date()) {
-      setStatus('error'); setMsg('출석 코드가 만료되었습니다.'); return;
+      setStatus('error'); setMsg('출석 시간이 초과되었습니다.'); return;
     }
 
     // 2. 해당 동아리의 내 club_member 조회
@@ -335,17 +335,18 @@ function AttendanceSection() {
         <span className="text-orange-500">✓</span> 출석 체크
       </h3>
       <p className="font-bold text-gray-500 mb-4">
-        운영진이 안내한 4~6자리 코드(영문/숫자)를 입력하세요.
+        운영진이 안내한 4자리 숫자 코드를 입력하세요.
       </p>
       <div className="flex max-w-sm border-2 border-black focus-within:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] transition-all">
         <input
           type="text"
+          inputMode="numeric"
           value={code}
-          onChange={e => { setCode(e.target.value); setStatus('idle'); setMsg(''); }}
+          onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setStatus('idle'); setMsg(''); }}
           onKeyDown={e => { if (e.key === 'Enter') handleAttend(); }}
-          placeholder="출석코드 입력"
-          className="flex-1 px-4 py-3 outline-none font-black text-lg uppercase placeholder:font-bold placeholder:text-gray-300"
-          maxLength={6}
+          placeholder="0000"
+          className="flex-1 px-4 py-3 outline-none font-black text-lg tracking-widest placeholder:font-bold placeholder:text-gray-300"
+          maxLength={4}
         />
         <button
           onClick={handleAttend}

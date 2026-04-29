@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { CorpHeader } from '../components/corp/CorpHeader';
-import { CorpSidebar } from '../components/corp/CorpSidebar';
-import { useCorp } from '../contexts/CorpContext';
+import { CorpHeader } from '../../components/corp/CorpHeader';
+import { CorpSidebar } from '../../components/corp/CorpSidebar';
+import { useCorp } from '../../contexts/CorpContext';
 import { Plus, Search, ChevronRight, MessageCircle } from 'lucide-react';
 
 const MOCK_APPLICANTS = [

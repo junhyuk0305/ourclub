@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Briefcase, TrendingUp, ChevronRight, Loader, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface Stats {
   memberCount: number;

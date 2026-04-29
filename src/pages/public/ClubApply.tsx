@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle, Loader, AlertCircle, LogIn, Lock, ChevronRight } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Question {
   id: string;
@@ -287,12 +287,6 @@ export default function ClubApply() {
           <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">
             {recruitment?.title}
           </h1>
-
-          {recruitment?.description && (
-            <p className="text-gray-600 font-bold text-base mb-3 leading-relaxed">
-              {recruitment.description}
-            </p>
-          )}
 
           {deadline && (
             <p className={`text-sm font-bold mt-2 ${isExpired ? 'text-red-500' : 'text-gray-500'}`}>

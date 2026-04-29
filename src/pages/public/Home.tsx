@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ArrowRight, ChevronRight, CheckCircle, Briefcase, Users, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { marqueeEvents, storyShowcase, homeClubsData } from '../data/mockData';
-import { Modal } from '../components/ui/Modal';
+import { marqueeEvents, storyShowcase, homeClubsData } from '../../data/mockData';
+import { Modal } from '../../components/ui/Modal';
 
 const HeroSection = () => (
   <section className="grid grid-cols-1 md:grid-cols-3 border-b border-black">

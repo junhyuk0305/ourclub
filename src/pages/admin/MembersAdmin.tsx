@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Award, Loader, UserPlus, X, Check } from 'lucide-react';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { Users, Search, Award, Loader, UserPlus, X, Check, Save } from 'lucide-react';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 type MemberStatus = '활동중' | '수료' | '탈퇴' | '활동정지';
 
@@ -15,8 +15,10 @@ interface Member {
   status: MemberStatus;
   joined_at: string;
   profiles: { name: string; email: string; major: string | null; university: string | null } | null;
-  attendanceRate?: number;
+  attendanceRate?: number | null;
 }
+
+type MemberDraft = Partial<Pick<Member, 'role' | 'status' | 'generation' | 'position'>>;
 
 const STATUS_BADGE: Record<MemberStatus, string> = {
   '활동중':  'bg-green-100 text-green-700 border-green-300',
@@ -32,6 +34,8 @@ export default function MembersAdmin() {
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, MemberDraft>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!adminClubId) return;
@@ -46,7 +50,6 @@ export default function MembersAdmin() {
       .eq('club_id', clubId)
       .order('joined_at', { ascending: true });
 
-    // 출석률 계산
     const members = (data as unknown as Member[]) ?? [];
     const withRates = await Promise.all(
       members.map(async m => {
@@ -60,15 +63,45 @@ export default function MembersAdmin() {
       })
     );
     setMembers(withRates);
+    setDrafts({});
     setFetching(false);
   };
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
 
-  const updateMember = async (id: string, patch: Partial<Pick<Member, 'role' | 'status' | 'generation' | 'position'>>) => {
-    await supabase.from('club_members').update(patch).eq('id', id);
+  const setDraft = (id: string, patch: MemberDraft) => {
+    setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
+  };
+
+  const hasDraft = (id: string) => {
+    const d = drafts[id];
+    if (!d) return false;
+    return Object.keys(d).length > 0;
+  };
+
+  const saveMember = async (id: string) => {
+    const patch = drafts[id];
+    if (!patch || Object.keys(patch).length === 0) return;
+    setSaving(prev => ({ ...prev, [id]: true }));
+    const { error } = await supabase.from('club_members').update(patch).eq('id', id);
+    setSaving(prev => ({ ...prev, [id]: false }));
+    if (error) { showToast('저장 중 오류가 발생했습니다.'); return; }
     setMembers(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
-    showToast('변경되었습니다.');
+    setDrafts(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    showToast('저장되었습니다.');
+  };
+
+  const getVal = <K extends keyof MemberDraft>(m: Member, key: K): string => {
+    const draft = drafts[m.id];
+    if (draft && key in draft) return (draft[key] as string) ?? '';
+    return (m[key] as string) ?? '';
   };
 
   const filtered = members.filter(m =>
@@ -129,75 +162,104 @@ export default function MembersAdmin() {
                       <th className="p-4 font-black">역할</th>
                       <th className="p-4 font-black">출석률</th>
                       <th className="p-4 font-black">상태</th>
+                      <th className="p-4 font-black w-20"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filtered.length === 0 ? (
-                      <tr><td colSpan={6} className="p-8 text-center text-gray-500 font-bold">검색 결과가 없습니다.</td></tr>
-                    ) : filtered.map(m => (
-                      <tr key={m.id} className="hover:bg-orange-50 transition-colors">
-                        <td className="p-4 font-black text-lg">
-                          {m.profiles?.name ?? '—'}
-                          {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
-                          <p className="text-xs font-normal text-gray-400">{m.profiles?.major}</p>
-                        </td>
-                        <td className="p-4">
-                          <input
-                            defaultValue={m.generation ?? ''}
-                            onBlur={e => updateMember(m.id, { generation: e.target.value || null })}
-                            className="w-16 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
-                            placeholder="기수"
-                          />
-                        </td>
-                        <td className="p-4">
-                          <input
-                            defaultValue={m.position ?? ''}
-                            onBlur={e => updateMember(m.id, { position: e.target.value || null })}
-                            className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
-                            placeholder="직책"
-                          />
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={m.role}
-                            onChange={e => updateMember(m.id, { role: e.target.value as '운영진' | '부원' })}
-                            className="border border-black text-sm font-bold p-1 outline-none cursor-pointer bg-white"
-                          >
-                            <option>운영진</option>
-                            <option>부원</option>
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          {m.attendanceRate != null ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
-                                <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
+                      <tr><td colSpan={7} className="p-8 text-center text-gray-500 font-bold">검색 결과가 없습니다.</td></tr>
+                    ) : filtered.map(m => {
+                      const isDirty = hasDraft(m.id);
+                      const isSaving = saving[m.id];
+                      return (
+                        <tr key={m.id} className={`transition-colors ${isDirty ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
+                          <td className="p-4 font-black text-lg">
+                            {m.profiles?.name ?? '—'}
+                            {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
+                            <p className="text-xs font-normal text-gray-400">{m.profiles?.email}</p>
+                            <p className="text-xs font-normal text-gray-400">{m.profiles?.major}</p>
+                          </td>
+                          <td className="p-4">
+                            <input
+                              value={getVal(m, 'generation')}
+                              onChange={e => setDraft(m.id, { generation: e.target.value || null })}
+                              className="w-16 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
+                              placeholder="기수"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <input
+                              value={getVal(m, 'position')}
+                              onChange={e => setDraft(m.id, { position: e.target.value || null })}
+                              className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
+                              placeholder="직책"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <select
+                              value={(drafts[m.id]?.role ?? m.role) as string}
+                              onChange={e => setDraft(m.id, { role: e.target.value as '운영진' | '부원' })}
+                              className="border border-black text-sm font-bold p-1 outline-none cursor-pointer bg-white"
+                            >
+                              <option>운영진</option>
+                              <option>부원</option>
+                            </select>
+                          </td>
+                          <td className="p-4">
+                            {m.attendanceRate != null ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
+                                  <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
+                                </div>
+                                <span className="font-black text-sm">{m.attendanceRate}%</span>
                               </div>
-                              <span className="font-black text-sm">{m.attendanceRate}%</span>
-                            </div>
-                          ) : <span className="text-gray-400 text-sm font-bold">—</span>}
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={m.status}
-                            onChange={e => updateMember(m.id, { status: e.target.value as MemberStatus })}
-                            className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[m.status]}`}
-                          >
-                            {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
+                            ) : <span className="text-gray-400 text-sm font-bold">—</span>}
+                          </td>
+                          <td className="p-4">
+                            <select
+                              value={(drafts[m.id]?.status ?? m.status) as string}
+                              onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
+                              className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
+                            >
+                              {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
+                            </select>
+                          </td>
+                          <td className="p-4">
+                            {isDirty && (
+                              <button
+                                onClick={() => saveMember(m.id)}
+                                disabled={isSaving}
+                                title="변경사항 저장"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-black text-white text-xs font-black hover:bg-orange-500 hover:text-black disabled:opacity-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
+                              >
+                                {isSaving ? <Loader className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                저장
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
             </div>
+
+            {Object.keys(drafts).length > 0 && (
+              <p className="text-sm font-bold text-orange-600 text-right">
+                * 변경된 행은 주황색으로 표시됩니다. 각 행의 <strong>저장</strong> 버튼을 눌러 확정하세요.
+              </p>
+            )}
           </div>
         </main>
       </div>
 
       {showInviteModal && (
-        <InviteModal clubId={adminClubId!} onClose={() => setShowInviteModal(false)} onSuccess={() => { showToast('부원이 추가되었습니다.'); if (adminClubId) loadMembers(adminClubId); }} />
+        <InviteModal
+          clubId={adminClubId!}
+          onClose={() => setShowInviteModal(false)}
+          onSuccess={() => { showToast('부원이 추가되었습니다.'); if (adminClubId) loadMembers(adminClubId); }}
+        />
       )}
 
       {toast && (
@@ -219,7 +281,6 @@ function InviteModal({ clubId, onClose, onSuccess }: { clubId: string; onClose: 
   const handleInvite = async () => {
     if (!email.trim()) return;
     setLoading(true); setError('');
-    // 이메일로 profiles 조회
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')

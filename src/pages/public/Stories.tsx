@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRight, Search, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Eye } from 'lucide-react';
-import { THREADS_DATA, storyShowcase } from '../data/mockData';
+import { THREADS_DATA, storyShowcase } from '../../data/mockData';
 import { Link } from 'react-router-dom';
 
 export default function Stories() {

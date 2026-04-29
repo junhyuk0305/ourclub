@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Edit3, Globe, Lock, Save, X, Loader, Check, Trash2 } from 'lucide-react';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 interface Post {
   id: string;

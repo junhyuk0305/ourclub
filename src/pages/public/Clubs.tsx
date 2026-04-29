@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Heart, CheckCircle, ChevronRight, Bell, RefreshCcw, Filter, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { CLUBS_DATA } from '../data/mockData';
+import { CLUBS_DATA } from '../../data/mockData';
 
 const CATEGORIES = ['전체', 'IT/개발', '마케팅/기획', '창업', '문화/예술'];
 

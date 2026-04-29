@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Briefcase, Building, ChevronRight, CheckCircle, ArrowRight, DollarSign, Users, Award, Search, Filter } from 'lucide-react';
-import { PROJECTS_DATA, SUCCESS_CASES } from '../data/mockData';
-import { Modal } from '../components/ui/Modal';
+import { PROJECTS_DATA, SUCCESS_CASES } from '../../data/mockData';
+import { Modal } from '../../components/ui/Modal';
 
 const FILTERS = ['전체보기', '마케팅/SNS', 'IT/기획', 'IT/개발', '행사/부스', '리서치'];
 

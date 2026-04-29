@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, ChevronRight, Users, Loader, AlertCircle, Clock, Briefcase } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ChevronRight, Users, Loader, AlertCircle, Clock, Briefcase, X, FileText } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
+import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 
 interface Club {
   id: string;
@@ -19,6 +20,7 @@ interface Recruitment {
   title: string;
   category: string | null;
   description: string | null;
+  short_desc: string | null;
   generation: string | null;
   deadline: string | null;
   pipeline_stages: string[] | null;
@@ -27,10 +29,12 @@ interface Recruitment {
 
 export default function ClubRecruit() {
   const { id: slug } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [club, setClub] = useState<Club | null>(null);
   const [recruitments, setRecruitments] = useState<Recruitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [jdModal, setJdModal] = useState<Recruitment | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -53,7 +57,7 @@ export default function ClubRecruit() {
       // '진행중' + (구버전 호환) '모집중' 모두 조회
       const { data: recruitData } = await supabase
         .from('recruitments')
-        .select('id, title, category, description, generation, deadline, pipeline_stages, max_applicants')
+        .select('id, title, category, description, short_desc, generation, deadline, pipeline_stages, max_applicants')
         .eq('club_id', clubData.id)
         .in('status', ['진행중', '모집중'])
         .order('created_at', { ascending: false })
@@ -159,7 +163,7 @@ export default function ClubRecruit() {
 
             <div className="flex flex-col gap-5">
               {recruitments.map(r => (
-                <RecruitCard key={r.id} recruitment={r} slug={slug!} />
+                <RecruitCard key={r.id} recruitment={r} slug={slug!} onOpenJD={() => setJdModal(r)} />
               ))}
             </div>
           </>
@@ -178,12 +182,94 @@ export default function ClubRecruit() {
           </p>
         </div>
       </div>
+
+      {/* 직무 소개 모달 (JD Modal) */}
+      {jdModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setJdModal(null)}
+        >
+          <div
+            className="bg-white border-2 border-black w-full max-w-4xl max-h-[92vh] flex flex-col shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="px-8 py-5 border-b-2 border-black bg-gray-50 flex items-start justify-between gap-4 shrink-0">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {jdModal.category && (
+                    <span className="px-2.5 py-1 bg-orange-100 border border-orange-300 text-orange-700 text-xs font-black">
+                      {jdModal.category}
+                    </span>
+                  )}
+                  {jdModal.generation && (
+                    <span className="px-2.5 py-1 bg-gray-100 border border-gray-300 text-gray-600 text-xs font-bold">
+                      {jdModal.generation}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-2xl font-black leading-tight">{jdModal.title}</h2>
+                {jdModal.deadline && (
+                  <p className="text-sm font-bold text-gray-500 mt-1 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" />
+                    {(() => {
+                      const d = new Date(jdModal.deadline);
+                      const daysLeft = Math.ceil((d.getTime() - Date.now()) / 86400000);
+                      return daysLeft <= 0 ? '마감됨' : daysLeft === 0 ? '오늘 마감' : `D-${daysLeft} · ${d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`;
+                    })()}
+                  </p>
+                )}
+              </div>
+              <button onClick={() => setJdModal(null)} className="p-1 hover:bg-gray-200 rounded shrink-0 mt-0.5">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 모집 요강 내용 */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              {jdModal.description ? (
+                <MarkdownViewer content={jdModal.description} />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <FileText className="w-10 h-10 text-gray-200 mb-3" />
+                  <p className="text-gray-400 font-bold text-sm">
+                    상세 모집 요강이 등록되지 않았습니다.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 내부 프로세스 블라인드 안내 */}
+            <div className="px-8 py-4 bg-gray-50 border-t border-gray-200 shrink-0">
+              <p className="text-xs text-gray-400 font-bold text-center">
+                내부 평가 프로세스는 공개되지 않으며, 결과는 개별 연락드립니다.
+              </p>
+            </div>
+
+            {/* 하단 액션 */}
+            <div className="px-8 py-5 border-t-2 border-black bg-white flex gap-3 shrink-0">
+              <button
+                onClick={() => setJdModal(null)}
+                className="px-6 py-3 border-2 border-black font-black hover:bg-gray-100 transition-colors text-sm"
+              >
+                닫기
+              </button>
+              <button
+                onClick={() => { setJdModal(null); navigate(`/clubs/${slug}/apply?rid=${jdModal.id}`); }}
+                className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none"
+              >
+                지원폼 작성하기 <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── 채용 공고 카드 ──────────────────────────────────────────────────────
-function RecruitCard({ recruitment: r, slug }: { recruitment: Recruitment; slug: string }) {
+function RecruitCard({ recruitment: r, slug, onOpenJD }: { recruitment: Recruitment; slug: string; onOpenJD: () => void }) {
   const deadline = r.deadline ? new Date(r.deadline) : null;
   const daysLeft = deadline
     ? Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -234,9 +320,9 @@ function RecruitCard({ recruitment: r, slug }: { recruitment: Recruitment; slug:
             {r.title}
           </h3>
 
-          {r.description && (
+          {r.short_desc && (
             <p className="text-gray-500 font-bold text-sm mb-4 leading-relaxed line-clamp-2">
-              {r.description}
+              {r.short_desc}
             </p>
           )}
 
@@ -293,12 +379,12 @@ function RecruitCard({ recruitment: r, slug }: { recruitment: Recruitment; slug:
               마감됨
             </button>
           ) : (
-            <Link
-              to={`/clubs/${slug}/apply?rid=${r.id}`}
+            <button
+              onClick={onOpenJD}
               className="px-5 py-2.5 bg-black text-white font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center gap-2 text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none"
             >
-              지원하기 <ChevronRight className="w-4 h-4" />
-            </Link>
+              공고 보기 <ChevronRight className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>

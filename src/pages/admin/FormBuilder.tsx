@@ -14,9 +14,10 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
+import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
 
 interface Question {
   id: string;
@@ -33,6 +34,7 @@ interface Recruitment {
   deadline: string | null;
   form_schema: Question[];
   description: string | null;
+  short_desc: string | null;
   category: string | null;
   pipeline_stages: string[];
   form_version: number;
@@ -63,6 +65,7 @@ export default function FormBuilder() {
   const [newTitle, setNewTitle] = useState('');
   const [newGeneration, setNewGeneration] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [newShortDesc, setNewShortDesc] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState('');
   const [creating, setCreating] = useState(false);
@@ -72,6 +75,7 @@ export default function FormBuilder() {
   const [editTitle, setEditTitle] = useState('');
   const [editGeneration, setEditGeneration] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editShortDesc, setEditShortDesc] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
   const [editPipelineStages, setEditPipelineStages] = useState<string[]>([]);
@@ -100,7 +104,7 @@ export default function FormBuilder() {
     const { data } = await supabase
       .from('recruitments')
       .select(
-        'id, title, generation, status, deadline, form_schema, description, category, pipeline_stages, form_version, deployed_form_schema'
+        'id, title, generation, status, deadline, form_schema, description, short_desc, category, pipeline_stages, form_version, deployed_form_schema'
       )
       .eq('club_id', clubId)
       .neq('status', '마감')
@@ -224,6 +228,7 @@ export default function FormBuilder() {
         title: newTitle.trim(),
         generation: newGeneration.trim() || null,
         category: newCategory.trim() || null,
+        short_desc: newShortDesc.trim() || null,
         description: newDescription.trim() || null,
         deadline: newDeadline || null,
         form_schema: [],
@@ -249,6 +254,7 @@ export default function FormBuilder() {
     setNewTitle('');
     setNewGeneration('');
     setNewCategory('');
+    setNewShortDesc('');
     setNewDescription('');
     setNewDeadline('');
     showToast('새 모집이 생성되었습니다.');
@@ -280,6 +286,7 @@ export default function FormBuilder() {
     setEditTitle(recruitment.title);
     setEditGeneration(recruitment.generation || '');
     setEditCategory(recruitment.category || '');
+    setEditShortDesc(recruitment.short_desc || '');
     setEditDescription(recruitment.description || '');
     setEditDeadline(recruitment.deadline || '');
     setEditPipelineStages(recruitment.pipeline_stages || ['서류접수', '면접', '최종합격', '불합격']);
@@ -302,6 +309,7 @@ export default function FormBuilder() {
         title: editTitle.trim(),
         generation: editGeneration.trim() || null,
         category: editCategory.trim() || null,
+        short_desc: editShortDesc.trim() || null,
         description: editDescription.trim() || null,
         deadline: editDeadline || null,
         pipeline_stages: editPipelineStages,
@@ -322,6 +330,7 @@ export default function FormBuilder() {
               title: editTitle.trim(),
               generation: editGeneration.trim() || null,
               category: editCategory.trim() || null,
+              short_desc: editShortDesc.trim() || null,
               description: editDescription.trim() || null,
               deadline: editDeadline || null,
               pipeline_stages: editPipelineStages,
@@ -761,53 +770,67 @@ export default function FormBuilder() {
 
       {/* 새 공고 생성 모달 */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-8 flex flex-col gap-5">
-            <h2 className="text-2xl font-black">새 공고 만들기</h2>
-            <div className="flex flex-col gap-4 max-h-96 overflow-y-auto">
-              <Field label="공고 제목 *">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-3xl flex flex-col max-h-[92vh]">
+            <div className="px-8 py-6 border-b-2 border-black flex items-center justify-between shrink-0">
+              <h2 className="text-2xl font-black">새 공고 만들기</h2>
+              <button onClick={() => setShowNewModal(false)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-5 p-8 overflow-y-auto flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="공고 제목 *">
+                  <input
+                    value={newTitle}
+                    onChange={e => setNewTitle(e.target.value)}
+                    placeholder="마제스티 14기 신입 부원 모집"
+                    className={inp}
+                  />
+                </Field>
+                <Field label="기수">
+                  <input
+                    value={newGeneration}
+                    onChange={e => setNewGeneration(e.target.value)}
+                    placeholder="14기"
+                    className={inp}
+                  />
+                </Field>
+                <Field label="모집 분야/카테고리">
+                  <input
+                    value={newCategory}
+                    onChange={e => setNewCategory(e.target.value)}
+                    placeholder="기획, 개발, 디자인 등"
+                    className={inp}
+                  />
+                </Field>
+                <Field label="모집 마감일">
+                  <input
+                    type="datetime-local"
+                    value={newDeadline}
+                    onChange={e => setNewDeadline(e.target.value)}
+                    className={inp}
+                  />
+                </Field>
+              </div>
+              <Field label={`세부 설명 (100자 이내) — ${newShortDesc.length}/100`}>
                 <input
-                  value={newTitle}
-                  onChange={e => setNewTitle(e.target.value)}
-                  placeholder="마제스티 14기 신입 부원 모집"
+                  value={newShortDesc}
+                  onChange={e => setNewShortDesc(e.target.value.slice(0, 100))}
+                  placeholder="공고 카드에 표시될 한 줄 소개 (예: 열정 있는 신입 부원을 모집합니다!)"
                   className={inp}
                 />
               </Field>
-              <Field label="기수">
-                <input
-                  value={newGeneration}
-                  onChange={e => setNewGeneration(e.target.value)}
-                  placeholder="14기"
-                  className={inp}
-                />
-              </Field>
-              <Field label="모집 분야/카테고리">
-                <input
-                  value={newCategory}
-                  onChange={e => setNewCategory(e.target.value)}
-                  placeholder="기획, 개발, 디자인 등"
-                  className={inp}
-                />
-              </Field>
-              <Field label="상세 설명">
-                <textarea
+              <Field label="모집 요강 (마크다운)">
+                <MarkdownEditor
                   value={newDescription}
-                  onChange={e => setNewDescription(e.target.value)}
-                  placeholder="채용 공고에 대한 상세 설명"
-                  rows={3}
-                  className={`${inp} resize-none`}
-                />
-              </Field>
-              <Field label="모집 마감일">
-                <input
-                  type="datetime-local"
-                  value={newDeadline}
-                  onChange={e => setNewDeadline(e.target.value)}
-                  className={inp}
+                  onChange={setNewDescription}
+                  placeholder={`# 모집 요강\n\n## 동아리 소개\n저희 동아리는...\n\n## 모집 대상\n- 열정 있는 신입생\n- ...\n\n## 활동 내용\n- 정기 모임\n- ...`}
+                  minHeight={240}
                 />
               </Field>
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 px-8 py-5 border-t-2 border-black bg-gray-50 shrink-0">
               <button
                 onClick={() => setShowNewModal(false)}
                 className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100"
@@ -889,53 +912,62 @@ export default function FormBuilder() {
 
       {/* 공고 수정 모달 */}
       {showEditModal && selectedRecruitment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-4 p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-3xl flex flex-col max-h-[92vh]">
+            <div className="px-8 py-6 border-b-2 border-black flex items-center justify-between shrink-0">
               <h2 className="text-2xl font-black">공고 수정</h2>
               <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <Field label="공고 제목 *">
+            <div className="flex flex-col gap-5 p-8 overflow-y-auto flex-1">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="공고 제목 *">
+                  <input
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value)}
+                    className={inp}
+                  />
+                </Field>
+                <Field label="기수">
+                  <input
+                    value={editGeneration}
+                    onChange={e => setEditGeneration(e.target.value)}
+                    placeholder="14기"
+                    className={inp}
+                  />
+                </Field>
+                <Field label="모집 분야/카테고리">
+                  <input
+                    value={editCategory}
+                    onChange={e => setEditCategory(e.target.value)}
+                    placeholder="기획, 개발, 디자인 등"
+                    className={inp}
+                  />
+                </Field>
+                <Field label="모집 마감일">
+                  <input
+                    type="datetime-local"
+                    value={editDeadline}
+                    onChange={e => setEditDeadline(e.target.value)}
+                    className={inp}
+                  />
+                </Field>
+              </div>
+              <Field label={`세부 설명 (100자 이내) — ${editShortDesc.length}/100`}>
                 <input
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
+                  value={editShortDesc}
+                  onChange={e => setEditShortDesc(e.target.value.slice(0, 100))}
+                  placeholder="공고 카드에 표시될 한 줄 소개 (예: 열정 있는 신입 부원을 모집합니다!)"
                   className={inp}
                 />
               </Field>
-              <Field label="기수">
-                <input
-                  value={editGeneration}
-                  onChange={e => setEditGeneration(e.target.value)}
-                  placeholder="14기"
-                  className={inp}
-                />
-              </Field>
-              <Field label="모집 분야/카테고리">
-                <input
-                  value={editCategory}
-                  onChange={e => setEditCategory(e.target.value)}
-                  placeholder="기획, 개발, 디자인 등"
-                  className={inp}
-                />
-              </Field>
-              <Field label="상세 설명">
-                <textarea
+              <Field label="모집 요강 (마크다운)">
+                <MarkdownEditor
                   value={editDescription}
-                  onChange={e => setEditDescription(e.target.value)}
-                  rows={3}
-                  className={`${inp} resize-none`}
-                />
-              </Field>
-              <Field label="모집 마감일">
-                <input
-                  type="datetime-local"
-                  value={editDeadline}
-                  onChange={e => setEditDeadline(e.target.value)}
-                  className={inp}
+                  onChange={setEditDescription}
+                  minHeight={240}
                 />
               </Field>
 
@@ -1003,7 +1035,7 @@ export default function FormBuilder() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 px-8 py-5 border-t-2 border-black bg-gray-50 shrink-0">
               <button
                 onClick={() => setShowEditModal(false)}
                 className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100"

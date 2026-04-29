@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Save, AlertCircle, Loader, Check } from 'lucide-react';
-import { AdminSidebar } from '../components/admin/AdminSidebar';
-import { AdminHeader } from '../components/admin/AdminHeader';
-import { useAdmin } from '../contexts/AdminContext';
-import { supabase } from '../lib/supabaseClient';
+import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeader } from '../../components/admin/AdminHeader';
+import { useAdmin } from '../../contexts/AdminContext';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function SettingsAdmin() {
   const { adminClub, adminClubId, refreshClub } = useAdmin();
