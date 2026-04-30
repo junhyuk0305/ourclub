@@ -5,28 +5,16 @@ import { AdminProvider, useAdmin } from './contexts/AdminContext';
 import { CorpProvider, useCorp } from './contexts/CorpContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import Home from './pages/Home';
-import Clubs from './pages/Clubs';
-import B2BLounge from './pages/B2BLounge';
-import TextPage from './pages/TextPage';
-import Stories from './pages/Stories';
-import ClubDetail from './pages/ClubDetail';
-import ClubApply from './pages/ClubApply';
-import ClubRecruit from './pages/ClubRecruit';
-import MyPage from './pages/MyPage';
-import Workspace from './pages/Workspace';
-import RecruitAdmin from './pages/RecruitAdmin';
-import FormBuilder from './pages/FormBuilder';
-import AttendanceAdmin from './pages/AttendanceAdmin';
-import MembersAdmin from './pages/MembersAdmin';
-import DashboardAdmin from './pages/DashboardAdmin';
-import B2BAdmin from './pages/B2BAdmin';
-import B2BProposalAdmin from './pages/B2BProposalAdmin';
-import FeedbackAdmin from './pages/FeedbackAdmin';
-import PostsAdmin from './pages/PostsAdmin';
-import SettingsAdmin from './pages/SettingsAdmin';
-import Onboarding from './pages/Onboarding';
-import CorpDashboard from './pages/CorpDashboard';
+import {
+  Home, Clubs, B2BLounge, TextPage, Stories,
+  ClubDetail, ClubApply, ClubRecruit, Onboarding
+} from './pages/public';
+import { MyPage } from './pages/user';
+import {
+  Workspace, RecruitAdmin, FormBuilder, AttendanceAdmin, MembersAdmin,
+  DashboardAdmin, B2BAdmin, B2BProposalAdmin, FeedbackAdmin, PostsAdmin, SettingsAdmin
+} from './pages/admin';
+import { CorpDashboard } from './pages/corp';
 
 // 로그인 전용 보호 라우트
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

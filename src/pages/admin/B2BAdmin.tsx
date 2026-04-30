@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, ChevronRight, Loader, FileOutput, Check, X } from 'lucide-react';
+import { Building2, ChevronRight, Loader, FileOutput, Check, Calendar, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
@@ -26,6 +26,8 @@ interface PublicProject {
   title: string;
   category: string;
   budget: number | null;
+  deadline: string | null;
+  required_skills: string[];
   description: string | null;
   status: string;
   created_at: string;
@@ -66,7 +68,7 @@ export default function B2BAdmin() {
         .order('submitted_at', { ascending: false }),
       supabase
         .from('b2b_projects')
-        .select('id, title, category, budget, description, status, created_at, corporations(name)')
+        .select('id, title, category, budget, deadline, required_skills, description, status, created_at, corporations(name)')
         .eq('status', '모집중')
         .order('created_at', { ascending: false }),
     ]);
@@ -189,13 +191,26 @@ export default function B2BAdmin() {
                           <Building2 className="w-5 h-5 text-gray-500" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5">{proj.category}</span>
                             <span className="text-xs font-bold text-gray-400">{proj.corporations?.name}</span>
+                            {proj.deadline && (
+                              <span className="text-xs font-bold text-gray-400 flex items-center gap-0.5">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(proj.deadline).toLocaleDateString('ko-KR')} 마감
+                              </span>
+                            )}
                           </div>
                           <h3 className="font-black text-xl mb-1">{proj.title}</h3>
                           {proj.description && <p className="text-sm font-bold text-gray-500 line-clamp-2">{proj.description}</p>}
-                          <p className="text-sm font-black text-orange-600 mt-2">예산: {formatBudget(proj.budget)}</p>
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <p className="text-sm font-black text-orange-600">예산: {formatBudget(proj.budget)}</p>
+                            {proj.required_skills?.length > 0 && proj.required_skills.slice(0, 3).map(s => (
+                              <span key={s} className="flex items-center gap-0.5 px-2 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
+                                <Tag className="w-2.5 h-2.5" />{s}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
                       {proj.already_applied ? (
