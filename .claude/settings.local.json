@@ -12,7 +12,8 @@
       "Bash(rm src/pages/public.ts src/pages/admin.ts src/pages/user.ts src/pages/corp.ts)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

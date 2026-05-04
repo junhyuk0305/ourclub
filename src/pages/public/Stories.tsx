@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, Eye, ChevronLeft, ChevronRight, Loader, AlertCircle } from 'lucide-react';
+import { Search, Eye, ChevronLeft, ChevronRight, Loader, AlertCircle, Heart, Share2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FadeInText } from '../../components/ui/FadeInText';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Post {
   id: string;
@@ -10,11 +13,17 @@ interface Post {
   author: string | null;
   images: string[];
   view_count: number;
+  like_count: number;
   created_at: string;
-  clubs: { name: string; logo_url: string | null; type: string } | null;
+  clubs: { id: string; slug: string; name: string; logo_url: string | null; type: string } | null;
 }
 
 const PAGE_SIZE = 6;
+
+// Rate limiting: 10초 내 5회 초과 시 8초 대기
+const RATE_MAX = 5;
+const RATE_WINDOW_MS = 10_000;
+const RATE_COOLDOWN_MS = 8_000;
 
 function ImageCarousel({ images }: { images: string[] }) {
   const [idx, setIdx] = useState(0);
@@ -95,25 +104,76 @@ export default function Stories() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState('');
 
-  // ref로 관리 → fetchPosts 재생성 없이 최신값 접근
+  const { user } = useAuth();
+
   const offsetRef = useRef(0);
   const loadingRef = useRef(false);
-  const searchRef = useRef('');    // Observer 클로저에서 최신 search 참조
-  const mountedRef = useRef(true); // 언마운트 후 setState 방지
+  const searchRef = useRef('');
+  const mountedRef = useRef(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // Rate limiting refs
+  const reqTimestampsRef = useRef<number[]>([]);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
   }, []);
+
+  // 로그인한 사용자의 좋아요 목록 가져오기
+  useEffect(() => {
+    if (!user) {
+      setLikedPostIds(new Set());
+      return;
+    }
+
+    supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data) {
+          setLikedPostIds(new Set(data.map((r: { post_id: string }) => r.post_id)));
+        }
+      })
+      .catch(() => {
+        // 에러 무시
+      });
+  }, [user?.id]);
 
   const fetchPosts = useCallback(async (reset: boolean, query: string) => {
     if (loadingRef.current) return;
+
+    // Rate limiting: 슬라이딩 윈도우 — RATE_WINDOW_MS 내 RATE_MAX 초과 시 RATE_COOLDOWN_MS 대기
+    const now = Date.now();
+    reqTimestampsRef.current = reqTimestampsRef.current.filter(t => now - t < RATE_WINDOW_MS);
+    if (reqTimestampsRef.current.length >= RATE_MAX) {
+      if (!retryTimerRef.current && mountedRef.current) {
+        setRateLimited(true);
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          if (mountedRef.current) {
+            setRateLimited(false);
+            fetchPosts(reset, searchRef.current);
+          }
+        }, RATE_COOLDOWN_MS);
+      }
+      return;
+    }
+    reqTimestampsRef.current.push(now);
+
     loadingRef.current = true;
     if (mountedRef.current) { setLoading(true); setFetchError(false); }
 
@@ -122,7 +182,7 @@ export default function Stories() {
     try {
       let req = supabase
         .from('posts')
-        .select('id, title, content, author, images, view_count, created_at, clubs(name, logo_url, type)')
+        .select('id, title, content, author, images, view_count, like_count, created_at, clubs(id, slug, name, logo_url, type)')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .range(currentOffset, currentOffset + PAGE_SIZE - 1);
@@ -140,9 +200,13 @@ export default function Stories() {
         return;
       }
 
+      // 성공 시 rate limit 카운터 리셋
+      reqTimestampsRef.current = [];
+
       const fetched = (data ?? []).map(p => ({
         ...p,
         images: Array.isArray(p.images) ? (p.images as string[]).filter(Boolean) : [],
+        like_count: Number(p.like_count ?? 0),
         clubs: Array.isArray(p.clubs) ? (p.clubs[0] ?? null) : (p.clubs ?? null),
       })) as Post[];
 
@@ -155,24 +219,30 @@ export default function Stories() {
       loadingRef.current = false;
       if (mountedRef.current) setLoading(false);
     }
-  }, []); // 의존성 없음 — 모든 가변값은 ref로 참조
+  }, []);
 
   // 검색어 변경 시 리셋 후 재로드
   useEffect(() => {
     searchRef.current = search;
     offsetRef.current = 0;
     loadingRef.current = false;
+    // 검색어 변경 시 rate limit 타이머 초기화
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    reqTimestampsRef.current = [];
     setPosts([]);
     setHasMore(true);
     setFetchError(false);
+    setRateLimited(false);
     fetchPosts(true, search);
   }, [search, fetchPosts]);
 
-  // IntersectionObserver — hasMore/loading 변화 시만 재등록
-  // searchRef를 통해 Observer 내부에서 항상 최신 search 값 사용
+  // fetchError 또는 rateLimited 상태일 때 Observer를 해제해 무한요청 방지
   useEffect(() => {
     observerRef.current?.disconnect();
-    if (!hasMore || loading) return;
+    if (!hasMore || loading || fetchError || rateLimited) return;
 
     observerRef.current = new IntersectionObserver(
       entries => {
@@ -187,7 +257,7 @@ export default function Stories() {
       observerRef.current.observe(sentinelRef.current);
     }
     return () => observerRef.current?.disconnect();
-  }, [hasMore, loading, fetchPosts]);
+  }, [hasMore, loading, fetchError, rateLimited, fetchPosts]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +267,71 @@ export default function Stories() {
   const handleClearSearch = () => {
     setSearchInput('');
     setSearch('');
+  };
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  };
+
+  const handleLike = async (e: React.MouseEvent, post: Post) => {
+    e.stopPropagation();
+    if (!user) {
+      showToast('로그인 후 좋아요를 누를 수 있습니다.');
+      return;
+    }
+
+    const isLiked = likedPostIds.has(post.id);
+
+    // 낙관적 업데이트
+    setLikedPostIds(prev => {
+      const next = new Set(prev);
+      isLiked ? next.delete(post.id) : next.add(post.id);
+      return next;
+    });
+
+    setPosts(prev =>
+      prev.map(p =>
+        p.id === post.id
+          ? { ...p, like_count: Math.max(0, p.like_count + (isLiked ? -1 : 1)) }
+          : p
+      )
+    );
+
+    // DB 반영
+    if (isLiked) {
+      await supabase
+        .from('post_likes')
+        .delete()
+        .eq('post_id', post.id)
+        .eq('user_id', user.id)
+        .catch(() => {});
+    } else {
+      await supabase
+        .from('post_likes')
+        .insert({ post_id: post.id, user_id: user.id })
+        .catch(() => {});
+    }
+  };
+
+  const handleShare = async (e: React.MouseEvent, post: Post) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/stories`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.author || post.clubs?.name || '운영진',
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        showToast('링크가 복사되었습니다.');
+      }
+    } catch {
+      // 사용자가 공유 취소한 경우
+    }
   };
 
   return (
@@ -212,9 +347,9 @@ export default function Stories() {
             <span className="w-3 h-3 bg-orange-500 border border-white inline-block" />
             COMMUNITY POSTS
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8 leading-snug">
+          <FadeInText as="h1" className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8 leading-snug">
             팀의 성장을 이끄는<br />인사이트 아카이브
-          </h1>
+          </FadeInText>
           <form
             onSubmit={handleSearch}
             className="w-full max-w-2xl mx-auto flex bg-white border-2 border-black focus-within:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all"
@@ -243,8 +378,16 @@ export default function Stories() {
       {/* 포스트 피드 */}
       <section className="max-w-7xl mx-auto px-6 md:px-12 py-16">
 
+        {/* 요청 제한 안내 */}
+        {rateLimited && (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Loader className="w-8 h-8 animate-spin text-orange-400" />
+            <p className="font-black text-gray-400 text-sm">요청이 많아 잠시 후 자동으로 다시 시도합니다.</p>
+          </div>
+        )}
+
         {/* 네트워크 오류 */}
-        {fetchError && (
+        {fetchError && !rateLimited && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircle className="w-10 h-10 text-red-400" />
             <p className="font-black text-gray-500">포스트를 불러오지 못했습니다.</p>
@@ -300,41 +443,75 @@ export default function Stories() {
                 {/* 이미지 캐러셀 */}
                 {post.images.length > 0 && <ImageCarousel images={post.images} />}
 
-                {/* 헤더 */}
-                <div className="p-6 pb-3 flex items-center gap-3">
+                {/* 헤더 - 클럽 프로필 링크 */}
+                <Link
+                  to={post.clubs?.id ? `/clubs/${post.clubs.id}` : '#'}
+                  onClick={e => e.stopPropagation()}
+                  className="p-6 pb-3 flex items-center gap-3 group/profile hover:bg-gray-50 transition-colors"
+                >
                   <div className="w-10 h-10 border-2 border-black flex items-center justify-center font-black text-base bg-orange-100 text-orange-600 flex-shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                     {post.clubs?.name?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
-                  <div>
-                    <div className="font-black text-sm group-hover:text-orange-600 transition-colors">
+                  <div className="min-w-0">
+                    <div className="font-black text-sm group-hover:text-orange-600 group-hover/profile:underline transition-colors">
                       {post.author || post.clubs?.name || '운영진'}
                     </div>
                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                       {post.clubs?.type || '동아리'}
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* 본문 */}
                 <div className="px-6 pb-6 flex-1 flex flex-col justify-between">
                   <div>
                     {post.title && (
-                      <h3 className="font-black text-xl mb-3 leading-snug group-hover:text-orange-600 transition-colors">
+                      <h3 className="font-black text-xl mb-3 leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
                         {post.title}
                       </h3>
                     )}
                     {post.content && (
-                      <div className="text-sm text-gray-700 leading-relaxed mb-4 line-clamp-6 overflow-hidden">
-                        <MarkdownViewer content={post.content} />
+                      <div className="relative mb-4">
+                        <div className="text-sm text-gray-700 leading-relaxed max-h-32 overflow-hidden">
+                          <MarkdownViewer content={post.content} />
+                        </div>
+                        <div className="absolute bottom-0 inset-x-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-2">
-                    <span>{formatDate(post.created_at)}</span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" /> {post.view_count ?? 0}
-                    </span>
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-auto pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span>{formatDate(post.created_at)}</span>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5" /> {post.view_count ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => handleLike(e, post)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded transition-all ${
+                          likedPostIds.has(post.id)
+                            ? 'text-red-500 bg-red-50'
+                            : 'text-gray-400 hover:text-red-400 hover:bg-red-50'
+                        }`}
+                        title="좋아요"
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 transition-transform ${
+                            likedPostIds.has(post.id) ? 'fill-current scale-110' : ''
+                          }`}
+                        />
+                        {post.like_count > 0 && <span className="text-xs">{post.like_count}</span>}
+                      </button>
+                      <button
+                        onClick={(e) => handleShare(e, post)}
+                        className="flex items-center gap-1 px-2 py-1 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded transition-all"
+                        title="공유"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -352,6 +529,13 @@ export default function Stories() {
           )}
         </div>
       </section>
+
+      {/* 토스트 알림 */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

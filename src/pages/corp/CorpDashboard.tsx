@@ -46,11 +46,11 @@ interface FormState {
   required_skills: string[];
 }
 
-const KANBAN_COLS: { key: AppStatus; label: string; bg: string; dot?: string; pulse?: boolean }[] = [
+const KANBAN_COLS: { key: AppStatus; label: string; bg: string; border?: string; headerBg?: string; dot?: string; pulse?: boolean }[] = [
   { key: '미열람',  label: '미열람',   bg: 'bg-gray-200' },
-  { key: '검토중',  label: '검토 중',  bg: 'bg-blue-50',    dot: 'bg-blue-500' },
-  { key: '미팅요청', label: '미팅 요청', bg: 'bg-yellow-50',  dot: 'bg-yellow-500', pulse: true },
-  { key: '매칭완료', label: '매칭 완료', bg: 'bg-purple-100', dot: 'bg-purple-600' },
+  { key: '검토중',  label: '검토 중',  bg: 'bg-blue-50',     dot: 'bg-blue-500' },
+  { key: '미팅요청', label: '⚡ 미팅 요청', bg: 'bg-orange-50', border: 'border-orange-400', headerBg: 'text-orange-700', dot: 'bg-orange-500', pulse: true },
+  { key: '매칭완료', label: '매칭 완료', bg: 'bg-purple-100',  dot: 'bg-purple-600' },
 ];
 
 const CATEGORIES = ['마케팅', 'IT개발', '리서치', '디자인', '기획', '콘텐츠', '기타'];
@@ -479,39 +479,50 @@ export default function CorpDashboard() {
               </div>
 
               {/* 프로젝트 선택 바 */}
-              <div className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4 flex-wrap">
-                <span className="font-black text-purple-600 border-r-2 border-black pr-4 shrink-0">진행 프로젝트</span>
+              <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col md:flex-row md:items-stretch">
+                <div className="px-5 py-4 border-b md:border-b-0 md:border-r-2 border-black shrink-0 flex items-center">
+                  <span className="font-black text-purple-600 text-sm whitespace-nowrap">진행 프로젝트</span>
+                </div>
                 <select
                   value={selectedProjectId ?? ''}
                   onChange={e => setSelectedProjectId(e.target.value)}
-                  className="font-black text-lg outline-none bg-transparent cursor-pointer flex-1 min-w-0"
+                  className="font-black text-base outline-none bg-transparent cursor-pointer flex-1 min-w-0 px-5 py-4"
                 >
                   {projects.map(p => (
                     <option key={p.id} value={p.id}>{p.title}</option>
                   ))}
                 </select>
-                <div className="flex items-center gap-4 shrink-0 text-sm font-bold text-gray-500">
-                  {selectedProject?.deadline && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(selectedProject.deadline).toLocaleDateString('ko-KR')} 마감
-                    </span>
-                  )}
-                  {selectedProject?.budget && (
-                    <span className="font-black text-purple-600">
-                      {selectedProject.budget.toLocaleString()}원
-                    </span>
-                  )}
-                  {selectedProject?.required_skills?.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      {selectedProject.required_skills.slice(0, 3).map(s => (
-                        <span key={s} className="px-2 py-0.5 bg-purple-100 text-purple-700 border border-purple-300 text-xs font-bold">
-                          {s}
+                {selectedProject && (
+                  <div className="flex items-center gap-0 border-t md:border-t-0 md:border-l-2 border-black divide-x-2 divide-black">
+                    {selectedProject.deadline && (
+                      <div className="px-4 py-3 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">마감</span>
+                        <span className="font-black text-sm flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          {new Date(selectedProject.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                         </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                    {selectedProject.budget ? (
+                      <div className="px-4 py-3 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">예산</span>
+                        <span className="font-black text-sm text-purple-600">{selectedProject.budget.toLocaleString()}원</span>
+                      </div>
+                    ) : null}
+                    {selectedProject.required_skills?.length > 0 && (
+                      <div className="px-4 py-3 flex flex-col justify-center shrink-0 gap-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">스킬</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {selectedProject.required_skills.slice(0, 3).map(s => (
+                            <span key={s} className="px-1.5 py-0.5 bg-purple-100 text-purple-700 border border-purple-300 text-xs font-bold">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* 칸반 보드 */}
@@ -521,13 +532,20 @@ export default function CorpDashboard() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-4 gap-4 h-[580px]">
+                  <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible">
                     {KANBAN_COLS.map(col => {
                       const colApps = applications.filter(a => a.status === col.key);
+                      const emptyHint: Record<AppStatus, string> = {
+                        '미열람':  '아직 새 지원이\n없습니다',
+                        '검토중':  '검토 중인\n지원이 없습니다',
+                        '미팅요청': '미팅 요청 대기\n지원이 없습니다',
+                        '매칭완료': '최종 매칭된\n동아리가 없습니다',
+                        '거절':    '',
+                      };
                       return (
-                        <div key={col.key} className={`flex flex-col border-2 border-black p-4 ${col.bg}`}>
-                          <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-                            <h3 className="font-black text-lg flex items-center gap-2">
+                        <div key={col.key} className={`flex flex-col border-2 ${col.border ?? 'border-black'} p-4 ${col.bg} h-[540px] min-w-[220px] md:min-w-0 shrink-0 md:shrink`}>
+                          <div className={`flex justify-between items-center mb-4 border-b-2 border-black pb-2 ${col.key === '미팅요청' ? 'border-orange-400' : ''}`}>
+                            <h3 className={`font-black text-base flex items-center gap-2 ${col.headerBg ?? ''}`}>
                               {col.dot && (
                                 <span className={`w-2 h-2 rounded-full ${col.dot} ${col.pulse ? 'animate-pulse' : ''}`} />
                               )}
@@ -540,10 +558,8 @@ export default function CorpDashboard() {
                           <div className="flex flex-col gap-3 overflow-y-auto flex-1 pr-0.5">
                             {colApps.length === 0 ? (
                               <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 p-4 text-center min-h-[80px]">
-                                <p className="font-bold text-gray-400 text-xs leading-relaxed">
-                                  {col.key === '매칭완료'
-                                    ? '최종 매칭된\n동아리가 없습니다.'
-                                    : '—'}
+                                <p className="font-bold text-gray-400 text-xs leading-relaxed whitespace-pre-line">
+                                  {emptyHint[col.key]}
                                 </p>
                               </div>
                             ) : (
@@ -558,9 +574,12 @@ export default function CorpDashboard() {
                   </div>
 
                   {rejectedCount > 0 && (
-                    <p className="text-sm font-bold text-gray-400">
-                      거절한 지원: {rejectedCount}개
-                    </p>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 self-start">
+                      <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                      <p className="text-sm font-bold text-gray-400">
+                        거절 처리된 지원 <span className="text-red-400 font-black">{rejectedCount}건</span> — 칸반에서 숨겨짐
+                      </p>
+                    </div>
                   )}
                 </>
               )}

@@ -426,8 +426,14 @@ export default function RecruitAdmin() {
 
                       <div className={`flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 ${isDropTarget ? 'outline-2 outline-dashed outline-orange-400 outline-offset-[-4px]' : ''}`}>
                         {stageCards.length === 0 && (
-                          <div className={`border-2 border-dashed rounded p-6 text-center text-xs font-bold ${isDropTarget ? 'border-orange-400 text-orange-400 bg-orange-50' : 'border-gray-200 text-gray-300'}`}>
-                            {isDropTarget ? '여기에 놓기' : '없음'}
+                          <div className={`border-2 border-dashed rounded p-6 text-center text-xs font-bold leading-relaxed ${isDropTarget ? 'border-orange-400 text-orange-500 bg-orange-50' : 'border-gray-200 text-gray-300'}`}>
+                            {isDropTarget
+                              ? '여기에 놓기'
+                              : isLast
+                                ? '최종 합격자\n없음'
+                                : idx === 0
+                                  ? '새 지원이\n없습니다'
+                                  : `${stage} 단계\n없음`}
                           </div>
                         )}
                         {stageCards.map(app => (
@@ -548,14 +554,16 @@ export default function RecruitAdmin() {
                           ) : <span className="text-xs text-gray-300 font-bold">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5">
                             {stages.map(s => (
                               <button
                                 key={s}
                                 onClick={e => { e.stopPropagation(); if (app.status !== s) openEmailModal(app, s); }}
                                 title={s}
-                                className={`w-2 h-2 rounded-full border transition-all ${app.status === s ? 'bg-orange-500 border-orange-500 scale-125' : 'bg-gray-200 border-gray-300 hover:bg-orange-300'}`}
-                              />
+                                className="p-1.5 group/dot"
+                              >
+                                <span className={`block w-2.5 h-2.5 rounded-full border transition-all ${app.status === s ? 'bg-orange-500 border-orange-500 scale-125' : 'bg-gray-200 border-gray-300 group-hover/dot:bg-orange-300'}`} />
+                              </button>
                             ))}
                           </div>
                         </td>

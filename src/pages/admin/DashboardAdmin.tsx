@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Briefcase, TrendingUp, ChevronRight, Loader, Star } from 'lucide-react';
+import { Users, Briefcase, TrendingUp, ChevronRight, Loader, Star, Edit2, Calendar, BarChart2, Globe, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { NumberTicker } from '../../components/ui/NumberTicker';
 
 interface Stats {
   memberCount: number;
@@ -155,28 +156,32 @@ export default function DashboardAdmin() {
                   icon={<Users className="w-6 h-6 text-orange-600" />}
                   iconBg="bg-orange-100"
                   label="활동중 부원"
-                  value={`${stats?.memberCount ?? 0}명`}
+                  numericValue={stats?.memberCount ?? 0}
+                  suffix="명"
                   link={{ to: '/admin/members', label: '부원 관리', color: 'text-orange-600' }}
                 />
                 <StatCard
                   icon={<TrendingUp className="w-6 h-6 text-blue-600" />}
                   iconBg="bg-blue-100"
                   label="모집중 지원자"
-                  value={`${stats?.applicantCount ?? 0}명`}
+                  numericValue={stats?.applicantCount ?? 0}
+                  suffix="명"
                   link={{ to: '/admin/recruit', label: '리크루팅 CRM', color: 'text-blue-600' }}
                 />
                 <StatCard
                   icon={<Briefcase className="w-6 h-6 text-purple-600" />}
                   iconBg="bg-purple-100"
                   label="진행중 B2B"
-                  value={`${stats?.b2bCount ?? 0}건`}
+                  numericValue={stats?.b2bCount ?? 0}
+                  suffix="건"
                   link={{ to: '/admin/b2b', label: 'B2B 관리', color: 'text-purple-600' }}
                 />
                 <StatCard
                   icon={<Star className="w-6 h-6 text-yellow-600" />}
                   iconBg="bg-yellow-100"
                   label="Pulse 평균 점수"
-                  value={stats?.pulseAvg != null ? `${stats.pulseAvg}점` : '—'}
+                  numericValue={stats?.pulseAvg != null ? Math.round(stats.pulseAvg * 10) / 10 : 0}
+                  suffix={stats?.pulseAvg != null ? '점' : undefined}
                   link={{ to: '/admin/feedback', label: '설문 결과 보기', color: 'text-yellow-600' }}
                 />
               </div>
@@ -195,7 +200,18 @@ export default function DashboardAdmin() {
                   </div>
                   <div>
                     {recentApplicants.length === 0 ? (
-                      <p className="p-6 text-center text-gray-400 font-bold">지원자가 없습니다.</p>
+                      <div className="p-8 flex flex-col items-center gap-4 text-center">
+                        <div className="w-12 h-12 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                          <TrendingUp className="w-6 h-6 text-gray-300" />
+                        </div>
+                        <p className="text-gray-400 font-bold text-sm">아직 지원자가 없습니다.</p>
+                        <Link
+                          to="/admin/form-builder"
+                          className="inline-flex items-center gap-2 px-5 py-2 bg-black text-white font-black text-xs border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> 공고 및 폼 만들기
+                        </Link>
+                      </div>
                     ) : (
                       recentApplicants.map(app => (
                         <div key={app.id} className="flex justify-between items-center p-4 border-b border-gray-100 last:border-none hover:bg-gray-50">
@@ -222,19 +238,22 @@ export default function DashboardAdmin() {
                   </div>
                   <div className="p-4 flex flex-col gap-2">
                     {[
-                      { to: '/admin/form-builder', label: '지원서 폼 빌더 수정' },
-                      { to: '/admin/attendance',   label: '출석 세션 생성하기' },
-                      { to: '/admin/feedback',     label: '만족도 조사 만들기' },
-                      { to: '/admin/posts',        label: '스토리 포스트 발행' },
-                      { to: '/workspace',          label: '동아리 홈페이지 편집' },
+                      { to: '/admin/form-builder', label: '지원서 폼 빌더 수정',  icon: <Edit2 className="w-4 h-4" /> },
+                      { to: '/admin/attendance',   label: '출석 세션 생성하기',   icon: <Calendar className="w-4 h-4" /> },
+                      { to: '/admin/feedback',     label: '만족도 조사 만들기',   icon: <BarChart2 className="w-4 h-4" /> },
+                      { to: '/admin/posts',        label: '스토리 포스트 발행',   icon: <FileText className="w-4 h-4" /> },
+                      { to: '/workspace',          label: '동아리 홈페이지 편집', icon: <Globe className="w-4 h-4" /> },
                     ].map(item => (
                       <Link
                         key={item.to}
                         to={item.to}
                         className="flex items-center justify-between p-4 border border-gray-200 hover:border-black hover:bg-orange-50 transition-all font-bold group"
                       >
-                        {item.label}
-                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                        <span className="flex items-center gap-3 text-gray-600 group-hover:text-black transition-colors">
+                          <span className="text-gray-400 group-hover:text-orange-500 transition-colors">{item.icon}</span>
+                          {item.label}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-orange-500 transition-colors" />
                       </Link>
                     ))}
                   </div>
@@ -248,11 +267,12 @@ export default function DashboardAdmin() {
   );
 }
 
-function StatCard({ icon, iconBg, label, value, link }: {
+function StatCard({ icon, iconBg, label, numericValue, suffix, link }: {
   icon: React.ReactNode;
   iconBg: string;
   label: string;
-  value: string;
+  numericValue: number;
+  suffix?: string;
   link: { to: string; label: string; color: string };
 }) {
   return (
@@ -261,7 +281,10 @@ function StatCard({ icon, iconBg, label, value, link }: {
         {icon}
       </div>
       <h3 className="text-gray-500 font-bold mb-1 text-sm">{label}</h3>
-      <p className="text-4xl font-black">{value}</p>
+      <p className="text-4xl font-black flex items-baseline gap-1">
+        <NumberTicker value={numericValue} duration={1400} stagger={80} />
+        {suffix && <span className="text-2xl text-gray-400 font-bold">{suffix}</span>}
+      </p>
       <Link to={link.to} className={`mt-4 flex items-center gap-1 text-sm font-bold ${link.color} hover:underline`}>
         {link.label} <ChevronRight className="w-4 h-4" />
       </Link>

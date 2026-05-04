@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star, ArrowRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -44,7 +44,7 @@ export default function MyPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* ── 프로필 사이드바 ── */}
           <div className="col-span-1 border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-6 self-start">
-            <div className="flex flex-col items-center border-b border-black pb-8 mb-8">
+            <div className="flex flex-col items-center border-b border-black pb-8 mb-6">
               <div className="w-24 h-24 bg-gray-200 border-2 border-black rounded-full flex items-center justify-center mb-4">
                 <User className="w-12 h-12 text-gray-500" />
               </div>
@@ -66,13 +66,31 @@ export default function MyPage() {
               )}
               <button
                 onClick={() => setShowEditModal(true)}
-                className="w-full py-2 border border-black font-bold text-sm hover:bg-gray-100 transition-colors mt-2"
+                className="w-full py-2.5 border border-black font-bold text-sm hover:bg-gray-100 transition-colors mt-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-px"
               >
                 프로필 수정
               </button>
             </div>
 
-            <nav className="flex flex-col gap-2 font-bold">
+            {/* Mobile: 수평 스크롤 탭 */}
+            <div className="flex overflow-x-auto md:hidden gap-1 -mx-2 px-2 pb-2 mb-2">
+              {navItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 whitespace-nowrap text-sm font-bold border border-black transition-colors shrink-0 ${
+                    activeTab === item.key
+                      ? 'bg-black text-white shadow-[2px_2px_0px_0px_rgba(249,115,22,1)]'
+                      : 'bg-white text-black hover:bg-gray-100'
+                  }`}
+                >
+                  {item.icon} {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop: 수직 네비게이션 */}
+            <nav className="hidden md:flex flex-col gap-2 font-bold">
               {navItems.map(item => (
                 <button
                   key={item.key}
@@ -403,24 +421,33 @@ function ApplicationsSection() {
       {fetching ? (
         <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gray-400" /></div>
       ) : apps.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300">
-          아직 지원한 동아리가 없습니다.
+        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300 flex flex-col items-center gap-4">
+          <p>아직 지원한 동아리가 없습니다.</p>
+          <Link
+            to="/clubs"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          >
+            동아리 탐색하러 가기 <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {apps.map(app => {
             const recruit = app.recruitments as any;
             return (
-              <div key={app.id} className="p-6 border border-black bg-gray-50 flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-xs font-bold text-gray-500 mb-1">
+              <div key={app.id} className="p-5 border border-black bg-white flex items-center justify-between gap-4 hover:bg-orange-50 transition-colors">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-gray-400 mb-1">
                     {new Date(app.submitted_at).toLocaleDateString('ko-KR')} 지원
                   </div>
-                  <div className="font-black text-lg">
-                    {recruit?.clubs?.name ?? '—'} — {recruit?.title ?? '—'}
+                  <div className="font-black text-base truncate">
+                    {recruit?.clubs?.name ?? '—'}
+                  </div>
+                  <div className="font-bold text-sm text-gray-500 truncate mt-0.5">
+                    {recruit?.title ?? '—'}
                   </div>
                 </div>
-                <span className={`shrink-0 px-4 py-2 border border-black font-bold text-sm ${statusStyle[app.status] ?? 'bg-gray-100'}`}>
+                <span className={`shrink-0 px-3 py-1.5 border border-black font-bold text-xs ${statusStyle[app.status] ?? 'bg-gray-100'}`}>
                   {app.status}
                 </span>
               </div>
@@ -490,8 +517,14 @@ function AttendanceHistorySection() {
       {fetching ? (
         <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gray-400" /></div>
       ) : groups.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300">
-          소속된 동아리가 없습니다.
+        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300 flex flex-col items-center gap-4">
+          <p>소속된 동아리가 없습니다.</p>
+          <Link
+            to="/clubs"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          >
+            동아리 찾아보기 <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-10">
@@ -582,8 +615,14 @@ function ScrapsSection() {
       {fetching ? (
         <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gray-400" /></div>
       ) : scraps.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300">
-          아직 스크랩한 동아리가 없습니다.
+        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300 flex flex-col items-center gap-4">
+          <p>아직 스크랩한 동아리가 없습니다.</p>
+          <Link
+            to="/clubs"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          >
+            관심 동아리 찾아보기 <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -597,7 +636,7 @@ function ScrapsSection() {
               </div>
               <button
                 onClick={() => handleRemove(s.id)}
-                className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                className="text-gray-400 hover:text-red-500 transition-colors p-2 border border-transparent hover:border-red-200 hover:bg-red-50 shrink-0"
                 title="스크랩 삭제"
               >
                 <X className="w-5 h-5" />
@@ -614,14 +653,31 @@ function ScrapsSection() {
 // 알림 설정 (placeholder)
 // ──────────────────────────────────────────
 function NotificationsSection() {
+  const upcomingItems = [
+    { label: '동아리 모집 시작 알림', desc: '스크랩한 동아리의 다음 기수 모집이 시작되면 알려드립니다.' },
+    { label: '지원 결과 알림',       desc: '서류·면접·최종 합격 여부를 실시간으로 알려드립니다.' },
+    { label: '출결 세션 오픈 알림',  desc: '운영진이 출석 코드를 열면 즉시 알림을 받을 수 있습니다.' },
+  ];
   return (
     <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
-      <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
+      <h3 className="text-2xl font-black mb-2 flex items-center gap-2">
         <Bell className="w-6 h-6 text-orange-500" /> 알림 설정
       </h3>
-      <p className="text-gray-500 font-bold text-center py-8 border-2 border-dashed border-gray-300">
-        알림 설정 기능은 준비 중입니다.
-      </p>
+      <p className="text-sm font-bold text-gray-400 mb-6">곧 제공될 알림 기능을 미리 확인하세요.</p>
+      <div className="flex flex-col gap-3">
+        {upcomingItems.map(item => (
+          <div key={item.label} className="flex items-start gap-4 p-4 border border-gray-200 bg-gray-50 opacity-60">
+            <div className="w-5 h-5 border-2 border-gray-300 rounded-sm shrink-0 mt-0.5" />
+            <div>
+              <p className="font-black text-sm text-gray-700">{item.label}</p>
+              <p className="text-xs font-bold text-gray-400 mt-0.5">{item.desc}</p>
+            </div>
+            <span className="ml-auto shrink-0 px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-bold border border-gray-300">
+              준비중
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

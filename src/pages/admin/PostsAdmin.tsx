@@ -4,6 +4,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 interface Post {
@@ -23,6 +24,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 export default function PostsAdmin() {
   const { adminClubId } = useAdmin();
+  const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -153,7 +155,7 @@ export default function PostsAdmin() {
     if (!adminClubId || !title.trim()) return;
     setSaving(true);
 
-    const payload = {
+    const basePayload = {
       club_id: adminClubId,
       title: title.trim(),
       content: content.trim() || null,
@@ -165,7 +167,7 @@ export default function PostsAdmin() {
     if (isNew) {
       const { data, error } = await supabase
         .from('posts')
-        .insert({ ...payload, view_count: 0 })
+        .insert({ ...basePayload, author_id: user?.id ?? null, view_count: 0 })
         .select()
         .single();
       setSaving(false);
@@ -177,7 +179,7 @@ export default function PostsAdmin() {
     } else if (editingPost) {
       const { data, error } = await supabase
         .from('posts')
-        .update(payload)
+        .update(basePayload)
         .eq('id', editingPost.id)
         .select()
         .single();

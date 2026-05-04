@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Heart, CheckCircle, ChevronRight, Bell, RefreshCcw, Filter, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CLUBS_DATA } from '../../data/mockData';
+import { FadeInText } from '../../components/ui/FadeInText';
 
 const CATEGORIES = ['전체', 'IT/개발', '마케팅/기획', '창업', '문화/예술'];
 
@@ -42,17 +43,17 @@ const ClubCard = ({ club }: any) => (
     </div>
 
     {/* 3. 하단 - 증빙 데이터 격자 */}
-    <div className="grid grid-cols-3 border-t border-black bg-gray-50 relative z-10">
+    <div className="grid grid-cols-3 border-t border-black bg-white relative z-10">
       <div className="p-3 border-r border-black flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-bold text-gray-500 mb-1">누적 수주</span>
+        <span className="text-xs font-bold text-gray-500 mb-1">누적 수주</span>
         <span className="font-black text-sm">{club.stats.project}건</span>
       </div>
       <div className="p-3 border-r border-black flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-bold text-gray-500 mb-1">예산 공개</span>
+        <span className="text-xs font-bold text-gray-500 mb-1">예산 공개</span>
         <span className="font-black text-sm text-orange-600">{club.stats.budget}%</span>
       </div>
       <div className="p-3 flex flex-col items-center justify-center text-center">
-        <span className="text-[10px] font-bold text-gray-500 mb-1">경쟁률</span>
+        <span className="text-xs font-bold text-gray-500 mb-1">경쟁률</span>
         <span className="font-black text-sm">{club.stats.comp}</span>
       </div>
     </div>
@@ -75,6 +76,9 @@ const EmptyState = ({ onReset }: any) => (
           className="w-full bg-black text-white font-bold py-3 border border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2"
         >
           <RefreshCcw className="w-4 h-4" /> 검색 초기화하기
+        </button>
+        <button className="w-full bg-white text-black font-bold py-3 border border-black hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+          <Bell className="w-4 h-4" /> 원하는 동아리 알림 받기
         </button>
       </div>
     </div>
@@ -111,10 +115,10 @@ export default function Clubs() {
           {/* Header & Search */}
           <div className="border-b border-black p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50 text-black">
             <div>
-              <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
+              <FadeInText as="h2" className="text-3xl font-black tracking-tight flex items-center gap-3">
                 <span className="w-4 h-4 bg-orange-500 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] block"></span>
                 동아리 전체보기
-              </h2>
+              </FadeInText>
               <p className="text-gray-500 font-bold mt-2">안전하고 능력 있는 동아리를 탐색해보세요.</p>
             </div>
             <div className="flex w-full md:w-96 border border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">

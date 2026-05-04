@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Award, Loader, UserPlus, X, Check, Save } from 'lucide-react';
+import { Users, Search, Award, Loader, UserPlus, X, Check, Save, Info } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -149,9 +149,29 @@ export default function MembersAdmin() {
               </div>
             </div>
 
+            {Object.keys(drafts).length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 text-orange-700 font-bold text-sm">
+                <Info className="w-4 h-4 shrink-0" />
+                변경된 행은 주황색으로 표시됩니다. 각 행의 <strong>저장</strong> 버튼을 눌러 확정하세요.
+              </div>
+            )}
+
             <div className="bg-white border border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
               {fetching ? (
                 <div className="flex justify-center py-16"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>
+              ) : members.length === 0 ? (
+                <div className="flex flex-col items-center gap-4 py-16 text-center">
+                  <div className="w-16 h-16 border-2 border-dashed border-gray-200 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-gray-300" />
+                  </div>
+                  <p className="text-gray-400 font-bold">아직 등록된 부원이 없습니다.</p>
+                  <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    <UserPlus className="w-4 h-4" /> 첫 번째 부원 초대하기
+                  </button>
+                </div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -245,11 +265,6 @@ export default function MembersAdmin() {
               )}
             </div>
 
-            {Object.keys(drafts).length > 0 && (
-              <p className="text-sm font-bold text-orange-600 text-right">
-                * 변경된 행은 주황색으로 표시됩니다. 각 행의 <strong>저장</strong> 버튼을 눌러 확정하세요.
-              </p>
-            )}
           </div>
         </main>
       </div>

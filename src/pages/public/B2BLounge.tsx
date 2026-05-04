@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   Briefcase, Building, ChevronRight, ArrowRight,
-  DollarSign, Users, Award, Search, Filter, Loader,
-  Calendar, Tag, X,
+  DollarSign, Award, Search, Filter, Loader,
+  Calendar, Tag,
 } from 'lucide-react';
+import { FadeInText } from '../../components/ui/FadeInText';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
+import { Modal } from '../../components/ui/Modal';
 import { SUCCESS_CASES } from '../../data/mockData';
 
 const FILTERS = ['전체보기', '마케팅', 'IT개발', '리서치', '디자인', '기획', '콘텐츠', '기타'];
@@ -44,9 +46,9 @@ function LoungeHero({
           <Briefcase className="w-6 h-6" />
           <span className="font-bold tracking-widest text-sm">B2B PROJECT LOUNGE</span>
         </div>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
+        <FadeInText as="h1" className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
           안전이 검증된 동아리에게<br />실무를 제안하세요.
-        </h1>
+        </FadeInText>
         <p className="text-gray-400 font-medium text-lg max-w-xl mb-10">
           100% 신원 및 활동 투명성이 입증된 <strong className="text-white">오렌지 뱃지 동아리</strong>만
           접근할 수 있는 익스클루시브 프로젝트 게시판입니다. 동아리와의 B2B 협업으로 기업의 태스크를 해결하세요.
@@ -152,16 +154,6 @@ function ProjectRow({
           </p>
           <p className="font-black text-base text-black">{formatBudget(project.budget)}</p>
         </div>
-        {project.description && (
-          <div>
-            <p className="text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
-              <Users className="w-3 h-3" /> 프로젝트 개요
-            </p>
-            <p className="font-bold text-sm text-gray-700 line-clamp-2">
-              {project.description.replace(/[#*`>\-]/g, '').trim()}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* 액션 */}
@@ -206,65 +198,53 @@ function ProjectDetailModal({
     b ? `${b.toLocaleString()}원` : '예산 협의';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-2xl flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b-2 border-black">
-          <div className="flex-1 min-w-0 pr-4">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="px-2 py-0.5 text-xs font-bold border border-black bg-white">{project.category}</span>
-              <span className="text-sm font-bold text-gray-500">{project.corporations?.name}</span>
-              {project.deadline && (
-                <span className="text-xs font-bold text-orange-600 flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {new Date(project.deadline).toLocaleDateString('ko-KR')} 마감
-                </span>
-              )}
-            </div>
-            <h2 className="text-2xl font-black leading-tight">{project.title}</h2>
-            {project.required_skills?.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap mt-2">
-                {project.required_skills.map(s => (
-                  <span key={s} className="px-2 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 border border-transparent hover:border-black transition-colors shrink-0">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Budget */}
-        <div className="px-6 py-3 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-orange-500" />
-          <span className="font-black text-orange-700">예산: {formatBudget(project.budget)}</span>
-        </div>
-
-        {/* Description */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {project.description ? (
-            <MarkdownViewer content={project.description} />
-          ) : (
-            <p className="text-gray-400 font-bold text-sm">프로젝트 설명이 없습니다.</p>
-          )}
-        </div>
-
-        {/* CTA */}
-        {project.status === '모집중' && (
-          <div className="p-6 border-t-2 border-black">
-            <button
-              onClick={() => { onClose(); onProposal(project); }}
-              className="w-full bg-black text-white font-black py-4 border-2 border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-lg"
-            >
-              🔶 이 프로젝트 수주 제안하기
-            </button>
-          </div>
+    <Modal isOpen={true} onClose={onClose} title={project.title} size="2xl">
+      {/* 메타 정보 */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="px-2 py-0.5 text-xs font-bold border border-black bg-white">{project.category}</span>
+        <span className="text-sm font-bold text-gray-500">{project.corporations?.name}</span>
+        {project.deadline && (
+          <span className="text-xs font-bold text-orange-600 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {new Date(project.deadline).toLocaleDateString('ko-KR')} 마감
+          </span>
         )}
       </div>
-    </div>
+
+      {/* 스킬 태그 */}
+      {project.required_skills?.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {project.required_skills.map(s => (
+            <span key={s} className="px-2 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 예산 */}
+      <div className="px-4 py-3 bg-orange-50 border border-orange-200 flex items-center gap-2 mb-4">
+        <DollarSign className="w-4 h-4 text-orange-500" />
+        <span className="font-black text-orange-700">예산: {formatBudget(project.budget)}</span>
+      </div>
+
+      {/* 설명 */}
+      {project.description ? (
+        <MarkdownViewer content={project.description} />
+      ) : (
+        <p className="text-gray-400 font-bold text-sm">프로젝트 설명이 없습니다.</p>
+      )}
+
+      {/* CTA */}
+      {project.status === '모집중' && (
+        <button
+          onClick={() => { onClose(); onProposal(project); }}
+          className="w-full mt-6 bg-black text-white font-black py-4 border-2 border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-lg"
+        >
+          🔶 이 프로젝트 수주 제안하기
+        </button>
+      )}
+    </Modal>
   );
 }
 
@@ -275,7 +255,7 @@ function SuccessShowcase() {
     <section className="border-b border-black bg-black text-white overflow-hidden py-16">
       <div className="px-6 md:px-10 mb-10 text-center flex flex-col items-center">
         <Award className="w-12 h-12 text-orange-500 mb-4" />
-        <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">매칭 성공 사례</h2>
+        <FadeInText as="h2" className="text-3xl md:text-4xl font-black tracking-tight mb-4">매칭 성공 사례</FadeInText>
         <p className="font-medium text-gray-400 max-w-2xl">
           기업의 실무 과제를 OURCLUB의 검증된 동아리들이 훌륭하게 완수해 낸 실제 사례들입니다.
         </p>
@@ -357,9 +337,9 @@ export default function B2BLounge() {
             {/* 검색 + 필터 헤더 */}
             <div className="border-b border-black">
               <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 border-b border-black">
-                <h2 className="text-2xl font-black flex items-center gap-2">
+                <FadeInText as="h2" className="text-2xl font-black flex items-center gap-2">
                   <Briefcase className="w-6 h-6" /> 프로젝트 탐색
-                </h2>
+                </FadeInText>
                 <div className="flex bg-white border border-black max-w-md w-full">
                   <input
                     type="text"
