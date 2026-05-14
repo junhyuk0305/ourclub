@@ -7,7 +7,7 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import {
   Home, Clubs, B2BLounge, TextPage, InfoPage, Stories, StoryDetail,
-  ClubDetail, ClubApply, ClubRecruit, ClubStories, Onboarding
+  ClubDetail, ClubApply, ClubRecruit, ClubStories, Onboarding, ClubSetup, ClubJoin, ClubRegister
 } from './pages/public';
 import { MyPage } from './pages/user';
 import {
@@ -15,6 +15,7 @@ import {
   DashboardAdmin, B2BAdmin, B2BProposalAdmin, FeedbackAdmin, PostsAdmin, SettingsAdmin
 } from './pages/admin';
 import { CorpDashboard } from './pages/corp';
+import { Registrations, JoinRequests } from './pages/master';
 
 // 로그인 전용 보호 라우트
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -31,7 +32,17 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
   if (authLoading || adminLoading) return null;
   if (!session) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/login" replace />;
+  // 미승인 신청자 포함 비운영진 → club-setup(대기 화면 or 분기 선택)으로
+  if (!isAdmin) return <Navigate to="/club-setup" replace />;
+  return <>{children}</>;
+}
+
+// 마스터 전용 보호 라우트
+function MasterRoute({ children }: { children: React.ReactNode }) {
+  const { session, isMaster, loading } = useAuth();
+  if (loading) return null;
+  if (!session) return <Navigate to="/login" replace />;
+  if (!isMaster) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -51,6 +62,7 @@ function AppRoutes() {
   const isDashboardLayout =
     location.pathname.startsWith('/admin') ||
     location.pathname.startsWith('/corp') ||
+    location.pathname.startsWith('/master') ||
     location.pathname === '/workspace';
 
   return (
@@ -72,6 +84,9 @@ function AppRoutes() {
 
           {/* 로그인 전용 */}
           <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+          <Route path="/club-setup" element={<ProtectedRoute><ClubSetup /></ProtectedRoute>} />
+          <Route path="/club-join" element={<ProtectedRoute><ClubJoin /></ProtectedRoute>} />
+          <Route path="/club-register" element={<ProtectedRoute><ClubRegister /></ProtectedRoute>} />
 
           {/* 운영진 전용 */}
           <Route path="/workspace"            element={<AdminRoute><Workspace /></AdminRoute>} />
@@ -85,6 +100,11 @@ function AppRoutes() {
           <Route path="/admin/feedback"       element={<AdminRoute><FeedbackAdmin /></AdminRoute>} />
           <Route path="/admin/posts"          element={<AdminRoute><PostsAdmin /></AdminRoute>} />
           <Route path="/admin/settings"       element={<AdminRoute><SettingsAdmin /></AdminRoute>} />
+
+          {/* 마스터 */}
+          <Route path="/master/registrations" element={<MasterRoute><Registrations /></MasterRoute>} />
+          <Route path="/master/join-requests"  element={<MasterRoute><JoinRequests /></MasterRoute>} />
+          <Route path="/master" element={<Navigate to="/master/registrations" replace />} />
 
           {/* 기업 */}
           <Route path="/corp/dashboard" element={<CorpRoute><CorpDashboard /></CorpRoute>} />

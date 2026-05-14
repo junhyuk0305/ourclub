@@ -24,6 +24,7 @@ interface AdminContextValue {
   adminClubId: string | null;
   membershipId: string | null;
   isAdmin: boolean;
+  hasPendingRequest: boolean;
   loading: boolean;
   refreshClub: () => Promise<void>;
 }
@@ -34,12 +35,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const { user, isMaster } = useAuth();
   const [adminClub, setAdminClub] = useState<AdminClub | null>(null);
   const [membershipId, setMembershipId] = useState<string | null>(null);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchAdminClub = async () => {
     if (!user) {
       setAdminClub(null);
       setMembershipId(null);
+      setHasPendingRequest(false);
       setLoading(false);
       return;
     }
@@ -73,9 +76,30 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       if (error || !data) {
         setMembershipId(null);
         setAdminClub(null);
+
+        // 승인 대기 중인 신청이 있는지 확인
+        const { data: reg } = await supabase
+          .from('club_registration_requests')
+          .select('id')
+          .eq('user_id', user.id)
+          .in('status', ['검토대기', '검토중', '보완요청'])
+          .maybeSingle();
+
+        if (reg) {
+          setHasPendingRequest(true);
+        } else {
+          const { data: join } = await supabase
+            .from('club_join_requests')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('status', '대기중')
+            .maybeSingle();
+          setHasPendingRequest(!!join);
+        }
       } else {
         setMembershipId(data.id);
         setAdminClub(data.clubs as unknown as AdminClub);
+        setHasPendingRequest(false);
       }
     }
 
@@ -98,6 +122,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       adminClubId: adminClub?.id ?? null,
       membershipId,
       isAdmin: !!adminClub,
+      hasPendingRequest,
       loading,
       refreshClub,
     }}>
