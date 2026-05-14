@@ -1,168 +1,515 @@
-import React, { useEffect } from 'react';
-import { ArrowLeft, ExternalLink, Calendar, Users, Briefcase, Plus, MapPin } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Calendar, Briefcase, Loader, AlertCircle, ChevronRight, Edit3 } from 'lucide-react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabaseClient';
+import { useAdmin } from '../../contexts/AdminContext';
+import { ClubPageRenderer } from '../../components/ClubPageRenderer';
+
+interface Club {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  logo_url: string | null;
+  one_line_desc: string | null;
+  is_certified: boolean;
+  theme_color: string | null;
+}
+
+interface ActiveRecruit {
+  id: string;
+  title: string;
+  generation: string | null;
+  deadline: string | null;
+  status: string;
+}
+
+interface Post {
+  id: string;
+  title: string;
+  images: string[];
+  created_at: string;
+}
+
+interface ClubPage {
+  id: string;
+  blocks: { blocks: any[]; config: any } | null;
+  published_at: string | null;
+}
+
+type TabKey = 'intro' | 'posts';
 
 export default function ClubDetail() {
-  const { id } = useParams();
-  const isRecruiting = true;
+  const { id: slug } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { isAdmin, adminClub } = useAdmin();
+  const isOwnClub = isAdmin && adminClub?.slug === slug;
+
+  const [club, setClub] = useState<Club | null>(null);
+  const [recruits, setRecruits] = useState<ActiveRecruit[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postCount, setPostCount] = useState(0);
+  const [clubPage, setClubPage] = useState<ClubPage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('intro');
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    if (!slug) return;
 
+    (async () => {
+      setLoading(true);
+
+      const { data: clubData, error } = await supabase
+        .from('clubs')
+        .select('id, name, slug, type, logo_url, one_line_desc, is_certified, theme_color')
+        .eq('slug', slug)
+        .single();
+
+      if (error || !clubData) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      setClub(clubData as Club);
+
+      const [recruitRes, postRes, pageRes] = await Promise.all([
+        supabase
+          .from('recruitments')
+          .select('id, title, generation, deadline, status')
+          .eq('club_id', clubData.id)
+          .in('status', ['진행중', '모집중'])
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('posts')
+          .select('id, title, images, created_at', { count: 'exact' })
+          .eq('club_id', clubData.id)
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(4),
+        supabase
+          .from('club_pages')
+          .select('id, blocks, published_at')
+          .eq('club_id', clubData.id)
+          .maybeSingle(),
+      ]);
+
+      setRecruits((recruitRes.data as ActiveRecruit[]) ?? []);
+      setPosts((postRes.data as Post[]) ?? []);
+      setPostCount(postRes.count ?? 0);
+      setClubPage((pageRes.data as ClubPage) ?? null);
+
+      setLoading(false);
+    })();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader className="w-8 h-8 animate-spin text-orange-500" />
+      </div>
+    );
+  }
+
+  if (notFound || !club) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-black mb-3">동아리를 찾을 수 없습니다.</h2>
+          <p className="text-gray-500 font-medium mb-6">주소가 잘못되었거나 삭제된 동아리입니다.</p>
+          <Link to="/clubs" className="font-black text-orange-500 hover:underline">← 동아리 목록으로</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const activeRecruit = recruits[0] ?? null;
+  const dDay = activeRecruit?.deadline
+    ? Math.ceil((new Date(activeRecruit.deadline).getTime() - Date.now()) / 86400000)
+    : null;
+
+  const handleApply = () => {
+    if (activeRecruit) navigate(`/clubs/${slug}/recruit`);
+  };
+
+  const SideTabNav = () => (
+    <div className="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] overflow-hidden">
+      <button
+        onClick={() => { setActiveTab('intro'); window.scrollTo(0, 0); }}
+        className={`flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors border-b-2 border-black ${
+          activeTab === 'intro' ? 'bg-orange-500 text-black' : 'bg-white text-black hover:bg-orange-50'
+        }`}
+        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
+      >소개</button>
+      <button
+        onClick={() => navigate(`/clubs/${slug}/recruit`)}
+        className="flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors border-b-2 border-black bg-white text-black hover:bg-orange-50"
+        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
+      >채용</button>
+      <button
+        onClick={() => { setActiveTab('posts'); window.scrollTo(0, 0); }}
+        className={`flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors ${
+          activeTab === 'posts' ? 'bg-orange-500 text-black' : 'bg-white text-black hover:bg-orange-50'
+        }`}
+        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
+      >스토리</button>
+    </div>
+  );
+
+  /* ── 커스텀 페이지가 있는 경우 (발행 여부: 어드민은 미발행도 미리보기, 일반은 발행만) ── */
+  const hasCustomPage = clubPage?.blocks?.blocks && (clubPage.published_at || isOwnClub);
+
+  if (hasCustomPage) {
+    const isDraft = !clubPage!.published_at;
+    return (
+      <div className="bg-white min-h-screen">
+        {/* 미발행 상태 배너 (어드민 전용) */}
+        {isOwnClub && isDraft && (
+          <div className="fixed top-0 left-0 right-0 z-[70] bg-yellow-400 border-b-2 border-black px-6 py-2 flex items-center justify-between">
+            <span className="font-black text-sm text-black">미발행 상태 미리보기 — 방문자에게는 보이지 않습니다.</span>
+            <Link
+              to="/workspace"
+              className="px-4 py-1 bg-black text-white font-black text-xs border border-black hover:bg-orange-500 hover:text-black transition-colors"
+            >
+              웹빌더에서 발행하기 →
+            </Link>
+          </div>
+        )}
+
+        {isOwnClub && (
+          <div className={`fixed left-4 z-[60] flex flex-col gap-2 ${isDraft ? 'top-16' : 'top-20'}`}>
+            <Link
+              to="/workspace"
+              className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 text-black border-2 border-black font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-0.5 transition-all"
+            >
+              <Edit3 className="w-3.5 h-3.5" /> 페이지 편집
+            </Link>
+            <Link
+              to="/clubs"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-black font-bold text-xs hover:bg-gray-50 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> 목록으로
+            </Link>
+          </div>
+        )}
+        {!isOwnClub && (
+          <div className="fixed top-20 left-4 z-[60]">
+            <Link
+              to="/clubs"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/80 backdrop-blur border border-black/20 font-bold text-xs hover:bg-white transition-colors rounded-full"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> 목록으로
+            </Link>
+          </div>
+        )}
+
+        <SideTabNav />
+
+        {activeTab === 'intro' && (
+          <ClubPageRenderer
+            blocks={clubPage.blocks.blocks}
+            config={clubPage.blocks.config ?? {}}
+            activeRecruit={activeRecruit}
+            onApply={handleApply}
+          />
+        )}
+
+        {activeTab === 'posts' && (
+          <div className="max-w-5xl mx-auto px-6 pr-20 md:pr-24 py-24">
+            {posts.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
+                  <h2 className="text-3xl font-black flex items-center gap-3">
+                    <span className="w-4 h-4 bg-orange-500 border border-black inline-block" />
+                    활동 스토리
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    {isOwnClub && (
+                      <Link to="/admin/posts" className="flex items-center gap-1.5 px-4 py-2 border border-black font-black text-sm hover:bg-orange-500 transition-colors">
+                        <Edit3 className="w-3.5 h-3.5" /> 스토리 작성
+                      </Link>
+                    )}
+                    <Link to={`/clubs/${slug}/stories`} className="flex items-center gap-1.5 px-4 py-2 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors border border-black">
+                      전체보기 {postCount > 0 && `(${postCount}개)`} <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 피처드 첫 번째 스토리 */}
+                <Link to={`/stories/${posts[0].id}`} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="md:w-1/2 h-64 md:h-80 overflow-hidden relative bg-gray-100 border-b-2 md:border-b-0 md:border-r-2 border-black">
+                      {posts[0].images?.[0] ? (
+                        <img src={posts[0].images[0]} alt={posts[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center">
+                          <span className="text-gray-500 font-bold text-sm">이미지 없음</span>
+                        </div>
+                      )}
+                      <span className="absolute top-4 left-4 bg-orange-500 text-black font-black text-xs px-3 py-1.5 border border-black">LATEST</span>
+                    </div>
+                    <div className="md:w-1/2 p-8 md:p-10 flex flex-col justify-between bg-white">
+                      <div>
+                        <p className="text-xs font-bold text-gray-400 mb-3">
+                          {new Date(posts[0].created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
+                        <h3 className="text-2xl md:text-3xl font-black leading-snug group-hover:text-orange-600 transition-colors mb-4">
+                          {posts[0].title}
+                        </h3>
+                      </div>
+                      <span className="font-black text-sm text-orange-500 flex items-center gap-2">
+                        스토리 읽기 <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 나머지 스토리 가로 스크롤 */}
+                {posts.length > 1 && (
+                  <div className="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
+                    {posts.slice(1).map((post, i) => (
+                      <Link
+                        key={post.id}
+                        to={`/stories/${post.id}`}
+                        className="min-w-[260px] border border-black bg-white group snap-center hover:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-0.5 transition-all block shrink-0"
+                      >
+                        <div className="h-44 border-b border-black overflow-hidden relative bg-gray-100">
+                          {post.images?.[0] ? (
+                            <img src={post.images[0]} alt={post.title} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                              <span className="text-3xl font-black text-gray-400">{post.title[0]}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-2.5 left-2.5 w-7 h-7 bg-black text-white flex items-center justify-center font-black text-xs">
+                            {String(i + 2).padStart(2, '0')}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <p className="text-xs font-bold text-gray-400 mb-1.5">
+                            {new Date(post.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}
+                          </p>
+                          <h3 className="font-black text-base leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">{post.title}</h3>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="border border-dashed border-gray-300 p-12 text-center flex flex-col items-center gap-4">
+                <Briefcase className="w-10 h-10 text-gray-200" />
+                <p className="text-gray-400 font-bold">아직 등록된 활동 스토리가 없습니다.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ── 기본 정적 레이아웃 (커스텀 페이지 없는 경우) ── */
   return (
     <div className="bg-white min-h-screen">
-      {/* 1. Full Screen Cover Header */}
+      {/* 커버 헤더 */}
       <div className="w-full h-[50vh] md:h-[60vh] bg-gray-900 relative">
-        <img 
-          src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1920&q=80" 
-          alt="Club Cover" 
-          className="w-full h-full object-cover opacity-70 grayscale mix-blend-overlay"
-        />
-        
-        {/* Navigation Over Header */}
+        {club.logo_url ? (
+          <img src={club.logo_url} alt={club.name} className="w-full h-full object-cover opacity-50 mix-blend-overlay" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black" />
+        )}
+
         <div className="absolute top-0 w-full p-6 md:p-10 z-20">
-          <Link to="/clubs" className="inline-flex items-center gap-2 font-black text-white px-4 py-2 bg-black/50 backdrop-blur-md border border-white hover:bg-white hover:text-black transition-colors rounded-full opacity-70 hover:opacity-100 text-sm w-max">
-            <ArrowLeft className="w-4 h-4" /> 동아리 목록으로 돌아가기
+          <Link
+            to="/clubs"
+            className="inline-flex items-center gap-2 font-black text-white px-4 py-2 bg-black/50 backdrop-blur-md border border-white hover:bg-white hover:text-black transition-colors rounded-full opacity-70 hover:opacity-100 text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" /> 동아리 목록으로
           </Link>
         </div>
 
-        {/* Header Content */}
         <div className="absolute bottom-0 w-full p-6 md:p-12 z-20 bg-gradient-to-t from-black to-transparent flex justify-between items-end">
-           <div>
-              <div className="flex gap-2 mb-4">
-                <span className="px-3 py-1 font-bold text-sm bg-white text-black">#기획</span>
-                <span className="px-3 py-1 font-bold text-sm bg-white text-black">#마케팅</span>
-              </div>
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-2">
-                마제스티 (Majesty)
-              </h1>
-              <p className="text-xl md:text-2xl font-bold text-gray-300">기업이 검증한 NO.1 실무 마케팅 동아리</p>
-           </div>
-           {/* Floating Badge on cover */}
-           <div className="hidden md:block bg-orange-500 text-black px-6 py-3 font-black text-lg border-2 border-black transform rotate-3 shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-             안전 검증 100% 완료
-           </div>
-        </div>
-      </div>
-
-      {/* 2. Top Bar Action / CTA */}
-      <div className="w-full border-b-2 border-black bg-white sticky top-16 z-50 shadow-[0px_4px_0px_0px_rgba(0,0,0,0.1)]">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-           <div className="font-bold text-lg hidden md:flex items-center gap-2">
-             <Calendar className="w-5 h-5 text-orange-500" /> D-14 (14기 모집중)
-           </div>
-           
-           <Link to={`/clubs/${id || 'majesty'}/recruit`} className={`px-10 py-3 text-lg font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all ${isRecruiting ? 'bg-orange-500 text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
-             {isRecruiting ? '14기 지원서 작성하기' : '모집 마감'}
-           </Link>
-        </div>
-      </div>
-
-      {/* 3. Stats Full Width Grid (Grid system preservation) */}
-      <div className="w-full bg-gray-50 border-b border-black">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black border-l border-r border-black">
-            <div className="p-10 flex flex-col items-center justify-center text-center bg-white group hover:bg-orange-50 transition-colors">
-              <Briefcase className="w-10 h-10 mb-4 text-orange-500 group-hover:scale-110 transition-transform" />
-              <div className="text-sm font-bold text-gray-400 mb-1 tracking-widest uppercase">진행된 기업 프로젝트</div>
-              <div className="text-4xl font-black">12건</div>
+          <div>
+            <div className="flex gap-2 mb-4">
+              <span className="px-3 py-1 font-bold text-sm bg-white text-black">{club.type}</span>
+              {club.is_certified && (
+                <span className="px-3 py-1 font-bold text-sm bg-orange-500 text-black">인증 동아리</span>
+              )}
             </div>
-            <div className="p-10 flex flex-col items-center justify-center text-center bg-white group hover:bg-orange-50 transition-colors">
-              <Users className="w-10 h-10 mb-4 text-orange-500 group-hover:scale-110 transition-transform" />
-              <div className="text-sm font-bold text-gray-400 mb-1 tracking-widest uppercase">회원 수 (누적 기수)</div>
-              <div className="text-4xl font-black">240명 (13기)</div>
-            </div>
-            <div className="p-10 flex flex-col items-center justify-center text-center bg-white group hover:bg-orange-50 transition-colors">
-              <Calendar className="w-10 h-10 mb-4 text-orange-500 group-hover:scale-110 transition-transform" />
-              <div className="text-sm font-bold text-gray-400 mb-1 tracking-widest uppercase">투명 회비 공개</div>
-              <div className="text-4xl font-black text-orange-500">100% 보장</div>
-            </div>
-        </div>
-      </div>
-
-      {/* 4. Canvas Body (Widgets representation) */}
-      <div className="max-w-7xl mx-auto px-6 py-16 md:py-24">
-        
-        {/* Intro Block */}
-        <div className="max-w-3xl mx-auto mb-20 text-center">
-          <h2 className="text-3xl md:text-4xl font-black mb-8 leading-tight">우리는 시장의 반응을 확인하는<br/>진짜 마케터들의 집단입니다.</h2>
-          <p className="text-lg font-medium text-gray-600 leading-relaxed text-left">
-            마제스티는 실무를 갈망하는 열정적인 기획자, 마케터들이 모인 연합 동아리입니다. 단순한 스터디를 넘어 진짜 시장의 반응을 확인합니다.
-            스타트업부터 중견기업까지 다양한 B2B 파트너의 프로젝트를 위탁받아 기획부터 실행, 데이터 분석까지 주도적으로 수행합니다.
-            이 경험은 취업 포트폴리오의 가장 강력한 무기가 됩니다.
-          </p>
-        </div>
-
-        {/* Split Grid Component (Widget Simulation) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
-           <div className="bg-black text-white p-12 border border-black flex flex-col justify-center relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-10">
-               <MapPin className="w-32 h-32" />
-             </div>
-             <h3 className="text-2xl font-black mb-4 z-10">활동 장소 및 회비</h3>
-             <ul className="space-y-4 font-bold text-gray-300 z-10">
-               <li className="flex items-center gap-3">📍 정규 세션: 매주 토요일 신촌 소재 세미나룸</li>
-               <li className="flex items-center gap-3">💸 회비: 40,000원 (결산 내역 100% 공개)</li>
-               <li className="flex items-center gap-3">👥 모집 인원: 20명 내외</li>
-             </ul>
-           </div>
-
-           <div className="bg-orange-500 p-12 border border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between hover:-translate-y-2 transition-transform">
-             <div>
-               <h3 className="text-2xl font-black text-black mb-2">마제스티 14기 지원하기</h3>
-               <p className="font-bold text-orange-900 mb-8">열정 있는 예비 실무자들의 지원을 기다립니다.</p>
-             </div>
-             <Link to={`/clubs/${id || 'majesty'}/recruit`} className="bg-white text-black font-black py-4 px-6 border-2 border-black flex justify-between items-center hover:bg-black hover:text-white transition-colors">
-               지원서 작성하러 가기 <ArrowLeft className="w-5 h-5 rotate-180" />
-             </Link>
-           </div>
-        </div>
-
-        {/* Portfolio Gallery Widget */}
-        <div className="mb-20">
-          <h2 className="text-3xl font-black mb-10 flex items-center gap-3">
-             <span className="w-4 h-4 bg-orange-500 border border-black inline-block"></span>
-             실무 포트폴리오 갤러리
-          </h2>
-          <div className="flex overflow-x-auto gap-6 pb-8 snap-x hide-scrollbar">
-            {/* Gallery Slide 1 */}
-            <div className="min-w-[300px] md:min-w-[400px] border border-black bg-white group snap-center cursor-pointer">
-              <div className="h-64 border-b border-black overflow-hidden relative">
-                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80" alt="Port 1" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"/>
-              </div>
-              <div className="p-6">
-                <div className="font-black text-sm text-orange-500 mb-2">2026.01 - (주)뷰티이노베이션</div>
-                <h3 className="font-black text-xl mb-3 leading-tight">Z세대 타겟 오프라인 팝업 및 바이럴 캠페인</h3>
-                <Link to="/stories" className="text-sm font-black underline hover:text-orange-600 block mt-4">스토리 원문 보기</Link>
-              </div>
-            </div>
-            {/* Gallery Slide 2 */}
-            <div className="min-w-[300px] md:min-w-[400px] border border-black bg-white group snap-center cursor-pointer">
-              <div className="h-64 border-b border-black overflow-hidden relative">
-                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80" alt="Port 2" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"/>
-              </div>
-              <div className="p-6">
-                <div className="font-black text-sm text-orange-500 mb-2">2025.10 - 패스트캠퍼스</div>
-                <h3 className="font-black text-xl mb-3 leading-tight">B2B SaaS 기업과 진행한 사용성 테스트(UT)</h3>
-                <Link to="/stories" className="text-sm font-black underline hover:text-orange-600 block mt-4">스토리 원문 보기</Link>
-              </div>
-            </div>
-            {/* More Slides Dummy */}
-            <div className="min-w-[300px] md:min-w-[400px] border border-black bg-gray-50 flex items-center justify-center snap-center cursor-pointer hover:bg-gray-100 transition-colors">
-               <div className="text-center font-bold text-gray-400">
-                 <Plus className="w-10 h-10 mx-auto mb-2" />
-                 더 많은 포트폴리오
-               </div>
-            </div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-2">{club.name}</h1>
+            {club.one_line_desc && (
+              <p className="text-lg md:text-xl font-bold text-gray-300">{club.one_line_desc}</p>
+            )}
           </div>
+          {club.is_certified && (
+            <div className="hidden md:block bg-orange-500 text-black px-6 py-3 font-black text-lg border-2 border-black transform rotate-3 shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
+              안전 검증 완료
+            </div>
+          )}
         </div>
-        
       </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}} />
+
+      {/* 상단 CTA 바 */}
+      <div className="w-full border-b-2 border-black bg-white sticky top-16 z-50 shadow-[0px_4px_0px_0px_rgba(0,0,0,0.08)]">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="font-bold text-lg hidden md:flex items-center gap-2 text-gray-700">
+            <Calendar className="w-5 h-5 text-orange-500" />
+            {activeRecruit
+              ? `${activeRecruit.generation ?? ''} 모집중${dDay !== null ? ` (D-${dDay})` : ''}`
+              : '현재 모집 중인 공고가 없습니다'}
+          </div>
+          <Link
+            to={`/clubs/${slug}/recruit`}
+            className={`px-10 py-3 text-lg font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all ${
+              activeRecruit
+                ? 'bg-orange-500 text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none'
+                : 'bg-gray-100 text-gray-400 pointer-events-none'
+            }`}
+          >
+            {activeRecruit ? `${activeRecruit.generation ?? ''} 지원서 작성하기` : '모집 마감'}
+          </Link>
+        </div>
+      </div>
+
+      {/* 오른쪽 고정 탭 메뉴 */}
+      <SideTabNav />
+
+      {/* 바디 */}
+      <div className="max-w-5xl mx-auto px-6 pr-20 md:pr-24 py-16 md:py-24">
+
+        {/* ── 소개 탭 ── */}
+        {activeTab === 'intro' && (
+          <div className="max-w-3xl mx-auto">
+            {club.one_line_desc && (
+              <div className="mb-16 text-center">
+                <h2 className="text-3xl md:text-4xl font-black mb-8 leading-tight">{club.name}</h2>
+                <p className="text-lg font-medium text-gray-600 leading-relaxed">{club.one_line_desc}</p>
+              </div>
+            )}
+
+            {isOwnClub && (
+              <div className="border-2 border-dashed border-orange-300 bg-orange-50 p-8 text-center flex flex-col items-center gap-4">
+                <p className="text-gray-700 font-bold">
+                  1-Page 웹빌더로 이 페이지를 커스텀 디자인해보세요!
+                </p>
+                <Link
+                  to="/workspace"
+                  className="px-6 py-3 bg-orange-500 text-black font-black border-2 border-black shadow-[3px_3px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-0.5 transition-all text-sm"
+                >
+                  페이지 꾸미러 가기 →
+                </Link>
+              </div>
+            )}
+
+            {!isOwnClub && !club.one_line_desc && (
+              <div className="text-center py-20 text-gray-400 font-bold">
+                아직 소개 내용이 없습니다.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── 스토리 탭 ── */}
+        {activeTab === 'posts' && (
+          <div>
+            {posts.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
+                  <h2 className="text-3xl font-black flex items-center gap-3">
+                    <span className="w-4 h-4 bg-orange-500 border border-black inline-block" />
+                    활동 스토리
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    {isOwnClub && (
+                      <Link to="/admin/posts" className="flex items-center gap-1.5 px-4 py-2 border border-black font-black text-sm hover:bg-orange-500 transition-colors">
+                        <Edit3 className="w-3.5 h-3.5" /> 스토리 작성
+                      </Link>
+                    )}
+                    <Link to={`/clubs/${slug}/stories`} className="flex items-center gap-1.5 px-4 py-2 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors border border-black">
+                      전체보기 {postCount > 0 && `(${postCount}개)`} <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 피처드 첫 번째 스토리 */}
+                <Link to={`/stories/${posts[0].id}`} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="md:w-1/2 h-64 md:h-80 overflow-hidden relative bg-gray-100 border-b-2 md:border-b-0 md:border-r-2 border-black">
+                      {posts[0].images?.[0] ? (
+                        <img src={posts[0].images[0]} alt={posts[0].title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-700 to-black flex items-center justify-center">
+                          <span className="text-gray-500 font-bold text-sm">이미지 없음</span>
+                        </div>
+                      )}
+                      <span className="absolute top-4 left-4 bg-orange-500 text-black font-black text-xs px-3 py-1.5 border border-black">LATEST</span>
+                    </div>
+                    <div className="md:w-1/2 p-8 md:p-10 flex flex-col justify-between bg-white">
+                      <div>
+                        <p className="text-xs font-bold text-gray-400 mb-3">
+                          {new Date(posts[0].created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
+                        <h3 className="text-2xl md:text-3xl font-black leading-snug group-hover:text-orange-600 transition-colors mb-4">
+                          {posts[0].title}
+                        </h3>
+                      </div>
+                      <span className="font-black text-sm text-orange-500 flex items-center gap-2">
+                        스토리 읽기 <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* 나머지 스토리 가로 스크롤 */}
+                {posts.length > 1 && (
+                  <div className="flex overflow-x-auto gap-4 pb-4 snap-x hide-scrollbar">
+                    {posts.slice(1).map((post, i) => (
+                      <Link
+                        key={post.id}
+                        to={`/stories/${post.id}`}
+                        className="min-w-[260px] border border-black bg-white group snap-center hover:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-0.5 transition-all block shrink-0"
+                      >
+                        <div className="h-44 border-b border-black overflow-hidden relative bg-gray-100">
+                          {post.images?.[0] ? (
+                            <img src={post.images[0]} alt={post.title} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                              <span className="text-3xl font-black text-gray-400">{post.title[0]}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-2.5 left-2.5 w-7 h-7 bg-black text-white flex items-center justify-center font-black text-xs">
+                            {String(i + 2).padStart(2, '0')}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <p className="text-xs font-bold text-gray-400 mb-1.5">
+                            {new Date(post.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })}
+                          </p>
+                          <h3 className="font-black text-base leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">{post.title}</h3>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="border border-dashed border-gray-300 p-12 text-center flex flex-col items-center gap-4">
+                <Briefcase className="w-10 h-10 text-gray-200" />
+                <p className="text-gray-400 font-bold">아직 등록된 활동 스토리가 없습니다.</p>
+                {isOwnClub && (
+                  <Link to="/admin/posts" className="px-6 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors text-sm">
+                    첫 스토리 작성하기 →
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

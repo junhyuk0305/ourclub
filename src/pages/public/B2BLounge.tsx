@@ -10,7 +10,11 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { Modal } from '../../components/ui/Modal';
-import { SUCCESS_CASES } from '../../data/mockData';
+const SUCCESS_CASES = [
+  { id: 1, title: '마제스티 x (주)뷰티이노베이션', desc: '3주 만에 신제품 팝업 스토어 기획 및 방문객 1,000명 달성', img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=500&q=60' },
+  { id: 2, title: '코드크래프트 x 테크스타트', desc: 'B2B SaaS 서비스 사용성 개선 리포트 제공 및 산학협력 체결', img: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=500&q=60' },
+  { id: 3, title: '플래너스 x 커리어네트웍스', desc: '전국 대학생 취업 박람회 부스 공동 기획 및 운영 완료', img: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=500&q=60' },
+];
 
 const FILTERS = ['전체보기', '마케팅', 'IT개발', '리서치', '디자인', '기획', '콘텐츠', '기타'];
 

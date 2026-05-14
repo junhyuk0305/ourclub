@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Edit3, Globe, Lock, Save, X, Loader, Check, Trash2, ImagePlus, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Edit3, Globe, Lock, Save, X, Loader, Check, Trash2, ImagePlus, Image as ImageIcon, AlertCircle, Eye } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
@@ -37,6 +37,7 @@ export default function PostsAdmin() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
+  const [toastLink, setToastLink] = useState<{ href: string; label: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,6 +165,8 @@ export default function PostsAdmin() {
       is_published: publish,
     };
 
+    let savedId: string | null = null;
+
     if (isNew) {
       const { data, error } = await supabase
         .from('posts')
@@ -175,6 +178,7 @@ export default function PostsAdmin() {
         showToast('저장 실패: ' + (error?.message ?? '알 수 없는 오류'));
         return;
       }
+      savedId = data.id;
       setPosts(prev => [normalizePost(data), ...prev]);
     } else if (editingPost) {
       const { data, error } = await supabase
@@ -188,11 +192,15 @@ export default function PostsAdmin() {
         showToast('저장 실패: ' + (error?.message ?? '알 수 없는 오류'));
         return;
       }
+      savedId = editingPost.id;
       setPosts(prev => prev.map(p => p.id === editingPost.id ? normalizePost(data) : p));
     }
 
     closeEditor();
-    showToast(publish ? '포스트가 발행되었습니다.' : '임시저장되었습니다.');
+    showToast(
+      publish ? '포스트가 발행되었습니다.' : '임시저장되었습니다.',
+      publish && savedId ? { href: `/stories/${savedId}`, label: '공개 페이지에서 보기 →' } : undefined
+    );
   };
 
   const handleTogglePublish = async (post: Post) => {
@@ -225,9 +233,10 @@ export default function PostsAdmin() {
     showToast('포스트가 삭제되었습니다.');
   };
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, link?: { href: string; label: string }) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3500);
+    setToastLink(link ?? null);
+    setTimeout(() => { setToast(''); setToastLink(null); }, 4000);
   };
 
   // DB에서 온 raw 데이터 정규화
@@ -280,6 +289,16 @@ export default function PostsAdmin() {
             >
               <X className="w-4 h-4" /> 취소
             </button>
+            {!isNew && editingPost?.is_published && (
+              <a
+                href={`/stories/${editingPost.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 border border-black bg-white font-black hover:bg-orange-50 text-sm flex items-center gap-1 transition-colors"
+              >
+                <Eye className="w-4 h-4" /> 미리보기
+              </a>
+            )}
             <button
               onClick={() => handleSave(false)}
               disabled={saving || !title.trim() || uploading}
@@ -407,12 +426,26 @@ export default function PostsAdmin() {
                               )}
                             </td>
                             <td className="p-4 text-center">
-                              <button
-                                onClick={() => setDeleteId(post.id)}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                {post.is_published && (
+                                  <a
+                                    href={`/stories/${post.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    title="공개 페이지에서 보기"
+                                    className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors rounded"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setDeleteId(post.id)}
+                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -591,8 +624,19 @@ export default function PostsAdmin() {
 
       {/* 토스트 */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(249,115,22,0.5)]">
-          <Check className="w-4 h-4 text-green-400" /> {toast}
+        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(249,115,22,0.5)]">
+          <Check className="w-4 h-4 text-green-400 shrink-0" />
+          <span>{toast}</span>
+          {toastLink && (
+            <a
+              href={toastLink.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-orange-400 hover:text-orange-300 transition-colors whitespace-nowrap"
+            >
+              {toastLink.label}
+            </a>
+          )}
         </div>
       )}
     </div>

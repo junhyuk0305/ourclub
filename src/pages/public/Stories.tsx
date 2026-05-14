@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Search, Eye, ChevronLeft, ChevronRight, Loader, AlertCircle, Heart, Share2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FadeInText } from '../../components/ui/FadeInText';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { supabase } from '../../lib/supabaseClient';
@@ -112,6 +112,7 @@ export default function Stories() {
   const [toast, setToast] = useState('');
 
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const offsetRef = useRef(0);
   const loadingRef = useRef(false);
@@ -316,7 +317,7 @@ export default function Stories() {
 
   const handleShare = async (e: React.MouseEvent, post: Post) => {
     e.stopPropagation();
-    const url = `${window.location.origin}/stories`;
+    const url = `${window.location.origin}/stories/${post.id}`;
 
     try {
       if (navigator.share) {
@@ -438,6 +439,7 @@ export default function Stories() {
             {posts.map(post => (
               <article
                 key={post.id}
+                onClick={() => navigate(`/stories/${post.id}`)}
                 className="break-inside-avoid border-2 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 transition-all flex flex-col cursor-pointer group"
               >
                 {/* 이미지 캐러셀 */}
@@ -445,7 +447,7 @@ export default function Stories() {
 
                 {/* 헤더 - 클럽 프로필 링크 */}
                 <Link
-                  to={post.clubs?.id ? `/clubs/${post.clubs.id}` : '#'}
+                  to={post.clubs?.slug ? `/clubs/${post.clubs.slug}` : '#'}
                   onClick={e => e.stopPropagation()}
                   className="p-6 pb-3 flex items-center gap-3 group/profile hover:bg-gray-50 transition-colors"
                 >

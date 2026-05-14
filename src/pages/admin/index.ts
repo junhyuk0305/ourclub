@@ -1,7 +1,6 @@
 export { default as Workspace } from './Workspace';
 export { default as RecruitAdmin } from './RecruitAdmin';
 export { default as FormBuilder } from './FormBuilder';
-export { default as FormBuilderNew } from './FormBuilder_new';
 export { default as AttendanceAdmin } from './AttendanceAdmin';
 export { default as MembersAdmin } from './MembersAdmin';
 export { default as DashboardAdmin } from './DashboardAdmin';
