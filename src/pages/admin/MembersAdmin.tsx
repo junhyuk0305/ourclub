@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Search, Award, Loader, UserPlus, X, Check, Save, Info } from 'lucide-react';
+import { Users, Search, Award, Loader, UserPlus, X, Check, Save, Info, Bell, CheckCircle, XCircle } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
@@ -20,6 +20,16 @@ interface Member {
 
 type MemberDraft = Partial<Pick<Member, 'role' | 'status' | 'generation' | 'position'>>;
 
+interface JoinRequest {
+  id: string;
+  user_id: string;
+  role_title: string | null;
+  intro: string | null;
+  status: string;
+  created_at: string;
+  profiles: { name: string; email: string; university: string | null; major: string | null } | null;
+}
+
 const STATUS_BADGE: Record<MemberStatus, string> = {
   '활동중':  'bg-green-100 text-green-700 border-green-300',
   '수료':    'bg-blue-100 text-blue-700 border-blue-300',
@@ -29,6 +39,7 @@ const STATUS_BADGE: Record<MemberStatus, string> = {
 
 export default function MembersAdmin() {
   const { adminClubId } = useAdmin();
+  const [activeTab, setActiveTab] = useState<'members' | 'join-requests'>('members');
   const [members, setMembers] = useState<Member[]>([]);
   const [fetching, setFetching] = useState(true);
   const [search, setSearch] = useState('');
@@ -37,9 +48,15 @@ export default function MembersAdmin() {
   const [drafts, setDrafts] = useState<Record<string, MemberDraft>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
+  // 합류 신청 탭
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [joinFetching, setJoinFetching] = useState(false);
+  const [joinProcessing, setJoinProcessing] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (!adminClubId) return;
     loadMembers(adminClubId);
+    loadJoinRequests(adminClubId);
   }, [adminClubId]);
 
   const loadMembers = async (clubId: string) => {
@@ -65,6 +82,43 @@ export default function MembersAdmin() {
     setMembers(withRates);
     setDrafts({});
     setFetching(false);
+  };
+
+  const loadJoinRequests = async (clubId: string) => {
+    setJoinFetching(true);
+    const { data } = await supabase
+      .from('club_join_requests')
+      .select('id, user_id, role_title, intro, status, created_at, profiles(name, email, university, major)')
+      .eq('club_id', clubId)
+      .eq('status', '대기중')
+      .order('created_at', { ascending: true });
+    setJoinRequests((data as unknown as JoinRequest[]) ?? []);
+    setJoinFetching(false);
+  };
+
+  const handleJoinDecision = async (req: JoinRequest, decision: '승인' | '거절') => {
+    if (!adminClubId) return;
+    setJoinProcessing(prev => ({ ...prev, [req.id]: true }));
+
+    if (decision === '승인') {
+      await supabase.from('club_members').insert({
+        user_id: req.user_id,
+        club_id: adminClubId,
+        role: '운영진',
+        status: '활동중',
+        position: req.role_title ?? null,
+      });
+    }
+
+    await supabase
+      .from('club_join_requests')
+      .update({ status: decision, reviewed_at: new Date().toISOString() })
+      .eq('id', req.id);
+
+    setJoinProcessing(prev => ({ ...prev, [req.id]: false }));
+    showToast(decision === '승인' ? `${req.profiles?.name}님이 운영진으로 추가됐습니다.` : '거절 처리됐습니다.');
+    loadJoinRequests(adminClubId);
+    if (decision === '승인') loadMembers(adminClubId);
   };
 
   const showToast = (msg: string) => {
@@ -133,6 +187,101 @@ export default function MembersAdmin() {
               </button>
             </div>
 
+            {/* 탭 */}
+            <div className="flex gap-0 border-2 border-black w-fit">
+              <button
+                onClick={() => setActiveTab('members')}
+                className={`px-5 py-2.5 font-black text-sm border-r-2 border-black transition-colors flex items-center gap-2 ${
+                  activeTab === 'members' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                }`}
+              >
+                <Users className="w-4 h-4" /> 부원 명단
+              </button>
+              <button
+                onClick={() => setActiveTab('join-requests')}
+                className={`px-5 py-2.5 font-black text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'join-requests' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                }`}
+              >
+                <Bell className="w-4 h-4" />
+                합류 신청
+                {joinRequests.length > 0 && (
+                  <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 font-black rounded-full">
+                    {joinRequests.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ── 합류 신청 탭 ───────────────────────────────────── */}
+            {activeTab === 'join-requests' && (
+              <div className="flex flex-col gap-3">
+                {joinFetching ? (
+                  <div className="flex justify-center py-16">
+                    <Loader className="w-8 h-8 animate-spin text-orange-500" />
+                  </div>
+                ) : joinRequests.length === 0 ? (
+                  <div className="bg-white border border-black p-12 text-center">
+                    <Bell className="w-10 h-10 mx-auto text-gray-200 mb-3" />
+                    <p className="font-bold text-gray-400">대기 중인 합류 신청이 없습니다.</p>
+                  </div>
+                ) : (
+                  joinRequests.map(req => (
+                    <div key={req.id} className="bg-white border border-black p-5 flex flex-col gap-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-black text-lg">{req.profiles?.name ?? '—'}</p>
+                          <p className="text-sm font-bold text-gray-400">{req.profiles?.email}</p>
+                          {(req.profiles?.university || req.profiles?.major) && (
+                            <p className="text-sm font-bold text-gray-400">
+                              {[req.profiles.university, req.profiles.major].filter(Boolean).join(' · ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          {req.role_title && (
+                            <span className="inline-block border-2 border-black px-2 py-0.5 text-xs font-black mb-1">
+                              희망 직책: {req.role_title}
+                            </span>
+                          )}
+                          <p className="text-xs font-bold text-gray-400">
+                            {new Date(req.created_at).toLocaleDateString('ko-KR')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {req.intro && (
+                        <div className="bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600 whitespace-pre-line">
+                          {req.intro}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleJoinDecision(req, '거절')}
+                          disabled={joinProcessing[req.id]}
+                          className="flex-1 py-2.5 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                        >
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                          거절
+                        </button>
+                        <button
+                          onClick={() => handleJoinDecision(req, '승인')}
+                          disabled={joinProcessing[req.id]}
+                          className="flex-1 py-2.5 bg-orange-500 border-2 border-black font-black text-sm hover:bg-black hover:text-orange-500 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                        >
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                          승인 (운영진 등록)
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* ── 부원 명단 탭 ───────────────────────────────────── */}
+            {activeTab === 'members' && <>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 px-4 py-2 border border-black bg-black text-white font-black">
                 <Users className="w-4 h-4" />
@@ -264,6 +413,7 @@ export default function MembersAdmin() {
                 </table>
               )}
             </div>
+            </>}
 
           </div>
         </main>
