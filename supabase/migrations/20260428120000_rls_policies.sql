@@ -65,6 +65,26 @@ CREATE POLICY "운영진 모집 생성" ON public.recruitments
   );
 
 -- ─────────────────────────────────────────────────────────────
+-- recruitment_applications SELECT: global_admin 허용 추가
+-- 기존 정책은 본인 또는 운영진만, global_admin 제외되어 있음
+-- ─────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "본인 지원 내역 조회" ON public.recruitment_applications;
+CREATE POLICY "본인 지원 내역 조회" ON public.recruitment_applications
+  FOR SELECT
+  USING (
+    (auth.uid() = user_id)
+    OR EXISTS (
+      SELECT 1
+      FROM public.recruitments r
+      JOIN public.club_members cm ON cm.club_id = r.club_id
+      WHERE r.id = recruitment_applications.recruitment_id
+        AND cm.user_id = auth.uid()
+        AND cm.role = '운영진'
+    )
+    OR EXISTS (SELECT 1 FROM public.global_admins WHERE id = auth.uid())
+  );
+
+-- ─────────────────────────────────────────────────────────────
 -- recruitment_applications UPDATE: global_admin 허용 추가
 -- 기존 정책은 운영진만(role='운영진'), global_admin 제외되어 있음
 -- ─────────────────────────────────────────────────────────────

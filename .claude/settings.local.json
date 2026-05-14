@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(npm run *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git checkout *)",
+      "Bash(git mv *)",
+      "Bash(cp src/pages/public.ts src/pages/public/index.ts)",
+      "Bash(cp src/pages/admin.ts src/pages/admin/index.ts)",
+      "Bash(cp src/pages/user.ts src/pages/user/index.ts)",
+      "Bash(cp src/pages/corp.ts src/pages/corp/index.ts)",
+      "Bash(rm src/pages/public.ts src/pages/admin.ts src/pages/user.ts src/pages/corp.ts)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git stash *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

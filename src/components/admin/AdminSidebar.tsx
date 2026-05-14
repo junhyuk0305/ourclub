@@ -72,39 +72,57 @@ export function AdminSidebar() {
         const Icon = group.icon;
         
         if (group.path && !group.items) {
-          // It's a top-level link
+          // Top-level 단독 링크
           const isSelected = isActive(group.path);
           return (
-             <Link key={group.name} to={group.path} className={`p-3 rounded text-left transition-all flex items-center gap-3 ${isSelected ? 'font-black text-white border border-black bg-orange-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'font-bold text-gray-600 hover:bg-gray-100'}`}>
-              <Icon className="w-5 h-5" /> <span className="text-sm">{group.name}</span>
+            <Link
+              key={group.name}
+              to={group.path}
+              className={`p-3 text-left transition-all flex items-center gap-3 ${
+                isSelected
+                  ? 'font-black text-white border border-black bg-orange-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  : 'font-bold text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-sm">{group.name}</span>
             </Link>
           );
         }
 
-        // It's a group with sub-items
+        // 그룹 + 서브메뉴
         const isOpen = openGroups[group.name];
         const isChildActive = group.items?.some(item => isActive(item.path));
 
         return (
-          <div key={group.name} className="flex flex-col">
-            <button 
+          <div key={group.name} className="flex flex-col mt-1 pt-1 border-t border-gray-100 first:border-t-0 first:mt-0 first:pt-0">
+            <button
               onClick={() => toggleGroup(group.name)}
-              className={`p-3 rounded text-left transition-all flex items-center justify-between font-bold ${isChildActive ? 'text-black' : 'text-gray-600'} hover:bg-gray-100 mt-1`}
+              className={`py-2.5 px-3 text-left transition-all flex items-center justify-between font-bold text-xs uppercase tracking-widest ${
+                isChildActive ? 'text-orange-600' : 'text-gray-400'
+              } hover:text-black`}
             >
-              <div className="flex items-center gap-3">
-                <Icon className="w-5 h-5" /> <span className="text-sm">{group.name}</span>
+              <div className="flex items-center gap-2">
+                <Icon className="w-4 h-4" />
+                <span>{group.name}</span>
               </div>
-              {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
-            
+
             {isOpen && group.items && (
-              <div className="flex flex-col ml-11 mt-1 gap-1 border-l-2 border-gray-100">
+              <div className="flex flex-col ml-6 gap-0.5 border-l-2 border-gray-100 pl-1 mb-1">
                 {group.items.map(item => {
                   const isSelected = isActive(item.path);
                   return (
-                    <Link key={item.path} to={item.path} className={`py-2 px-3 rounded text-left transition-all text-sm relative ${isSelected ? 'font-black text-orange-600 bg-orange-50' : 'font-bold text-gray-500 hover:bg-gray-100 hover:text-black'}`}>
-                      {/* Tree branch effect */}
-                      {isSelected && <div className="absolute left-[-2px] top-1/2 -translate-y-1/2 w-[2px] h-3 bg-orange-500"></div>}
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`py-2.5 px-3 text-left transition-all text-sm relative ${
+                        isSelected
+                          ? 'font-black text-black bg-orange-50 border-l-4 border-orange-500 -ml-[2px] pl-[14px]'
+                          : 'font-bold text-gray-500 hover:bg-gray-100 hover:text-black'
+                      }`}
+                    >
                       {item.name}
                     </Link>
                   );
