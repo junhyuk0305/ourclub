@@ -47,5 +47,8 @@ export const Footer = () => (
         <span>매칭 124팀</span>
       </div>
     </div>
+    <div className="px-8 pb-5 text-center text-xs text-gray-700 font-medium">
+      본 웹사이트에 게시된 이메일 주소가 전자우편 수집 프로그램이나 그 밖의 기술적 장치를 이용하여 무단으로 수집되는 것을 거부하며, 이를 위반 시 정보통신망법에 의해 형사 처벌됨을 유념하시기 바랍니다.
+    </div>
   </footer>
 );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star, ArrowRight } from 'lucide-react';
+import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star, ArrowRight, Trash2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -10,11 +10,12 @@ type Tab = 'applications' | 'attendance' | 'scraps' | 'notifications';
 // 메인 페이지
 // ──────────────────────────────────────────
 export default function MyPage() {
-  const { profile, signOut, refreshProfile, loading } = useAuth();
+  const { profile, signOut, refreshProfile, loading, deleteAccount } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<Tab>('applications');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -112,6 +113,12 @@ export default function MyPage() {
             >
               <LogOut className="w-4 h-4" /> 로그아웃
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="mt-2 w-full flex items-center justify-center gap-2 py-2 border border-gray-200 text-gray-400 font-bold text-xs hover:border-red-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> 회원 탈퇴
+            </button>
           </div>
 
           {/* ── 메인 콘텐츠 ── */}
@@ -133,6 +140,15 @@ export default function MyPage() {
 
       {showEditModal && (
         <EditProfileModal onClose={() => { setShowEditModal(false); refreshProfile(); }} />
+      )}
+      {showDeleteConfirm && (
+        <DeleteAccountModal
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={async () => {
+            const { error } = await deleteAccount();
+            if (!error) navigate('/');
+          }}
+        />
       )}
     </div>
   );
@@ -792,6 +808,51 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
             className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving && <Loader className="w-4 h-4 animate-spin" />} 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────
+// 회원 탈퇴 확인 모달
+// ──────────────────────────────────────────
+function DeleteAccountModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => Promise<void> }) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    await onConfirm();
+    setConfirming(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black text-red-600">회원 탈퇴</h2>
+          <button onClick={onClose}><X className="w-6 h-6 hover:text-orange-500 transition-colors" /></button>
+        </div>
+        <p className="font-bold text-gray-700 mb-2">정말로 탈퇴하시겠습니까?</p>
+        <p className="text-sm font-bold text-gray-500 mb-8 leading-relaxed">
+          탈퇴 시 프로필 정보(이름, 학교, 전공 등)가 즉시 삭제되며 복구할 수 없습니다.<br />
+          지원 내역 및 활동 기록은 익명 처리됩니다.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={confirming}
+            className="flex-1 py-3 bg-red-600 text-white font-black hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {confirming && <Loader className="w-4 h-4 animate-spin" />}
+            탈퇴하기
           </button>
         </div>
       </div>

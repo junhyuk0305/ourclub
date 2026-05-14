@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, User, Tent, Building2, Eye, EyeOff, Loader } from 'lucide-react';
+import { ArrowLeft, User, Tent, Building2, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 function GoogleIcon() {
   return (
@@ -14,7 +15,7 @@ function GoogleIcon() {
   );
 }
 
-type Mode = 'select' | 'login' | 'signup';
+type Mode = 'select' | 'login' | 'signup' | 'forgot';
 type UserType = 'student' | 'club';
 
 const USER_TYPE_META = {
@@ -85,6 +86,11 @@ export default function Onboarding() {
     navigate(meta.dest);
   };
 
+  // ── 비밀번호 찾기 화면 ─────────────────────────────────────
+  if (mode === 'forgot') {
+    return <ForgotPasswordScreen onBack={() => setMode('login')} />;
+  }
+
   // ── 로그인/회원가입 폼 ──────────────────────────────────────
   if (mode === 'login' || mode === 'signup') {
     const isLogin = mode === 'login';
@@ -142,7 +148,18 @@ export default function Onboarding() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="font-black text-sm">비밀번호</label>
+                <div className="flex items-center justify-between">
+                  <label className="font-black text-sm">비밀번호</label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors"
+                    >
+                      비밀번호를 잊으셨나요?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPw ? 'text' : 'password'}
@@ -286,6 +303,96 @@ export default function Onboarding() {
             <GoogleIcon />
             Google로 간편 로그인
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 비밀번호 찾기 화면 ─────────────────────────────────────────
+function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErrorMsg('');
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/mypage`,
+    });
+    setSubmitting(false);
+    if (error) { setErrorMsg(error.message); return; }
+    setSent(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      <header className="p-6">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-2 font-black text-xl hover:text-orange-500 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" /> 돌아가기
+        </button>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-black mb-2">비밀번호 찾기</h1>
+            <p className="text-gray-500 font-bold">가입한 이메일로 재설정 링크를 보내드립니다.</p>
+          </div>
+
+          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            {sent ? (
+              <div className="flex flex-col items-center gap-4 py-6 text-center">
+                <CheckCircle className="w-14 h-14 text-green-500" />
+                <p className="font-black text-xl">이메일을 확인하세요</p>
+                <p className="font-bold text-gray-500 text-sm">
+                  <span className="text-black">{email}</span>으로<br />
+                  비밀번호 재설정 링크를 발송했습니다.
+                </p>
+                <button
+                  onClick={onBack}
+                  className="mt-4 px-8 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors"
+                >
+                  로그인으로 돌아가기
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="font-black text-sm">이메일</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="가입할 때 사용한 이메일"
+                    required
+                    className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                  />
+                </div>
+
+                {errorMsg && (
+                  <p className="text-red-600 font-bold text-sm border border-red-300 bg-red-50 p-3">
+                    {errorMsg}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-4 bg-black text-white font-black text-lg border-2 border-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {submitting && <Loader className="w-5 h-5 animate-spin" />}
+                  재설정 링크 보내기
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>
