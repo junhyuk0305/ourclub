@@ -7,6 +7,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { defaultFormSchema } from '../../types/recruitment';
 
 interface Recruitment {
@@ -374,7 +375,7 @@ function RecruitmentRow({ recruitment, applicantCount }: { recruitment: Recruitm
           {recruitment.category && <span>#{recruitment.category}</span>}
           {deadline && (
             <span>
-              마감 {deadline.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+              마감 {formatDate(deadline, 'monthDay')}
               {daysLeft !== null && recruitment.status === '진행중' && (
                 <span className={`ml-1 ${daysLeft <= 3 ? 'text-red-500' : 'text-orange-500'}`}>
                   (D-{daysLeft >= 0 ? daysLeft : 0})

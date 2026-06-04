@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader, CheckCircle, XCircle, ChevronRight, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { MasterLayout } from './MasterLayout';
 
@@ -26,7 +27,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDate(iso, 'medium');
 }
 
 export default function JoinRequests() {

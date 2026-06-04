@@ -9,6 +9,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 interface Recruitment {
   id: string;
@@ -178,7 +179,7 @@ export default function RecruitAdmin() {
       a.profiles?.major ?? '',
       a.status,
       a.score != null ? String(a.score) : '',
-      new Date(a.submitted_at).toLocaleDateString('ko-KR'),
+      formatDate(a.submitted_at),
       ...allKeys.map(k => a.answers?.[k] ?? ''),
     ]);
     const csv = [headers, ...rows]
@@ -532,7 +533,7 @@ export default function RecruitAdmin() {
                           {[app.profiles?.university, app.profiles?.major].filter(Boolean).join(' · ') || '—'}
                         </td>
                         <td className="px-4 py-3 text-sm font-bold text-gray-500" onClick={() => setSelectedApplicant(app)}>
-                          {new Date(app.submitted_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          {formatDate(app.submitted_at, 'monthDay')}
                         </td>
                         <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
                           <span className={`inline-block text-xs font-black px-2.5 py-1 border ${isLast ? 'bg-green-100 border-green-400 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>

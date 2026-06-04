@@ -53,7 +53,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .limit(1);
 
-      console.log('[AdminContext] isMaster=true, clubs query:', { data, error });
       if (error || !data || data.length === 0) {
         setAdminClub(null);
         setMembershipId(null);
@@ -71,8 +70,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         .limit(1)
         .maybeSingle();
 
-      console.log('[AdminContext] isMaster=false, user.id:', user.id);
-      console.log('[AdminContext] club_members query:', { data, error });
       if (error || !data) {
         setMembershipId(null);
         setAdminClub(null);

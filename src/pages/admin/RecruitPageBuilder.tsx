@@ -9,6 +9,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import {
   RecruitPageSettings, SloganPosition, FAQItem,
   DEFAULT_RECRUIT_PAGE, mergeRecruitPage,
@@ -552,7 +553,7 @@ function ReviewsEditor({ title, onTitleChange, clubId }: { title: string; onTitl
                   </div>
                   <p className="text-sm text-gray-700 font-medium line-clamp-2 mb-1">{r.body}</p>
                   <p className="text-xs text-gray-400 font-bold">
-                    {r.profiles?.name ?? '익명'} · {new Date(r.created_at).toLocaleDateString('ko-KR')}
+                    {r.profiles?.name ?? '익명'} · {formatDate(r.created_at)}
                   </p>
                 </div>
                 <button

@@ -4,17 +4,18 @@ import {
   Loader, Check, Globe, ChevronDown, ChevronUp, Clock,
   MessageSquare, Layers, MousePointer, GripVertical, Image as ImageIcon,
   Minus, Columns, RotateCcw, RotateCw, Monitor, Tablet, Smartphone,
-  Copy, BarChart2, LayoutGrid, Timer, Trash2,
+  Copy, BarChart2, LayoutGrid, Timer, Trash2, X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { WorkspaceProperties } from '../../components/admin/WorkspaceProperties';
 import { BlockPropertiesPanel } from '../../components/admin/BlockPropertiesPanel';
-import { BlockBody, WB_STYLE, genId, mkSection, mkRow, rowGridTemplate, resolveSectionBg } from '../../components/blockKit';
+import { BlockBody, WB_STYLE, genId, mkSection, mkRow, rowGridTemplate, resolveSectionBg, SectionDecor, rowCardWrapStyle, RowCardHeader, resolveThemeHex } from '../../components/blockKit';
 import {
   findNode, patchNode, deleteNode, removeWidget, insertTop, insertInColumn,
   addRow as addRowTo, moveRow, setRowCols, moveWidgetInColumn, widgetsLostOnShrink,
 } from '../../lib/sectionTree';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 /* ─────────────────────────────────────────────
@@ -60,7 +61,7 @@ function makeWidget(type: string): any {
   const id = genId();
   let nb: any = { id, type };
   if (type === 'text')            nb = { ...nb, text: '텍스트를 입력하세요.', seoTag: 'p', align: 'left', fontSize: 16, fontWeight: 400, textColor: '#111827', lineHeight: 1.7, paddingY: 32 };
-  if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionUrl: '', btnSize: 'm', btnBg: 'transparent', borderWidth: 2, radius: 0, btnShadow: 'none', btnAnim: 'none', paddingY: 32 };
+  if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionUrl: '', btnSize: 'm', btnTextColor: '#ffffff', borderWidth: 0, radius: 8, btnShadow: 'none', btnAnim: 'none', btnTemplate: 'solid', paddingY: 32 };
   if (type === 'countdown')       nb = { ...nb, label: '모집 마감까지', expiredText: '모집이 마감되었습니다', bgColor: '#0a0a0a', textColor: '#ffffff', accentColor: '', paddingY: 56 };
   if (type === 'faq')             nb = { ...nb, title: '자주 묻는 질문', items: [{ id: id + '_1', question: '질문을 입력하세요', answer: '답변을 입력하세요.' }], iconStyle: 'plus', openBg: '#fff7ed' };
   if (type === 'timeline')        nb = { ...nb, title: '채용 프로세스', nodes: [{ id: id + '_1', title: '1단계', desc: '설명을 입력하세요' }, { id: id + '_2', title: '2단계', desc: '설명을 입력하세요' }], activeColor: '#f97316', lineColor: '#111827' };
@@ -69,9 +70,6 @@ function makeWidget(type: string): any {
   if (type === 'spacer')          nb = { ...nb, height: 64 };
   if (type === 'image')           nb = { ...nb, src: '', alt: '', width: 100, align: 'center', aspect: 'auto', objectFit: 'cover', radius: 0, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 };
   if (type === 'divider')         nb = { ...nb, variant: 'line', style: 'solid', color: '#e5e7eb', thickness: 1, width: 100, paddingY: 24, bgColor: '',
-                                          text: '인상적인 인용문을 입력하세요. 동아리 활동을 통해 실제 성장을 경험했습니다.', attribution: '— 김○○, 24기 졸업생', avatarSrc: '', fontSize: 22, textColor: '#111827', accentColor: '', align: 'center',
-                                          labelText: '우리의 이야기', labelSize: 13, labelColor: '#6b7280',
-                                          emblem: '✦', emblemSrc: '', emblemSize: 32, showLines: true,
                                           tickerItems: ['브랜드 전략 동아리', '2019년 창립', '누적 프로젝트 32건', '현업 취업률 80%'], separator: '✦', speed: 24, tickerFontSize: 13 };
   if (type === 'stats')           nb = { ...nb, items: [mkStatItem(id+'_1','200+','누적 회원'),mkStatItem(id+'_2','50+','완성 프로젝트'),mkStatItem(id+'_3','3년','운영 역사')], cols: 3, layout: 'strip', bgColor: '#ffffff', valueColor: '#111827', labelColor: '#6b7280', valueSize: 48, labelSize: 14, paddingY: 56, animate: true };
   return nb;
@@ -87,10 +85,13 @@ const DEFAULT_BLOCKS: any[] = [];
 ───────────────────────────────────────────── */
 export default function Workspace() {
   const { adminClub, adminClubId } = useAdmin();
+  const { user, profile } = useAuth();
 
   /* global config */
   const [activeTheme, setActiveTheme] = useState('black');
   const [showFloatingBtn, setShowFloatingBtn] = useState(true);
+  const [smoothScroll, setSmoothScroll] = useState(false);
+  const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
 
   /* blocks */
   const [blocks, setBlocks] = useState<any[]>(DEFAULT_BLOCKS);
@@ -117,6 +118,17 @@ export default function Workspace() {
   const [fetching, setFetching] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [toast, setToast] = useState('');
+
+  /* ── 동시 편집 제어 (낙관적 잠금 + presence) ──
+     versionRef: 마지막으로 읽거나 저장한 행 버전. 저장은 이 버전이 그대로일 때만 성공.
+     conflict: 내가 편집하는 동안 다른 운영진이 저장해 버전이 어긋난 상태(모달 표시).
+     conflictRef: 디바운스 콜백 등 비동기 경로에서 최신 충돌 여부를 즉시 읽기 위한 미러. */
+  const versionRef = useRef<number>(0);
+  const [conflict, setConflict] = useState(false);
+  const conflictRef = useRef(false);
+  const setConflictState = (v: boolean) => { conflictRef.current = v; setConflict(v); };
+  /* 현재 같은 페이지를 열고 있는 다른 편집자(나 제외) */
+  const [editors, setEditors] = useState<{ id: string; name: string }[]>([]);
 
   /* auto-scroll to new block */
   const newBlockIdRef = useRef<string | null>(null);
@@ -199,10 +211,12 @@ export default function Workspace() {
 
   const loadPage = async (clubId: string) => {
     setFetching(true);
-    const { data } = await supabase.from('club_pages').select('id, blocks, draft, published_at').eq('club_id', clubId).maybeSingle();
+    const { data } = await supabase.from('club_pages').select('id, blocks, draft, published_at, version').eq('club_id', clubId).maybeSingle();
     if (data) {
       setPageId(data.id);
       setIsPublished(!!data.published_at);
+      versionRef.current = data.version ?? 0;
+      setConflictState(false);
       /* 편집은 항상 초안(draft)을 불러온다. 구버전 행(draft 없음)은 공개본으로 폴백. */
       const published = data.blocks as any;
       const saved = (data.draft ?? data.blocks) as any;
@@ -213,6 +227,7 @@ export default function Workspace() {
         const c = saved.config;
         if (c.activeTheme) setActiveTheme(c.activeTheme);
         if (c.showFloatingBtn !== undefined) setShowFloatingBtn(c.showFloatingBtn);
+        if (c.smoothScroll !== undefined) setSmoothScroll(c.smoothScroll);
         if (c.contentWidth) setContentWidth(c.contentWidth);
         if (c.pageBgColor !== undefined) setPageBgColor(c.pageBgColor);
         if (c.globalFont !== undefined) setGlobalFont(c.globalFont);
@@ -241,31 +256,41 @@ export default function Workspace() {
   };
 
   const buildPayload = (b: any[], cfg: any) => ({ blocks: b, config: cfg });
-  const currentCfg = () => ({ activeTheme, showFloatingBtn, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc });
+  const currentCfg = () => ({ activeTheme, showFloatingBtn, smoothScroll, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc });
   const triggerAutoSave = (upd: any[], cfg?: any) => {
     setSaveStatus('unsaved');
     /* 발행본과 실제로 다를 때만 배지 표시 → undo 로 발행본과 같아지면 자동으로 꺼짐 */
     const nowJson = JSON.stringify(buildPayload(upd, cfg ?? currentCfg()));
     setHasUnpublishedChanges(nowJson !== publishedRef.current);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    /* 충돌 모달이 떠 있는 동안엔 자동저장을 멈춘다(해결 전까지 덮어쓰기 방지). */
+    if (conflictRef.current) return;
     debounceRef.current = setTimeout(() => saveToDb(upd, cfg), 5000);
   };
-  /* 자동저장 = 초안(draft)에만 기록. 공개본(blocks)·방문자 페이지는 건드리지 않는다. */
+  /* 자동저장 = 초안(draft)에만 기록. 공개본(blocks)·방문자 페이지는 건드리지 않는다.
+     낙관적 잠금: 내가 읽은 version 그대로일 때만 저장하고 version 을 +1. 어긋나면(다른
+     운영진이 먼저 저장) 영향 행이 0건 → 충돌로 보고 모달을 띄운다. */
   const saveToDb = async (cur: any[], cfgOvr?: any) => {
     if (!adminClubId) {
       showToast('❌ 동아리 정보를 불러오지 못했습니다. 페이지를 새로고침해주세요.');
       return;
     }
+    if (conflictRef.current) return;
     setSaveStatus('saving');
     const cfg = cfgOvr ?? currentCfg();
     const payload = buildPayload(cur, cfg);
     if (pageId) {
-      const { error } = await supabase.from('club_pages').update({ draft: payload, updated_at: new Date().toISOString() }).eq('id', pageId);
+      const v = versionRef.current;
+      const { data, error } = await supabase.from('club_pages')
+        .update({ draft: payload, version: v + 1, updated_at: new Date().toISOString() })
+        .eq('id', pageId).eq('version', v).select('version');
       if (error) { showToast(`❌ 임시저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
+      if (!data || data.length === 0) { setConflictState(true); setSaveStatus('unsaved'); return; }
+      versionRef.current = data[0].version;
     } else {
-      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, draft: payload }).select().single();
+      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, draft: payload }).select('id, version').single();
       if (error) { showToast(`❌ 임시저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
-      if (data) setPageId(data.id);
+      if (data) { setPageId(data.id); versionRef.current = data.version ?? 0; }
     }
     setSaveStatus('saved');
   };
@@ -284,14 +309,20 @@ export default function Workspace() {
     const cfg = currentCfg();
     const payload = buildPayload(blocks, cfg);
     const ts = new Date().toISOString();
-    /* 공개본·초안을 동일하게 맞춰 '발행 안 된 변경사항'을 0으로 리셋 */
+    /* 공개본·초안을 동일하게 맞춰 '발행 안 된 변경사항'을 0으로 리셋.
+       발행도 자동저장과 같은 version 가드를 거쳐 동시 편집 유실을 막는다. */
     if (pageId) {
-      const { error } = await supabase.from('club_pages').update({ blocks: payload, draft: payload, published_at: ts, updated_at: ts }).eq('id', pageId);
+      const v = versionRef.current;
+      const { data, error } = await supabase.from('club_pages')
+        .update({ blocks: payload, draft: payload, published_at: ts, updated_at: ts, version: v + 1 })
+        .eq('id', pageId).eq('version', v).select('version');
       if (error) { showToast(`❌ 발행 실패: ${error.message}`); setPublishing(false); return; }
+      if (!data || data.length === 0) { setConflictState(true); setPublishing(false); return; }
+      versionRef.current = data[0].version;
     } else {
-      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, blocks: payload, draft: payload, published_at: ts }).select().single();
+      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, blocks: payload, draft: payload, published_at: ts }).select('id, version').single();
       if (error) { showToast(`❌ 발행 실패: ${error.message}`); setPublishing(false); return; }
-      if (data) setPageId(data.id);
+      if (data) { setPageId(data.id); versionRef.current = data.version ?? 0; }
     }
     const wasPublished = isPublished;
     publishedRef.current = JSON.stringify(payload);
@@ -302,6 +333,38 @@ export default function Workspace() {
     showToast(wasPublished ? '변경사항이 발행되었습니다!' : '홈페이지가 발행되었습니다!');
   };
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  /* ── 충돌 해결 ──
+     불러오기: 내 변경을 버리고 다른 운영진이 저장한 최신 초안을 다시 로드.
+     덮어쓰기: 최신 version 을 받아온 뒤 내 변경을 그 위에 강제 저장(상대 변경은 사라짐). */
+  const resolveReload = async () => {
+    setConflictState(false);
+    if (adminClubId) await loadPage(adminClubId);
+  };
+  const resolveOverwrite = async () => {
+    if (!pageId) { setConflictState(false); return; }
+    const { data } = await supabase.from('club_pages').select('version').eq('id', pageId).maybeSingle();
+    versionRef.current = data?.version ?? versionRef.current;
+    setConflictState(false);
+    await saveToDb(blocks);
+  };
+
+  /* ── presence: 같은 페이지를 동시에 보고 있는 다른 운영진 표시(경고 전용) ──
+     ephemeral broadcast 라 DB/RLS 변경 불필요. 같은 사용자의 여러 탭은 id 로 dedupe. */
+  useEffect(() => {
+    if (!pageId || !user) return;
+    const ch = supabase.channel(`wb-page:${pageId}`, { config: { presence: { key: user.id } } });
+    ch.on('presence', { event: 'sync' }, () => {
+      const state = ch.presenceState() as Record<string, any[]>;
+      const list = Object.values(state).flat().map((p: any) => ({ id: p.id, name: p.name }));
+      const uniq = Array.from(new Map(list.map(e => [e.id, e])).values());
+      setEditors(uniq.filter(e => e.id !== user.id));
+    });
+    ch.subscribe(async status => {
+      if (status === 'SUBSCRIBED') await ch.track({ id: user.id, name: profile?.name ?? '운영진' });
+    });
+    return () => { supabase.removeChannel(ch); };
+  }, [pageId, user?.id, profile?.name]);
 
   /* ── undo / redo ── */
   /* force=true for structural ops (add/delete/move) → always a discrete undo step.
@@ -476,7 +539,7 @@ export default function Workspace() {
   };
 
   const mkConfigSetter = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, key: string) =>
-    (val: T) => { setter(val); triggerAutoSave(blocks, { activeTheme, showFloatingBtn, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc, [key]: val }); };
+    (val: T) => { setter(val); triggerAutoSave(blocks, { activeTheme, showFloatingBtn, smoothScroll, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc, [key]: val }); };
 
   const themeHex: Record<string, string> = {
     'orange-500': '#f97316', 'black': '#000000', 'white': '#ffffff',
@@ -555,9 +618,16 @@ export default function Workspace() {
       >
         {/* 선택 외곽선 — 위젯 콘텐츠(배경 포함) 위에 그려 항상 보이게 */}
         {isSel && <div className="pointer-events-none absolute inset-0 z-[25] border-[3px] border-orange-500" />}
-        {/* 맥락형 chrome: hover 시엔 라벨만, 선택 시에만 액션 버튼(이동/복제/삭제) 노출 → 겹침 최소화 */}
-        <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-30 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-          <span className={`text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none ${isSel ? 'bg-orange-500' : 'bg-orange-400/90'}`}>{PALETTE_LABEL[block.type] ?? block.type}</span>
+        {/* 드래그 핸들 — 위젯 좌측 중앙 '바깥'(콘텐츠와 안 겹침). hover/선택 시 노출 */}
+        <div draggable onDragStart={e => onDragStartNode(e, block.id)} onClick={e => e.stopPropagation()}
+          className={`absolute -left-6 top-1/2 -translate-y-1/2 cursor-grab z-30 bg-orange-500 text-white p-1 rounded-l transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
+          title="드래그하여 이동">
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
+
+        {/* 라벨 + 액션 — 선택 시 상단 가장자리. 드래그 핸들은 위 좌측 바깥에 분리 배치. */}
+        <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-30 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none bg-orange-500">{PALETTE_LABEL[block.type] ?? block.type}</span>
           {isSel && (
             <div className="flex items-center gap-0.5 pointer-events-auto">
               <button onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'up'); }} disabled={!nested && topIndex === 0} title="위로 이동"
@@ -570,12 +640,6 @@ export default function Workspace() {
                 className="bg-red-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-red-600 transition-colors">✕</button>
             </div>
           )}
-        </div>
-
-        <div draggable onDragStart={e => onDragStartNode(e, block.id)} onClick={e => e.stopPropagation()}
-          className={`absolute left-1 top-1/2 -translate-y-1/2 cursor-grab z-30 p-1 rounded transition-opacity ${isSel ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-40 hover:opacity-80'}`}
-          title="드래그하여 이동">
-          <GripVertical className="w-3.5 h-3.5 text-gray-400" />
         </div>
 
         {/* 텍스트 서식은 멀티라인 필드의 리치 에디터(RichEditable) 자체 툴바가 담당 — 드래그 선택 글자에 적용 */}
@@ -618,7 +682,7 @@ export default function Workspace() {
           )}
         </div>
         <div draggable onDragStart={e => onDragStartNode(e, section.id)} onClick={e => e.stopPropagation()}
-          className={`absolute left-1 top-1 cursor-grab z-40 p-1 rounded transition-opacity ${isSel ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover/sec:opacity-50 hover:opacity-90'}`} title="드래그하여 섹션 순서 변경">
+          className={`absolute left-1 top-1 cursor-grab z-40 p-1 rounded transition-opacity ${isSel ? 'opacity-70' : 'opacity-0 group-hover/sec:opacity-60'}`} title="드래그하여 섹션 순서 변경">
           <GripVertical className="w-3.5 h-3.5 text-orange-400" />
         </div>
 
@@ -626,6 +690,8 @@ export default function Workspace() {
         {/* 에디터에선 overflow:visible — 행 툴바(-top-6)·+위젯(-bottom-3) 등 음수 오프셋 chrome 이
             섹션 경계 밖으로 나가도 보이게 한다. 공개 SectionBlock 은 overflow:hidden 유지(장식 클리핑). */}
         <div className="wb-section" style={{ position: 'relative', overflow: 'visible', ...resolveSectionBg(section) }}>
+          {/* 배경 장식(워터마크·셰이프) — 공개 SectionBlock 과 동일한 공유 컴포넌트. 자체 overflow:hidden 으로 섹션 경계 클리핑 → 에디터/공개 동일 시각 */}
+          <SectionDecor block={section} />
           {hasOverlay && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(section.bgOverlay || 0) / 100})`, zIndex: 1 }} />}
           <div className="wbe-secbody" style={{
             position: 'relative', zIndex: 2,
@@ -658,21 +724,23 @@ export default function Workspace() {
                 {/* 행 그리드 */}
                 <div className="wb-section-row" data-collapse={(row.cols || 1) >= 2 ? '' : undefined}
                   style={{ display: 'grid', gridTemplateColumns: rowGridTemplate(row), gap: `${row.gap ?? 24}px`, alignItems: 'start' }}>
-                  {(row.columns || []).map((col: any) => {
+                  {(row.columns || []).map((col: any, ci: number) => {
                     const colInfo = { sectionId: section.id, rowId: row.id, colId: col.id };
                     const empty = (col.widgets || []).length === 0;
                     const isColOver = dragOverId === col.id;
+                    const rowCard = rowCardWrapStyle(row, resolveThemeHex(activeTheme));
                     return (
                       <div key={col.id}
                         onDragOver={e => { if (dragId) { e.preventDefault(); setDragOverId(col.id); } }}
                         onDrop={e => { e.preventDefault(); onDropInColumn(section.id, row.id, col.id, null); }}
                         className={`wbe-col relative group/col rounded transition-colors ${isColOver ? 'outline outline-2 outline-green-500 bg-green-50/40' : ''}`}
-                        style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined }}>
+                        style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined, ...(rowCard || {}) }}>
+                        {rowCard && <RowCardHeader row={row} idx={ci} accent={resolveThemeHex(activeTheme)} />}
                         {(col.widgets || []).map((w: any) => renderWidgetShell(w, { nested: true, colInfo }))}
-                        {/* 빈 칸 안내 — 해당 칸 hover 또는 섹션 선택 시에만(맥락형) */}
+                        {/* 빈 칸 — 점선 테두리 + 작은 + 아이콘만(문구 제거로 노이즈 감소). 칸 hover/섹션 선택 시 */}
                         {empty && (
-                          <div className={`absolute inset-0 flex items-center justify-center text-center text-[12px] text-orange-400/70 border border-dashed border-orange-200 rounded transition-opacity pointer-events-none ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
-                            빈 칸 — 드래그 또는 + 위젯
+                          <div className={`absolute inset-0 flex items-center justify-center border border-dashed border-orange-200 rounded transition-opacity pointer-events-none ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                            <Plus className="w-4 h-4 text-orange-300" />
                           </div>
                         )}
                         {/* + 위젯 — 컬럼 하단 오버레이. 해당 칸 hover 또는 섹션 선택 시에만(맥락형) */}
@@ -687,13 +755,12 @@ export default function Workspace() {
               </div>
             ))}
           </div>
-          {/* 행 추가 — 섹션 하단 오버레이. 섹션 선택 시에만(맥락형) */}
-          <div className={`absolute left-0 right-0 bottom-1 z-30 flex items-center justify-center gap-1.5 transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`} onClick={e => e.stopPropagation()}>
-            <span className="text-[11px] font-black text-orange-700/70 bg-white/80 px-1 rounded">행 추가</span>
-            {[1, 2, 3, 4].map(n => (
-              <button key={n} onClick={e => { e.stopPropagation(); addRowToSection(section.id, n); }}
-                className="px-2.5 py-1 border border-dashed border-orange-300 bg-white text-orange-600 text-[11px] font-bold rounded hover:bg-orange-50">+ {n}열</button>
-            ))}
+          {/* 행 추가 — 섹션 하단 오버레이. 섹션 선택 시에만. 단일 버튼으로 단순화(열 수는 행 툴바에서 1~4 조정) */}
+          <div className={`absolute left-0 right-0 bottom-1 z-30 flex items-center justify-center transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`} onClick={e => e.stopPropagation()}>
+            <button onClick={e => { e.stopPropagation(); addRowToSection(section.id, 1); }} title="행 추가 (열 수는 행 위 1~4 버튼에서 조정)"
+              className="inline-flex items-center gap-1 px-3 py-1 border border-dashed border-orange-300 bg-white text-orange-600 text-[11px] font-bold rounded hover:bg-orange-50">
+              <Plus className="w-3 h-3" /> 행 추가
+            </button>
           </div>
         </div>
       </div>
@@ -770,26 +837,24 @@ export default function Workspace() {
         </div>
       </header>
 
+      {/* ── 동시 편집 안내 배너 — 다른 운영진이 같은 페이지를 열고 있을 때만 ── */}
+      {editors.length > 0 && (
+        <div className="flex items-center gap-2 px-5 py-1.5 bg-amber-50 border-b border-amber-300 text-[12px] font-bold text-amber-800 flex-shrink-0">
+          <span className="inline-flex w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          지금 <b className="font-black">{editors.map(e => e.name).join(', ')}</b>님도 이 페이지를 편집 중이에요.
+          같은 부분을 동시에 바꾸면 나중에 저장한 쪽이 우선되니 주의하세요.
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Left Panel: Widget Palette ── */}
-        <aside className="w-52 border-r border-black bg-white flex flex-col shrink-0 overflow-y-auto">
-          <div className="px-3 py-2.5 border-b border-gray-100">
-            <div className="text-[12px] font-black text-gray-400 tracking-widest uppercase">위젯</div>
-          </div>
-          <div className="p-2 flex flex-col gap-1">
-            {PALETTE.map(({ type, label, icon: Icon, disabled }) => (
-              <button key={type} onClick={() => handleAddBlock(type)} disabled={disabled}
-                title={label}
-                className={`flex items-center gap-2.5 px-3 py-2 border rounded transition-all group text-left
-                  ${disabled
-                    ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
-                    : 'border-gray-200 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-white cursor-pointer'}`}>
-                <Icon className={`w-4 h-4 shrink-0 ${disabled ? 'text-gray-300' : 'text-gray-400 group-hover:text-black'}`} />
-                <span className={`font-bold text-[12px] leading-tight ${disabled ? 'text-gray-300' : 'text-gray-600 group-hover:text-black'}`}>{label}</span>
-              </button>
-            ))}
-          </div>
+        {/* ── Left Rail: 얇은 바 + 위젯 추가(+) → 모달 ── */}
+        <aside className="w-14 border-r border-black bg-white flex flex-col items-center pt-4 shrink-0 gap-1.5">
+          <button onClick={() => setWidgetPickerOpen(true)} title="위젯 추가"
+            className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-white hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none">
+            <Plus className="w-5 h-5" />
+          </button>
+          <span className="text-[10px] font-black text-gray-400 tracking-wide">추가</span>
         </aside>
 
         {/* ── Center Canvas ── */}
@@ -827,7 +892,7 @@ export default function Workspace() {
                 {blocks.length === 0 && (
                   <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300 py-20">
                     <MousePointer className="w-8 h-8" />
-                    <span className="font-bold text-sm">좌측 팔레트에서 위젯을 클릭하여 추가하세요</span>
+                    <button onClick={() => setWidgetPickerOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border-2 border-black rounded text-black hover:bg-black hover:text-white transition-colors shadow-[3px_3px_0_0_rgba(0,0,0,1)]"><Plus className="w-4 h-4" /> 위젯 추가하기</button>
                   </div>
                 )}
 
@@ -850,11 +915,13 @@ export default function Workspace() {
                   </div>
                 )}
 
-                <div className="py-8 px-10">
-                  <div className="w-full py-6 border-2 border-dashed border-gray-200 flex items-center justify-center gap-2 text-gray-300 text-xs font-bold">
-                    <Plus className="w-3.5 h-3.5" /> 좌측 팔레트에서 위젯을 추가하세요
+                {blocks.length > 0 && (
+                  <div className="py-8 px-10">
+                    <button onClick={() => setWidgetPickerOpen(true)} className="w-full py-6 border-2 border-dashed border-gray-200 hover:border-black flex items-center justify-center gap-2 text-gray-400 hover:text-black text-xs font-bold transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> 위젯 추가
+                    </button>
                   </div>
-                </div>
+                )}
                 </div>
               </div>
             </div>
@@ -877,7 +944,11 @@ export default function Workspace() {
           <BlockPropertiesPanel
             block={selectedBlock}
             kind={selectedKind}
-            onUpdate={(field, value) => { if (field === '__setCols') handleSetRowCols(selectedBlock.id, value); else upd(selectedBlock.id, field, value); }}
+            onUpdate={(field, value) => {
+              if (field === '__setCols') handleSetRowCols(selectedBlock.id, value);
+              else if (field === '__merge') commit(patchNode(blocks, selectedBlock.id, value), false, `${selectedBlock.id}:merge`);
+              else upd(selectedBlock.id, field, value);
+            }}
             onDeselect={() => setSelectedBlockId(null)}
             onDelete={() => handleDeleteBlock(selectedBlock.id)}
             themeHex={themeHex}
@@ -887,6 +958,7 @@ export default function Workspace() {
           <WorkspaceProperties
             activeTheme={activeTheme} setActiveTheme={mkConfigSetter(setActiveTheme, 'activeTheme')}
             showFloatingBtn={showFloatingBtn} setShowFloatingBtn={mkConfigSetter(setShowFloatingBtn, 'showFloatingBtn')}
+            smoothScroll={smoothScroll} setSmoothScroll={mkConfigSetter(setSmoothScroll, 'smoothScroll')}
             contentWidth={contentWidth} setContentWidth={mkConfigSetter(setContentWidth, 'contentWidth')}
             pageBgColor={pageBgColor} setPageBgColor={mkConfigSetter(setPageBgColor, 'pageBgColor')}
             globalFont={globalFont} setGlobalFont={mkConfigSetter(setGlobalFont, 'globalFont')}
@@ -900,12 +972,62 @@ export default function Workspace() {
         </div>
       )}
 
+      {/* ── 저장 충돌 모달 — 다른 운영진이 먼저 저장해 버전이 어긋났을 때 ── */}
+      {conflict && (
+        <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] w-[440px] max-w-[92vw] p-6">
+            <div className="font-black text-lg mb-2">다른 사람이 페이지를 수정했어요</div>
+            <p className="text-[13px] font-bold text-gray-600 leading-relaxed mb-5">
+              내가 편집하는 동안 다른 운영진이 이 페이지를 저장했습니다.
+              지금 내 변경을 그대로 저장하면 <b className="text-black">상대의 변경이 사라집니다.</b><br />
+              어떻게 할지 선택해 주세요.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={resolveReload}
+                className="w-full px-4 py-2.5 font-black text-sm border-2 border-black bg-orange-500 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:-translate-y-px active:translate-y-px active:shadow-none transition-all">
+                최신 내용 불러오기 <span className="font-bold text-black/70">(내 변경 취소)</span>
+              </button>
+              <button onClick={resolveOverwrite}
+                className="w-full px-4 py-2.5 font-black text-sm border-2 border-black bg-white hover:bg-gray-50 shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-px active:shadow-none transition-all">
+                내 변경으로 덮어쓰기 <span className="font-bold text-gray-500">(상대 변경 삭제)</span>
+              </button>
+            </div>
+            <p className="text-[11px] font-bold text-gray-400 mt-3 leading-snug">
+              내 변경이 중요하다면 먼저 내용을 복사해 둔 뒤 ‘최신 내용 불러오기’를 누르는 것이 안전합니다.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 위젯 추가 모달 (좌측 레일 + 버튼) */}
+      {widgetPickerOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" onClick={() => setWidgetPickerOpen(false)}>
+          <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] p-5 w-[540px] max-w-[92vw] animate-slide-down" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="font-black text-base">위젯 추가</div>
+              <button onClick={() => setWidgetPickerOpen(false)} className="p-1.5 border border-gray-200 hover:border-black rounded transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 max-h-[62vh] overflow-y-auto hide-scrollbar">
+              {PALETTE.map(({ type, label, icon: Icon, disabled }) => (
+                <button key={type} disabled={disabled} onClick={() => { handleAddBlock(type); setWidgetPickerOpen(false); }}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 border rounded transition-all text-center group
+                    ${disabled ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
+                      : 'border-gray-200 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] cursor-pointer'}`}>
+                  <Icon className={`w-5 h-5 shrink-0 ${disabled ? 'text-gray-300' : 'text-gray-500 group-hover:text-black'}`} />
+                  <span className={`font-bold text-[12px] leading-tight ${disabled ? 'text-gray-300' : 'text-gray-700 group-hover:text-black'}`}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 섹션 컬럼 위젯 피커 */}
       {colPicker && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center" onClick={() => setColPicker(null)}>
           <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] p-4 w-[360px]" onClick={e => e.stopPropagation()}>
             <div className="text-xs font-black mb-3">이 칸에 추가할 위젯 선택</div>
-            <div className="grid grid-cols-3 gap-1.5 max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-3 gap-1.5 max-h-[60vh] overflow-y-auto hide-scrollbar">
               {COLUMN_WIDGETS.map(({ type, label, icon: Icon }) => (
                 <button key={type} onClick={() => { addWidgetToColumn(type, colPicker.sectionId, colPicker.rowId, colPicker.colId); setColPicker(null); }}
                   className="flex flex-col items-center gap-1 p-2.5 border border-gray-200 rounded hover:border-black hover:bg-rose-50 transition-colors">

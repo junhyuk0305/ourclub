@@ -4,6 +4,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 interface PulseSurvey {
   id: string;
@@ -73,7 +74,7 @@ export default function FeedbackAdmin() {
       .select('id, score, comment, created_at, user_id, profiles(display_name)')
       .eq('survey_id', survey.id)
       .order('created_at', { ascending: false });
-    const responses = (data as PulseResponse[]) ?? [];
+    const responses = (data as unknown as PulseResponse[]) ?? [];
     const avg = responses.length > 0
       ? Math.round(responses.reduce((s, r) => s + r.score, 0) / responses.length * 10) / 10
       : null;
@@ -166,7 +167,7 @@ export default function FeedbackAdmin() {
                           <div>
                             <h3 className="font-black text-lg">{survey.title}</h3>
                             <p className="text-xs text-gray-400 font-bold mt-0.5">
-                              {new Date(survey.created_at).toLocaleDateString('ko-KR')}
+                              {formatDate(survey.created_at)}
                               {detail && ` · 응답 ${responseCount}명 (${responseRate}%)`}
                             </p>
                           </div>
@@ -226,7 +227,7 @@ export default function FeedbackAdmin() {
                                           </span>
                                         </div>
                                         <p className="text-xs text-gray-400">
-                                          {new Date(response.created_at).toLocaleDateString('ko-KR')}
+                                          {formatDate(response.created_at)}
                                         </p>
                                       </div>
                                       {response.comment && (
@@ -264,7 +265,7 @@ export default function FeedbackAdmin() {
                                       <div key={r.id} className="bg-white border border-gray-200 p-3">
                                         <div className="flex items-center gap-2 mb-1">
                                           <div className="flex items-center gap-0.5">{stars(r.score)}</div>
-                                          <span className="text-xs text-gray-400 font-bold">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+                                          <span className="text-xs text-gray-400 font-bold">{formatDate(r.created_at)}</span>
                                         </div>
                                         <p className="text-sm font-bold text-gray-700">{r.comment}</p>
                                       </div>

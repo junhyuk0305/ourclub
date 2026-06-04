@@ -136,7 +136,6 @@ export default function AttendanceCreate() {
       session_date: sessionDate || null,
       target_generations: [],
     };
-    console.log('[AttendanceCreate] insert sessions →', insertPayload);
 
     const { data, error } = await supabase
       .from('sessions')
@@ -151,7 +150,6 @@ export default function AttendanceCreate() {
       return;
     }
     const newSession = data as SessionRow;
-    console.log('[AttendanceCreate] sessions insert OK:', newSession.id);
 
     const targetRows = targetMembers.map(m => ({ session_id: newSession.id, member_id: m.id }));
     const { error: tErr } = await supabase.from('session_targets').insert(targetRows);

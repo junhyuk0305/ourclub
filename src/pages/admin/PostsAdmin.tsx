@@ -6,6 +6,7 @@ import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 interface Post {
   id: string;
@@ -415,9 +416,7 @@ export default function PostsAdmin() {
                             </td>
                             <td className="p-4 text-right">
                               <p className="font-bold text-sm">
-                                {post.created_at
-                                  ? new Date(post.created_at).toLocaleDateString('ko-KR')
-                                  : '—'}
+                                {post.created_at ? formatDate(post.created_at) : '—'}
                               </p>
                               {post.is_published && (
                                 <p className="text-xs text-gray-500 font-bold mt-1">

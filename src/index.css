@@ -1,5 +1,27 @@
 @import "tailwindcss";
 
+/* ── 사이트 전반 커스텀 스크롤바 ───────────────────────────────────
+   본문·중앙 콘텐츠 등 일반 스크롤 영역에 적용되는 사이트 기본 스크롤바.
+   사이드 패널·모달은 아래 .hide-scrollbar 로 바를 숨긴다(specificity 로 우선). */
+* {
+  scrollbar-width: thin;                  /* Firefox */
+  scrollbar-color: #cbcbcb transparent;   /* thumb / track */
+}
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #cbcbcb;
+  border-radius: 999px;
+  border: 3px solid transparent;          /* 트랙과 간격 → 가늘고 둥근 알약형 */
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover  { background-color: #a3a3a3; }
+::-webkit-scrollbar-thumb:active { background-color: #8a8a8a; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── 스크롤바 숨김(사이드 패널·모달) ──────────────────────────────
+   바를 감춰, 내용 높이/너비가 달라져도 스크롤바가 생겼다 사라지며
+   레이아웃이 튀지 않게 한다(스크롤 자체는 동작). 위 전역 규칙을 덮는다. */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

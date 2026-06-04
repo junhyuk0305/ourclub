@@ -3,6 +3,7 @@ import { CorpHeader } from '../../components/corp/CorpHeader';
 import { CorpSidebar } from '../../components/corp/CorpSidebar';
 import { useCorp } from '../../contexts/CorpContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import {
   Plus, Loader, X, Building2, Calendar, Tag,
   CheckCircle2,
@@ -87,7 +88,7 @@ function AppCard({ app, onClick }: { app: B2BApplication; onClick: () => void })
         <p className="text-sm font-medium text-gray-600 line-clamp-2 mb-2">"{app.proposal_text}"</p>
       )}
       <p className="text-xs font-bold text-gray-400">
-        {new Date(app.submitted_at).toLocaleDateString('ko-KR')} 지원
+        {formatDate(app.submitted_at)} 지원
       </p>
     </div>
   );
@@ -164,7 +165,7 @@ function AppModal({
           )}
 
           <p className="text-xs font-bold text-gray-400">
-            지원일: {new Date(app.submitted_at).toLocaleDateString('ko-KR')}
+            지원일: {formatDate(app.submitted_at)}
           </p>
         </div>
 
@@ -499,7 +500,7 @@ export default function CorpDashboard() {
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">마감</span>
                         <span className="font-black text-sm flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-gray-400" />
-                          {new Date(selectedProject.deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          {formatDate(selectedProject.deadline, 'monthDay')}
                         </span>
                       </div>
                     )}

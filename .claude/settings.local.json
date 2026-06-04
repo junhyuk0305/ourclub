@@ -23,7 +23,21 @@
       "WebFetch(domain:www.gdweb.co.kr)",
       "Read(//tmp/refimgs/**)",
       "Bash(cygpath -w /tmp/refimgs/ref_24154.png)",
-      "Read(//c/Users/장준혁/AppData/Local/Temp/refimgs/**)"
+      "Read(//c/Users/장준혁/AppData/Local/Temp/refimgs/**)",
+      "PowerShell(npx vite build; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell(\"---@rollup dir---\")",
+      "PowerShell(\"---is native.js gone?---\")",
+      "PowerShell(Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force node_modules/rollup, node_modules/@rollup -ErrorAction SilentlyContinue; npm install 2>&1 | Select-Object -Last 5; \"INSTALL_EXIT=$LASTEXITCODE\")",
+      "PowerShell(\"native.js present? \")",
+      "PowerShell(\"wasm.js present? \")",
+      "PowerShell(node --stack-size=4000 ./node_modules/vite/bin/vite.js build; \"EXIT=$LASTEXITCODE\")",
+      "PowerShell($rd=\"$env:TEMP\\\\nodereport\"; Remove-Item -Recurse -Force $rd -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $rd | Out-Null; node --report-on-fatalerror --report-directory=\"$rd\" ./node_modules/vite/bin/vite.js build; \"EXIT=$LASTEXITCODE\"; Get-ChildItem $rd -ErrorAction SilentlyContinue | Select-Object Name)",
+      "PowerShell(node --stack-size=600 ./node_modules/vite/bin/vite.js build 2>&1 | Select-Object -Last 35; \"EXIT=$LASTEXITCODE\")",
+      "Bash(cd \"/c/Users/장준혁/Desktop/02_ourclub1\" && cat index.html 2>/dev/null | grep -i \"script\\\\|src=\" ; echo \"--- main entry ---\"; ls src/*.tsx src/*.ts 2>/dev/null; echo \"--- json imports ---\"; grep -rn \"import.*\\\\.json'\" src | head; echo \"--- count json files ---\"; find src -name \"*.json\" | head)",
+      "Read(//c/c/Users/장준혁/Desktop/02_ourclub1/**)",
+      "Bash(cp src/main.tsx /tmp/main.tsx.bak)",
+      "Read(//c/c/Users/장준혁/Desktop/02_ourclub1/src/**)",
+      "PowerShell(npx vite build 2>&1 | Select-Object -Last 12; \"EXIT=$LASTEXITCODE\")"
     ]
   },
   "statusLine": {

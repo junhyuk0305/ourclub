@@ -1,5 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BlockBody, BlockCtx, WB_STYLE, resolveThemeHex, getThemeText, THEME_BG } from './blockKit';
+
+/* 관성 스무스 스크롤(A1) — 페이지 설정에서 켠 경우에만 Lenis 를 동적 import(번들 0kb when off).
+   prefers-reduced-motion / 터치 기기는 자연스러운 네이티브 스크롤을 유지한다. */
+function useSmoothScroll(enabled?: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let lenis: any; let raf = 0; let cancelled = false;
+    import('lenis').then(({ default: Lenis }) => {
+      if (cancelled) return;
+      lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+      const loop = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(loop); };
+      raf = requestAnimationFrame(loop);
+    }).catch(() => {});
+    return () => { cancelled = true; cancelAnimationFrame(raf); lenis?.destroy?.(); };
+  }, [enabled]);
+}
 
 /* 공개 페이지 렌더러 — 블록 시각은 전부 blockKit 의 BlockBody(read 모드)가 담당한다.
    에디터 캔버스(Workspace)와 동일한 단일 코어를 쓰므로 둘이 갈라질 수 없다.
@@ -18,6 +36,7 @@ interface PageConfig {
   globalFont?: string;
   pageTitle?: string;
   pageDesc?: string;
+  smoothScroll?: boolean;
 }
 
 interface ActiveRecruit {
@@ -36,8 +55,9 @@ interface ClubPageRendererProps {
 export const ClubPageRenderer: React.FC<ClubPageRendererProps> = ({ blocks, config, activeRecruit, onApply }) => {
   const {
     activeTheme = 'orange-500', showFloatingBtn = true,
-    contentWidth = '860', pageBgColor = '', globalFont = '',
+    contentWidth = '860', pageBgColor = '', globalFont = '', smoothScroll = false,
   } = config;
+  useSmoothScroll(smoothScroll);
 
   const themeColor = resolveThemeHex(activeTheme);
   const isCustomTheme = activeTheme.startsWith('custom:');

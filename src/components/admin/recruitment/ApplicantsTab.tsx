@@ -5,6 +5,7 @@ import {
   Inbox, Tag, Calendar, ShieldCheck, ShieldX, FileText, ClipboardCheck, FileEdit, Save, Bell,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import { formatDate } from '../../../lib/format';
 import { useAdmin } from '../../../contexts/AdminContext';
 
 interface Applicant {
@@ -163,7 +164,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
       a.profiles?.university ?? '', a.profiles?.major ?? '',
       a.status, (a.tags ?? []).join(' '),
       a.score != null ? String(a.score) : '',
-      new Date(a.submitted_at).toLocaleDateString('ko-KR'),
+      formatDate(a.submitted_at),
       ...allKeys.map(k => a.answers?.[k] ?? ''),
     ]);
     const csv = [headers, ...rows]
@@ -469,7 +470,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm font-bold text-gray-500" onClick={() => setSelectedApplicant(app)}>
-                      {new Date(app.submitted_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      {formatDate(app.submitted_at, 'monthDay')}
                     </td>
                     <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
                       <span className={`inline-block text-xs font-black px-2.5 py-1 border ${isLast ? 'bg-green-100 border-green-400 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>

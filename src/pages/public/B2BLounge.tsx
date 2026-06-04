@@ -7,6 +7,7 @@ import {
 import { FadeInText } from '../../components/ui/FadeInText';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { Modal } from '../../components/ui/Modal';
@@ -109,7 +110,7 @@ function ProjectRow({
 
   const formatDeadline = (d: string | null) => {
     if (!d) return null;
-    return new Date(d).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) + ' 마감';
+    return formatDate(d, 'monthDay') + ' 마감';
   };
 
   return (
@@ -210,7 +211,7 @@ function ProjectDetailModal({
         {project.deadline && (
           <span className="text-xs font-bold text-orange-600 flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {new Date(project.deadline).toLocaleDateString('ko-KR')} 마감
+            {formatDate(project.deadline)} 마감
           </span>
         )}
       </div>

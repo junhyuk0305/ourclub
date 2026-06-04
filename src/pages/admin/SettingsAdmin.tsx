@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Save, AlertCircle, Loader, Check } from 'lucide-react';
+import { Save, AlertCircle, Loader, Check, X, ShieldCheck } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function SettingsAdmin() {
   const { adminClub, adminClubId, refreshClub } = useAdmin();
+  const [showHandover, setShowHandover] = useState(false);
 
   const [slug, setSlug]               = useState('');
   const [name, setName]               = useState('');
@@ -190,7 +192,11 @@ export default function SettingsAdmin() {
               <p className="font-bold text-red-800 mb-6">
                 운영진 권한을 다른 사용자(다음 기수 회장 등)에게 이양할 수 있습니다. 권한 이양 후에는 관리자 접근이 불가능합니다.
               </p>
-              <button className="px-6 py-3 border-2 border-red-500 text-red-600 font-black hover:bg-red-500 hover:text-white transition-colors bg-white">
+              <button
+                onClick={() => setShowHandover(true)}
+                disabled={!adminClubId}
+                className="px-6 py-3 border-2 border-red-500 text-red-600 font-black hover:bg-red-500 hover:text-white transition-colors bg-white disabled:opacity-40"
+              >
                 Super Admin 권한 양도하기 (Handover)
               </button>
             </section>
@@ -205,6 +211,132 @@ export default function SettingsAdmin() {
           {toast.msg}
         </div>
       )}
+
+      {showHandover && adminClubId && (
+        <HandoverModal clubId={adminClubId} clubName={name} onClose={() => setShowHandover(false)} />
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────
+// 운영진 권한 양도(Handover) 모달
+// ──────────────────────────────────────────
+interface HandoverCandidate {
+  user_id: string;
+  role: string;
+  display_name: string | null;
+  profiles: { name: string | null } | null;
+}
+
+function HandoverModal({ clubId, clubName, onClose }: { clubId: string; clubName: string; onClose: () => void }) {
+  const { user } = useAuth();
+  const [candidates, setCandidates] = useState<HandoverCandidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [targetId, setTargetId] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [handing, setHanding] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('club_members')
+        .select('user_id, role, display_name, profiles(name)')
+        .eq('club_id', clubId)
+        .eq('status', '활동중')
+        .not('user_id', 'is', null);
+      const rows = ((data as unknown as HandoverCandidate[]) ?? []).filter(m => m.user_id !== user?.id);
+      setCandidates(rows);
+      setLoading(false);
+    })();
+  }, [clubId, user?.id]);
+
+  const candName = (m: HandoverCandidate) => m.profiles?.name ?? m.display_name ?? '이름 미상';
+
+  const handover = async () => {
+    if (!targetId) { setError('양도할 구성원을 선택하세요.'); return; }
+    if (confirmText.trim() !== '양도') { setError('확인란에 "양도"를 정확히 입력하세요.'); return; }
+    setHanding(true);
+    setError('');
+    const { error: rpcError } = await supabase.rpc('handover_club_admin', {
+      p_club_id: clubId,
+      p_to_user_id: targetId,
+    });
+    if (rpcError) { setHanding(false); setError(rpcError.message); return; }
+    // 본인은 더 이상 운영진이 아님 → 컨텍스트 재초기화를 위해 전체 리로드
+    window.location.href = '/mypage';
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-white border-2 border-black w-full max-w-lg shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-black bg-red-50 flex justify-between items-center shrink-0">
+          <h3 className="text-xl font-black flex items-center gap-2 text-red-600">
+            <ShieldCheck className="w-5 h-5" /> 운영진 권한 양도
+          </h3>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+          <p className="text-sm font-bold text-gray-600">
+            <strong className="text-black">{clubName}</strong>의 운영 권한을 다른 활동중 구성원에게 넘깁니다.
+            양도하면 <strong className="text-red-600">본인은 부원으로 내려가며 관리자 페이지에 접근할 수 없습니다.</strong>
+          </p>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-10 text-gray-400"><Loader className="w-6 h-6 animate-spin" /></div>
+          ) : candidates.length === 0 ? (
+            <div className="border border-gray-200 bg-gray-50 p-4 text-sm font-bold text-gray-500">
+              양도할 수 있는 활동중 구성원이 없습니다. 먼저 구성원을 추가하세요.
+            </div>
+          ) : (
+            <div>
+              <label className="font-black text-xs block mb-1.5 text-gray-700">양도 대상</label>
+              <select
+                value={targetId}
+                onChange={e => setTargetId(e.target.value)}
+                className="w-full p-2.5 border border-black font-bold outline-none focus:border-red-500 text-sm bg-white"
+              >
+                <option value="" disabled>구성원 선택...</option>
+                {candidates.map(m => (
+                  <option key={m.user_id} value={m.user_id}>
+                    {candName(m)}{m.role === '운영진' ? ' (현재 운영진)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {candidates.length > 0 && (
+            <div>
+              <label className="font-black text-xs block mb-1.5 text-gray-700">
+                확인을 위해 <span className="text-red-600">양도</span> 를 입력하세요
+              </label>
+              <input
+                value={confirmText}
+                onChange={e => setConfirmText(e.target.value)}
+                placeholder="양도"
+                className="w-full p-2.5 border border-black font-bold outline-none focus:border-red-500 text-sm"
+              />
+            </div>
+          )}
+
+          {error && <p className="text-sm font-bold text-red-600">{error}</p>}
+        </div>
+
+        <div className="p-6 border-t border-black bg-gray-50 flex justify-end gap-3 shrink-0">
+          <button onClick={onClose} className="px-6 py-2.5 border border-black font-bold bg-white hover:bg-gray-100 text-sm">취소</button>
+          <button
+            onClick={handover}
+            disabled={handing || candidates.length === 0}
+            className="px-6 py-2.5 bg-red-600 text-white font-black hover:bg-red-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-40"
+          >
+            {handing ? <Loader className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            권한 양도하기
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

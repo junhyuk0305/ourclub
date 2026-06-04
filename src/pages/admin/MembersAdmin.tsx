@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { downloadExcel } from '../../lib/excel';
 
 type MemberStatus = '활동중' | '수료' | '탈퇴' | '활동정지';
@@ -686,7 +687,7 @@ export default function MembersAdmin() {
                             </span>
                           )}
                           <p className="text-xs font-bold text-gray-400">
-                            {new Date(req.created_at).toLocaleDateString('ko-KR')}
+                            {formatDate(req.created_at)}
                           </p>
                         </div>
                       </div>

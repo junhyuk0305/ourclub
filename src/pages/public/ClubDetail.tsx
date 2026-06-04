@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Calendar, Briefcase, Loader, AlertCircle, ChevronRight, Edit3 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAdmin } from '../../contexts/AdminContext';
 import { ClubPageRenderer } from '../../components/ClubPageRenderer';
 
@@ -269,7 +270,7 @@ export default function ClubDetail() {
                     <div className="md:w-1/2 p-8 md:p-10 flex flex-col justify-between bg-white">
                       <div>
                         <p className="text-xs font-bold text-gray-400 mb-3">
-                          {new Date(posts[0].created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {formatDate(posts[0].created_at, 'medium')}
                         </p>
                         <h3 className="text-2xl md:text-3xl font-black leading-snug group-hover:text-orange-600 transition-colors mb-4">
                           {posts[0].title}
@@ -465,7 +466,7 @@ export default function ClubDetail() {
                     <div className="md:w-1/2 p-8 md:p-10 flex flex-col justify-between bg-white">
                       <div>
                         <p className="text-xs font-bold text-gray-400 mb-3">
-                          {new Date(posts[0].created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {formatDate(posts[0].created_at, 'medium')}
                         </p>
                         <h3 className="text-2xl md:text-3xl font-black leading-snug group-hover:text-orange-600 transition-colors mb-4">
                           {posts[0].title}

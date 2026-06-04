@@ -6,6 +6,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { downloadExcel } from '../../lib/excel';
+import { formatDate } from '../../lib/format';
 
 interface SessionWithCounts {
   id: string;
@@ -20,7 +21,7 @@ interface SessionWithCounts {
 }
 
 const fmtDate = (s: string | null) =>
-  s ? new Date(s + 'T00:00:00').toLocaleDateString('ko-KR') : null;
+  s ? formatDate(s + 'T00:00:00') : null;
 
 export default function AttendanceList() {
   const { adminClubId } = useAdmin();
@@ -205,7 +206,7 @@ export default function AttendanceList() {
                             </td>
                           )}
                           <td className="p-4 font-bold text-sm">
-                            {fmtDate(s.session_date) ?? new Date(s.created_at).toLocaleDateString('ko-KR')}
+                            {fmtDate(s.session_date) ?? formatDate(s.created_at)}
                           </td>
                           <td className="p-4 text-sm">
                             {s.target_generations && s.target_generations.length > 0 ? (

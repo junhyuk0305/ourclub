@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 type AttStatus = '출석' | '지각' | '결석' | '공결';
 const STATUS_OPTIONS: AttStatus[] = ['출석', '지각', '결석', '공결'];
@@ -34,7 +35,7 @@ interface Row {
 }
 
 const fmtDate = (s: string | null) =>
-  s ? new Date(s + 'T00:00:00').toLocaleDateString('ko-KR') : null;
+  s ? formatDate(s + 'T00:00:00') : null;
 
 export default function AttendanceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -174,7 +175,7 @@ export default function AttendanceDetail() {
                 <div className="border-b border-black pb-6">
                   <h2 className="text-4xl font-black mb-2">{session.title}</h2>
                   <p className="text-gray-500 font-bold text-sm">
-                    {fmtDate(session.session_date) ?? new Date(session.created_at).toLocaleDateString('ko-KR')}
+                    {fmtDate(session.session_date) ?? formatDate(session.created_at)}
                     {session.target_generations && session.target_generations.length > 0 && (
                       <> · 대상 기수: {session.target_generations.join(', ')}</>
                     )}

@@ -1,11 +1,14 @@
 import React, { useRef } from 'react';
 import { Palette, AlertCircle } from 'lucide-react';
+import { WB_FONTS } from '../blockKit';
 
 interface WorkspacePropertiesProps {
   activeTheme: string;
   setActiveTheme: (theme: string) => void;
   showFloatingBtn: boolean;
   setShowFloatingBtn: (show: boolean) => void;
+  smoothScroll: boolean;
+  setSmoothScroll: (on: boolean) => void;
   contentWidth: string;
   setContentWidth: (w: string) => void;
   pageBgColor: string;
@@ -30,6 +33,7 @@ const THEME_HEX: Record<string, string> = {
 export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
   activeTheme, setActiveTheme,
   showFloatingBtn, setShowFloatingBtn,
+  smoothScroll, setSmoothScroll,
   contentWidth, setContentWidth,
   pageBgColor, setPageBgColor,
   globalFont, setGlobalFont,
@@ -42,7 +46,7 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
   };
 
   return (
-    <aside className="w-72 border-l border-black bg-white flex flex-col overflow-y-auto shrink-0 relative shadow-[-3px_0_0_0_rgba(0,0,0,0.08)] z-10">
+    <aside className="w-72 border-l border-black bg-white flex flex-col overflow-y-auto hide-scrollbar shrink-0 relative shadow-[-3px_0_0_0_rgba(0,0,0,0.08)] z-10">
       <div className="px-4 py-3 border-b border-black sticky top-0 bg-white z-20 flex items-center justify-between">
         <h2 className="font-black text-xs flex items-center gap-2">
           <Palette className="w-4 h-4 text-orange-500" /> 전역 속성 제어
@@ -122,11 +126,7 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
             <label className="font-black text-sm">기본 글꼴</label>
             <select value={globalFont} onChange={e => setGlobalFont(e.target.value)}
               className="w-full p-2 text-sm border border-gray-300 font-bold outline-none focus:border-orange-500 bg-white">
-              <option value="">기본 (시스템)</option>
-              <option value="'Nanum Gothic', sans-serif">나눔고딕</option>
-              <option value="'Nanum Myeongjo', serif">나눔명조</option>
-              <option value="Georgia, serif">Georgia (Serif)</option>
-              <option value="'Courier New', monospace">Courier (Mono)</option>
+              {WB_FONTS.map(f => <option key={f.label} value={f.v} style={{ fontFamily: f.v || undefined }}>{f.label}</option>)}
             </select>
           </div>
         </div>
@@ -145,7 +145,19 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" checked={showFloatingBtn} onChange={()=>setShowFloatingBtn(!showFloatingBtn)} className="sr-only peer" />
-            <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none border-2 border-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-black after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${showFloatingBtn ? 'bg-orange-500' : ''}`}></div>
+            <div className={`relative w-11 h-6 bg-gray-200 border-2 border-black rounded-full after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-0.5 after:h-4 after:w-4 after:bg-white after:border after:border-black after:rounded-full after:transition-transform peer-checked:after:translate-x-[20px] ${showFloatingBtn ? 'bg-orange-500' : ''}`}></div>
+          </label>
+        </div>
+
+        {/* Smooth Scroll (A1) — 관성 스크롤. 기본 OFF, 켜면 공개 페이지에서만 Lenis 동적 로드 */}
+        <div className="flex items-center justify-between border border-black p-4 bg-gray-50">
+          <div className="flex flex-col">
+            <span className="font-black text-sm">관성 스무스 스크롤</span>
+            <span className="text-xs font-bold text-gray-500">에이전시급 부드러운 스크롤감 (공개 페이지)</span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" checked={smoothScroll} onChange={()=>setSmoothScroll(!smoothScroll)} className="sr-only peer" />
+            <div className={`relative w-11 h-6 bg-gray-200 border-2 border-black rounded-full after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-0.5 after:h-4 after:w-4 after:bg-white after:border after:border-black after:rounded-full after:transition-transform peer-checked:after:translate-x-[20px] ${smoothScroll ? 'bg-orange-500' : ''}`}></div>
           </label>
         </div>
 

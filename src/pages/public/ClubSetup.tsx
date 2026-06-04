@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 
 type SetupState =
@@ -17,7 +18,7 @@ const STATUS_LABEL: Record<string, { text: string; color: string }> = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatDate(iso, 'medium');
 }
 
 export default function ClubSetup() {
@@ -68,7 +69,7 @@ export default function ClubSetup() {
         .maybeSingle();
 
       if (join) {
-        const clubName = (join.clubs as { name: string } | null)?.name ?? '알 수 없음';
+        const clubName = (join.clubs as unknown as { name: string } | null)?.name ?? '알 수 없음';
         setState({ kind: 'pending_join', clubName, createdAt: join.created_at });
         return;
       }

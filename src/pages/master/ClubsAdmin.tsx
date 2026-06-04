@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Loader, Search, CheckCircle, Circle, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { MasterLayout } from './MasterLayout';
 
 interface Club {
@@ -17,10 +18,6 @@ interface Club {
 }
 
 type Filter = 'all' | 'certified' | 'uncertified';
-
-function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
-}
 
 export default function ClubsAdmin() {
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -126,7 +123,7 @@ export default function ClubsAdmin() {
                     {c.is_certified && <CheckCircle className="w-4 h-4 text-orange-500 shrink-0" />}
                   </div>
                   <p className="text-xs font-bold text-gray-400 truncate">
-                    {c.type}{c.location ? ` · ${c.location}` : ''} · {fmt(c.created_at)}
+                    {c.type}{c.location ? ` · ${c.location}` : ''} · {formatDate(c.created_at, 'medium')}
                   </p>
                 </div>
 

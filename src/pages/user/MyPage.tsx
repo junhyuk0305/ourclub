@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useCorp } from '../../contexts/CorpContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 type Tab = 'applications' | 'attendance' | 'scraps' | 'notifications';
 
@@ -517,7 +518,7 @@ function ApplicationsSection() {
               <div key={app.id} className="p-5 border border-black bg-white flex items-center justify-between gap-4 hover:bg-orange-50 transition-colors">
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-gray-400 mb-1">
-                    {new Date(app.submitted_at).toLocaleDateString('ko-KR')} 지원
+                    {formatDate(app.submitted_at)} 지원
                   </div>
                   <div className="font-black text-base truncate">
                     {recruit?.clubs?.name ?? '—'}
@@ -631,7 +632,7 @@ function AttendanceHistorySection() {
                     {g.records.map((r, i) => (
                       <tr key={i} className="hover:bg-gray-50">
                         <td className="p-3 text-gray-500">
-                          {new Date(r.recorded_at).toLocaleDateString('ko-KR')}
+                          {formatDate(r.recorded_at)}
                         </td>
                         <td className="p-3">{(r.sessions as any)?.title ?? '—'}</td>
                         <td className={`p-3 text-right font-black ${statusColor[r.status] ?? ''}`}>
@@ -749,7 +750,7 @@ function notifTimeAgo(iso: string): string {
   if (h < 24) return `${h}시간 전`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR');
+  return formatDate(iso);
 }
 
 function NotificationsSection() {

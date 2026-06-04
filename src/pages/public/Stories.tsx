@@ -144,13 +144,11 @@ export default function Stories() {
       .from('post_likes')
       .select('post_id')
       .eq('user_id', user.id)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) return; // 에러 무시
         if (data) {
           setLikedPostIds(new Set(data.map((r: { post_id: string }) => r.post_id)));
         }
-      })
-      .catch(() => {
-        // 에러 무시
       });
   }, [user?.id]);
 
@@ -305,13 +303,11 @@ export default function Stories() {
         .from('post_likes')
         .delete()
         .eq('post_id', post.id)
-        .eq('user_id', user.id)
-        .catch(() => {});
+        .eq('user_id', user.id);
     } else {
       await supabase
         .from('post_likes')
-        .insert({ post_id: post.id, user_id: user.id })
-        .catch(() => {});
+        .insert({ post_id: post.id, user_id: user.id });
     }
   };
 

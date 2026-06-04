@@ -10,7 +10,7 @@
    ctx.edit 가 true 이면 텍스트 노드가 입력 필드로 바뀌고, 항목 추가/삭제 affordance 가
    노출된다. false 이면 공개 페이지와 픽셀 단위로 동일한 결과를 낸다.
    ───────────────────────────────────────────────────────────────────────── */
-import React, { useState, useEffect, useRef, ElementType } from 'react';
+import React, { useState, useEffect, useRef, useMemo, ElementType } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { MessageSquare, Clock, ChevronLeft, ChevronRight, Plus, X, Bold, AlignLeft, AlignCenter, AlignRight, AlignJustify, Baseline, PaintBucket } from 'lucide-react';
@@ -63,20 +63,48 @@ export function renderRichText(text: string, highlightColor?: string): React.Rea
 
 /* ── shared CSS the core depends on (양쪽 소비자가 주입) ── */
 export const WB_STYLE = `
+  /* 상업용 무료(OFL) 한글 웹폰트 — 빌더 캔버스와 공개 페이지 양쪽에서 동일하게 로드.
+     @import 는 규칙 최상단에 와야 하므로 다른 규칙보다 먼저 선언한다. */
+  @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Cute+Font&family=Do+Hyeon&family=Dokdo&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Gothic+A1:wght@400;700;900&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Gugi&family=Hahmlet:wght@400;700;900&family=Hi+Melody&family=IBM+Plex+Sans+KR:wght@300;400;500;700&family=Jua&family=Kirang+Haerang&family=Nanum+Brush+Script&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Gothic+Coding:wght@400;700&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400;700;900&family=Poor+Story&family=Song+Myung&family=Stylish&family=Sunflower:wght@300;500;700&family=Yeon+Sung&display=swap');
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+  /* 진입 애니메이션: duration/easing/distance 는 인라인 CSS 변수(--wb-dur/--wb-ease/--wb-dist)로 제어.
+     변수 미설정 시 각 효과의 기존 기본값을 fallback 으로 유지 → 기존 페이지 회귀 없음. */
   @keyframes wbFadeIn { from { opacity:0; } to { opacity:1; } }
-  @keyframes wbSlideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
-  @keyframes wbSlideIn { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:none; } }
+  @keyframes wbSlideUp { from { opacity:0; transform:translateY(var(--wb-dist,24px)); } to { opacity:1; transform:none; } }
+  @keyframes wbSlideIn { from { opacity:0; transform:translateX(calc(-1 * var(--wb-dist,24px))); } to { opacity:1; transform:none; } }
+  @keyframes wbSlideRight { from { opacity:0; transform:translateX(var(--wb-dist,24px)); } to { opacity:1; transform:none; } }
   @keyframes wbZoomIn { from { opacity:0; transform:scale(0.8); } to { opacity:1; transform:scale(1); } }
+  @keyframes wbClipUp { from { opacity:0; clip-path:inset(100% 0 0 0); transform:translateY(var(--wb-dist,24px)); } to { opacity:1; clip-path:inset(0 0 0 0); transform:none; } }
+  @keyframes wbBlurIn { from { opacity:0; filter:blur(14px); } to { opacity:1; filter:blur(0); } }
   @keyframes wbPulse { 0% { transform:scale(1); } 20% { transform:scale(1.12); } 40% { transform:scale(1); } 60% { transform:scale(1.08); } 80%,100% { transform:scale(1); } }
   @keyframes wbBounceIn { 0% { opacity:0; transform:translateY(-24px); } 60% { opacity:1; transform:translateY(8px); } 80% { transform:translateY(-4px); } 100% { transform:translateY(0); } }
-  .wb-anim-fadeIn { animation: wbFadeIn 0.7s ease forwards; }
-  .wb-anim-slideUp { animation: wbSlideUp 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
-  .wb-anim-slideIn { animation: wbSlideIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
-  .wb-anim-zoomIn { animation: wbZoomIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
-  .wb-anim-pulse { animation: wbPulse 1s ease forwards; }
-  .wb-anim-bounceIn { animation: wbBounceIn 0.8s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .wb-anim-fadeIn { animation: wbFadeIn var(--wb-dur,0.7s) var(--wb-ease,ease) forwards; }
+  .wb-anim-slideUp { animation: wbSlideUp var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-slideIn { animation: wbSlideIn var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-slideRight { animation: wbSlideRight var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-zoomIn { animation: wbZoomIn var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-clipUp { animation: wbClipUp var(--wb-dur,0.7s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-blurIn { animation: wbBlurIn var(--wb-dur,0.8s) var(--wb-ease,ease) forwards; }
+  .wb-anim-pulse { animation: wbPulse var(--wb-dur,1s) var(--wb-ease,ease) forwards; }
+  .wb-anim-bounceIn { animation: wbBounceIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  /* ── 텍스트 단위 리빌(A5): 단어/글자를 시차(stagger)로 올려 등장 ── */
+  @keyframes wbUnitReveal { from { opacity:0; transform: translateY(0.7em); } to { opacity:1; transform: translateY(0); } }
+  .wb-reveal-unit { display:inline-block; opacity:0; will-change: transform, opacity; }
+  .wb-reveal-on .wb-reveal-unit { animation: wbUnitReveal var(--wb-rdur,0.6s) cubic-bezier(0.16,1,0.3,1) forwards; }
+  @media (prefers-reduced-motion: reduce) { .wb-reveal-unit { opacity:1 !important; transform:none !important; animation:none !important; } }
+  /* ── Ken Burns 배경(동영상 대체 풀스크린 히어로): 느린 줌/팬 무한 반복 ── */
+  @keyframes wbKenZoom { from { transform:scale(1); } to { transform:scale(1.18); } }
+  @keyframes wbKenZoomOut { from { transform:scale(1.18); } to { transform:scale(1); } }
+  @keyframes wbKenPanL { from { transform:scale(1.18) translate(2%,0); } to { transform:scale(1.18) translate(-2%,0); } }
+  @keyframes wbKenPanR { from { transform:scale(1.18) translate(-2%,0); } to { transform:scale(1.18) translate(2%,0); } }
+  .wb-kenburns { position:absolute; inset:0; background-size:cover; background-position:center; will-change:transform; }
+  .wb-ken-zoom { animation: wbKenZoom 20s ease-in-out infinite alternate; }
+  .wb-ken-zoomout { animation: wbKenZoomOut 20s ease-in-out infinite alternate; }
+  .wb-ken-panL { animation: wbKenPanL 24s ease-in-out infinite alternate; }
+  .wb-ken-panR { animation: wbKenPanR 24s ease-in-out infinite alternate; }
   @media (prefers-reduced-motion: reduce) {
-    .wb-anim-fadeIn, .wb-anim-slideUp, .wb-anim-slideIn, .wb-anim-zoomIn, .wb-anim-pulse, .wb-anim-bounceIn { animation: none; }
+    .wb-anim-fadeIn, .wb-anim-slideUp, .wb-anim-slideIn, .wb-anim-slideRight, .wb-anim-zoomIn, .wb-anim-clipUp, .wb-anim-blurIn, .wb-anim-pulse, .wb-anim-bounceIn { animation: none; }
+    .wb-kenburns { animation: none; transform: scale(1.05); }
   }
   .wb-content { position: relative; }
   .wb-bleed {
@@ -102,11 +130,14 @@ export const WB_STYLE = `
   }
   @keyframes wbTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   .wb-ticker-track { display: inline-flex; flex-wrap: nowrap; white-space: nowrap; animation-name: wbTicker; animation-timing-function: linear; animation-iteration-count: infinite; will-change: transform; }
+  .wb-ticker-pause:hover .wb-ticker-track { animation-play-state: paused; }
   @media (prefers-reduced-motion: reduce) { .wb-ticker-track { animation: none; } }
   .wb-gutter { padding-left: clamp(20px, 5vw, 80px); padding-right: clamp(20px, 5vw, 80px); }
   .wb-inner { max-width: 1200px; margin-left: auto; margin-right: auto; }
   /* 리치 텍스트 에디터 placeholder */
   .wb-rich:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
+  /* 에디터 전용 — 인라인 편집 가능 텍스트. 외곽선/배경 없이 텍스트 커서만(편집 표시는 위젯 선택 외곽선이 담당). */
+  .wb-rich { cursor: text; }
   .wb-rich:focus { outline: none; }
   /* ── 섹션(행→컬럼→위젯) 반응형: 섹션 폭 기준 container query ── */
   .wb-section { container-type: inline-size; }
@@ -117,6 +148,30 @@ export const WB_STYLE = `
   .wb-btn-sh-hard { box-shadow: 4px 4px 0 0 rgba(0,0,0,0.9); }
   .wb-btn-sh-soft { box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
   .wb-btn-sh-glow { box-shadow: 0 0 16px 2px var(--wb-btn-c, #f97316); }
+  /* 버튼 호버 마이크로인터랙션(레퍼런스급) — 진입 애니메이션(AnimDiv)과 별개 */
+  .wb-btn-arrow .wb-arrow { display:inline-block; transition: transform 0.25s cubic-bezier(0.16,1,0.3,1); }
+  .wb-btn-arrow:hover .wb-arrow { transform: translateX(5px); }
+  .wb-btn-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .wb-btn-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,0.22); }
+  .wb-btn-uline { position: relative; }
+  .wb-btn-uline::after { content:''; position:absolute; left:50%; right:50%; bottom:0.55em; height:2px; background:currentColor; transition: left 0.25s ease, right 0.25s ease; }
+  .wb-btn-uline:hover::after { left:18%; right:18%; }
+  /* ── 버튼 마감 효과(fx) — 라이브러리급 디테일 ── */
+  /* 샤인: hover 시 광택 띠가 좌→우로 스쳐 지나감 */
+  .wb-btn-shine { position:relative; overflow:hidden; isolation:isolate; }
+  .wb-btn-shine::after { content:''; position:absolute; top:0; bottom:0; left:-60%; width:40%; transform:skewX(-20deg); background:linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); pointer-events:none; }
+  .wb-btn-shine:hover::after { left:120%; transition:left 0.75s cubic-bezier(0.16,1,0.3,1); }
+  /* 입체: 하단 단색 그림자 + 클릭 시 눌림(택타일) */
+  .wb-btn-press { transition: transform 0.1s ease, box-shadow 0.1s ease; box-shadow:0 5px 0 0 rgba(0,0,0,0.22); }
+  .wb-btn-press:hover { transform: translateY(1px); box-shadow:0 4px 0 0 rgba(0,0,0,0.22); }
+  .wb-btn-press:active { transform: translateY(5px); box-shadow:0 0 0 0 rgba(0,0,0,0.22); }
+  /* 글래스: 반투명 + 배경 블러(이미지/그라디언트 섹션 위) */
+  .wb-btn-glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  @media (prefers-reduced-motion: reduce) {
+    .wb-btn-arrow:hover .wb-arrow, .wb-btn-lift:hover { transform:none; }
+    .wb-btn-shine:hover::after { transition:none; }
+    .wb-btn-press, .wb-btn-press:hover, .wb-btn-press:active { transform:none; }
+  }
 `;
 
 /* ─────────────────────────────────────────────
@@ -145,14 +200,50 @@ const autosize = (el: HTMLTextAreaElement | null) => {
  *  - multiline=true  → 자동 높이 <textarea>
  *  - multiline=false → 한 줄 <input>
  */
-/* 리치 텍스트 글꼴 옵션 (전역 글꼴 목록과 동일) */
-const RICH_FONTS: { v: string; label: string }[] = [
-  { v: '', label: '기본' },
+/* 웹빌더 글꼴 단일 소스 — 전역 글꼴(WorkspaceProperties)과 위젯별 리치텍스트 글꼴이 공유한다.
+   모두 상업용 무료(SIL OFL) 한글 웹폰트이며 WB_STYLE 의 @import 로 함께 로드된다. */
+export const WB_FONTS: { v: string; label: string }[] = [
+  { v: '', label: '기본 (시스템)' },
+  // 산세리프(고딕)
+  { v: "'Pretendard', sans-serif", label: '프리텐다드' },
+  { v: "'Noto Sans KR', sans-serif", label: '본고딕 (Noto Sans)' },
+  { v: "'IBM Plex Sans KR', sans-serif", label: 'IBM 플렉스 산스' },
+  { v: "'Gothic A1', sans-serif", label: '고딕 A1' },
   { v: "'Nanum Gothic', sans-serif", label: '나눔고딕' },
+  { v: "'Gowun Dodum', sans-serif", label: '고운돋움' },
+  { v: "'Sunflower', sans-serif", label: '선플라워' },
+  { v: "'Stylish', sans-serif", label: '스타일리시 (얇은)' },
+  // 세리프(명조)
+  { v: "'Noto Serif KR', serif", label: '본명조 (Noto Serif)' },
+  { v: "'Hahmlet', serif", label: '함렛 (모던 명조)' },
   { v: "'Nanum Myeongjo', serif", label: '나눔명조' },
-  { v: 'Georgia, serif', label: 'Georgia' },
-  { v: "'Courier New', monospace", label: 'Courier' },
+  { v: "'Gowun Batang', serif", label: '고운바탕' },
+  { v: "'Song Myung', serif", label: '송명' },
+  // 제목/디스플레이
+  { v: "'Black Han Sans', sans-serif", label: '검은고딕 (임팩트)' },
+  { v: "'Do Hyeon', sans-serif", label: '도현' },
+  { v: "'Jua', sans-serif", label: '주아 (둥근)' },
+  { v: "'Gugi', cursive", label: '구기' },
+  { v: "'Kirang Haerang', cursive", label: '기랑해랑 (복고)' },
+  { v: "'Cute Font', cursive", label: '큐트 (둥근 제목)' },
+  // 손글씨
+  { v: "'Nanum Pen Script', cursive", label: '나눔손글씨 펜' },
+  { v: "'Nanum Brush Script', cursive", label: '나눔손글씨 붓' },
+  { v: "'Yeon Sung', cursive", label: '연성 (붓글씨)' },
+  { v: "'Gaegu', cursive", label: '개구 (손글씨)' },
+  { v: "'Gamja Flower', cursive", label: '감자꽃 (손글씨)' },
+  { v: "'Hi Melody', cursive", label: '하이멜로디 (귀여운)' },
+  { v: "'Poor Story', cursive", label: '푸어스토리 (또박)' },
+  { v: "'Dokdo', cursive", label: '독도 (마커)' },
+  // 코딩(모노)
+  { v: "'Nanum Gothic Coding', monospace", label: '나눔고딕코딩' },
+  // 영문
+  { v: 'Georgia, serif', label: 'Georgia (영문)' },
+  { v: "'Courier New', monospace", label: 'Courier (영문)' },
 ];
+
+/* 리치 텍스트 글꼴 옵션 (전역 글꼴 목록과 동일) */
+const RICH_FONTS = WB_FONTS;
 
 const isHtml = (v?: string) => !!v && /<[a-z][\s\S]*>/i.test(v);
 
@@ -379,10 +470,17 @@ export { genId, autosize, stop };
    Decorative overlays + animation wrapper (read=edit 동일)
 ───────────────────────────────────────────── */
 /** 스크롤 진입 애니메이션. edit 모드에선 애니메이션을 끄고 즉시 표시(편집 방해 방지). */
+/* 등장 이징 프리셋 → CSS timing-function */
+const EASE_MAP: Record<string, string> = {
+  ease: 'ease',
+  power: 'cubic-bezier(0.16,1,0.3,1)',    // 부드러운 감속(현재 slideUp 기본)
+  back: 'cubic-bezier(0.34,1.56,0.64,1)', // 살짝 오버슈트
+  linear: 'linear',
+};
 export const AnimDiv: React.FC<{
-  animation?: string; delay?: number; className?: string; style?: React.CSSProperties;
-  disabled?: boolean; children: React.ReactNode;
-}> = ({ animation, delay = 0, className = '', style = {}, disabled, children }) => {
+  animation?: string; delay?: number; duration?: number; easing?: string; distance?: number;
+  className?: string; style?: React.CSSProperties; disabled?: boolean; children: React.ReactNode;
+}> = ({ animation, delay = 0, duration, easing, distance, className = '', style = {}, disabled, children }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   const [editPlay, setEditPlay] = useState(0);
@@ -398,20 +496,85 @@ export const AnimDiv: React.FC<{
     obs.observe(el);
     return () => obs.disconnect();
   }, [disabled]);
-  /* edit 모드: 애니메이션 값이 바뀌면 미리보기로 다시 재생 (key 변경 → 리마운트로 CSS 애니메이션 재시작) */
+  /* edit 모드: 애니메이션/속도/이징/거리 값이 바뀌면 미리보기로 다시 재생 (key 변경 → 리마운트로 CSS 애니메이션 재시작) */
   useEffect(() => {
     if (!disabled) return;
     if (firstRun.current) { firstRun.current = false; return; }
     setEditPlay(p => p + 1);
-  }, [animation, disabled]);
+  }, [animation, duration, easing, distance, disabled]);
   const hasAnim = !!animation && animation !== 'none';
   const playing = disabled ? hasAnim : (hasAnim && inView);
   const animClass = playing ? `wb-anim-${animation}` : '';
-  const finalStyle: React.CSSProperties = playing && delay > 0 ? { ...style, animationDelay: `${delay}s` } : style;
+  const finalStyle: React.CSSProperties = { ...style };
+  if (playing) {
+    if (delay > 0) finalStyle.animationDelay = `${delay}s`;
+    if (duration != null) (finalStyle as any)['--wb-dur'] = `${duration}s`;
+    if (easing) (finalStyle as any)['--wb-ease'] = EASE_MAP[easing] || easing;
+    if (distance != null) (finalStyle as any)['--wb-dist'] = `${distance}px`;
+  }
   return (
     <div ref={ref} key={disabled ? `${animation}-${editPlay}` : undefined} className={[animClass, className].filter(Boolean).join(' ')} style={finalStyle}>
       {children}
     </div>
+  );
+};
+
+/* 리치텍스트 HTML → 평문(줄바꿈 보존). 리빌은 글자 단위로 쪼개므로 마크업이 그대로 노출되면
+   안 된다(= "코드가 뜨는" 버그). 블록/<br>은 개행으로 바꾼 뒤 sanitize→textContent 로 평문만 추출. */
+const htmlToPlain = (html: string): string => {
+  const withBreaks = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p|h[1-6])>/gi, '\n');
+  if (typeof document === 'undefined') return withBreaks.replace(/<[^>]+>/g, '');
+  const doc = new DOMParser().parseFromString(DOMPurify.sanitize(withBreaks), 'text/html');
+  return (doc.body.textContent || '').replace(/\n{2,}/g, '\n').replace(/^\n+|\n+$/g, '');
+};
+
+/* 텍스트 단위 리빌(A5): 헤드라인을 단어/글자로 쪼개 stagger 로 등장.
+   공개 렌더 전용(편집 모드는 일반 텍스트). 입력이 리치텍스트 HTML 이면 평문으로 변환 후 분해하고,
+   평문 입력은 ==하이라이트== 색을 유닛 단위로 보존한다. */
+export const RevealText: React.FC<{
+  text: string; mode: 'word' | 'char'; stagger?: number; unitDur?: number;
+  Tag?: ElementType; className?: string; style?: React.CSSProperties; highlightColor?: string;
+}> = ({ text, mode, stagger = 0.04, unitDur, Tag = 'p', className = '', style, highlightColor }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setOn(true); obs.disconnect(); } },
+      { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
+    obs.observe(el); return () => obs.disconnect();
+  }, []);
+  const plain = useMemo(() => isHtml(text) ? htmlToPlain(text) : text, [text]);
+  /* ==text== 하이라이트 구간을 보존하며 토큰화 → 줄(\n) → 단어/글자 단위로 분해 */
+  const segments = plain.split(/(==[^=]+==)/g).map(p => {
+    const hl = p.startsWith('==') && p.endsWith('==') && p.length > 4;
+    return { text: hl ? p.slice(2, -2) : p, hl };
+  });
+  let idx = 0;
+  const nodes: React.ReactNode[] = [];
+  segments.forEach((seg, si) => {
+    const lines = seg.text.split('\n');
+    lines.forEach((line, li) => {
+      if (li > 0) nodes.push(<br key={`br-${si}-${li}`} />);
+      const units = mode === 'char' ? Array.from(line) : line.split(/(\s+)/);
+      units.forEach((u, ui) => {
+        if (u === '') return;
+        if (/^\s+$/.test(u)) { nodes.push(<React.Fragment key={`s-${si}-${li}-${ui}`}>{u}</React.Fragment>); return; }
+        const i = idx++;
+        nodes.push(
+          <span key={`u-${si}-${li}-${ui}`} className="wb-reveal-unit"
+            style={{ animationDelay: `${(i * stagger).toFixed(3)}s`, color: seg.hl ? (highlightColor || '#f97316') : undefined, fontWeight: seg.hl ? 'inherit' : undefined }}>
+            {u}
+          </span>
+        );
+        /* 단어/글자 사이 공백은 split(/(\s+)/)·Array.from 이 이미 보존(위 whitespace 분기) → 추가 공백 없음 */
+      });
+    });
+  });
+  return (
+    <Tag ref={ref as any} className={`wb-reveal ${on ? 'wb-reveal-on' : ''} ${className}`.trim()}
+      style={{ ...style, ...(unitDur ? { ['--wb-rdur' as any]: `${unitDur}s` } : {}) }}>
+      {nodes}
+    </Tag>
   );
 };
 
@@ -445,14 +608,21 @@ const TextBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   };
   if (block.textStroke && block.textStrokeColor) (baseStyle as any).WebkitTextStroke = `${block.textStroke}px ${block.textStrokeColor}`;
   const hl = block.highlightColor || ctx.themeColor;
+  /* 글자/단어 단위 리빌(A5): 공개 렌더에서만 적용, 편집 모드는 일반 인라인 편집 유지 */
+  const useReveal = !ctx.edit && block.textReveal && block.textReveal !== 'none';
   return (
     <div style={{ backgroundColor: block.bgColor || 'transparent', paddingTop: `${ptop}px`, paddingBottom: `${pbot}px`, paddingLeft: `${pleft}px`, paddingRight: `${pright}px` }}>
       <div style={{ maxWidth: block.maxWidth ? `${block.maxWidth}px` : '100%' }} className="mx-auto">
-        {/* 애니메이션은 글자에만 적용한다(배경/여백은 정적 유지). */}
-        <AnimDiv animation={block.animation} disabled={ctx.edit}>
-          <EditText ctx={ctx} tag={Tag} value={block.text} onChange={v => ctx.upd?.('text', v)}
-            className={getAlignClass(block.align)} style={baseStyle} highlightColor={hl} placeholder="텍스트를 입력하세요..." />
-        </AnimDiv>
+        {useReveal ? (
+          <RevealText text={block.text || ''} mode={block.textReveal} stagger={block.revealStagger ?? 0.04} unitDur={block.animDuration}
+            Tag={Tag} className={getAlignClass(block.align)} style={baseStyle} highlightColor={hl} />
+        ) : (
+          /* 애니메이션은 글자에만 적용한다(배경/여백은 정적 유지). */
+          <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} distance={block.animDistance} disabled={ctx.edit}>
+            <EditText ctx={ctx} tag={Tag} value={block.text} onChange={v => ctx.upd?.('text', v)}
+              className={getAlignClass(block.align)} style={baseStyle} highlightColor={hl} placeholder="텍스트를 입력하세요..." />
+          </AnimDiv>
+        )}
       </div>
     </div>
   );
@@ -472,8 +642,10 @@ const ButtonBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) =>
   const borderColor = block.borderColor || primary;
   const textColor = block.btnTextColor || (transparent ? primary : readableTextOn(bg));
   const shadowClass = `wb-btn-sh-${block.btnShadow || 'none'}`;
+  /* 마감 효과(fx): shine(광택 스침)·press(입체 누름)·glass(반투명 블러). 그라디언트는 btnGradient 우선. */
+  const fxClass = ({ shine: 'wb-btn-shine', press: 'wb-btn-press', glass: 'wb-btn-glass' } as Record<string, string>)[block.btnFx] || '';
   const btnStyle: React.CSSProperties = {
-    backgroundColor: bg,
+    background: block.btnGradient || bg,             // 그라디언트 우선, 없으면 단색
     color: textColor,
     borderRadius: `${block.radius || 0}px`,
     border: bw > 0 ? `${bw}px solid ${borderColor}` : 'none',
@@ -485,17 +657,19 @@ const ButtonBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) =>
     const url = /^https?:\/\//i.test(block.actionUrl) ? block.actionUrl : `https://${block.actionUrl}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
-  const base = `font-black text-center ${sizeClass} ${shadowClass}`;
+  const hoverClass = ({ arrow: 'wb-btn-arrow', lift: 'wb-btn-lift', underline: 'wb-btn-uline' } as Record<string, string>)[block.btnHover] || '';
+  const isArrow = block.btnHover === 'arrow';
+  const base = `font-black ${isArrow ? 'inline-flex items-center justify-center gap-2' : 'text-center'} ${sizeClass} ${shadowClass} ${fxClass} ${hoverClass}`.trim();
   return (
     <div className="flex justify-center w-full" style={{ paddingTop: `${block.paddingY ?? 32}px`, paddingBottom: `${block.paddingY ?? 32}px`, backgroundColor: block.bgColor || 'transparent' }}>
-      {/* 애니메이션은 텍스트와 동일하게 AnimDiv 가 담당: 공개=뷰 진입 1회, 편집=옵션 선택 시 미리보기 재생 (hover 아님) */}
-      <AnimDiv animation={block.btnAnim} disabled={ctx.edit} className="inline-flex">
+      {/* 진입 애니메이션은 AnimDiv, hover 마이크로인터랙션은 별도 클래스(wb-btn-*) */}
+      <AnimDiv animation={block.btnAnim} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="inline-flex">
         {ctx.edit ? (
           <input value={block.text || '버튼 텍스트'} onChange={e => ctx.upd?.('text', e.target.value)} onClick={stop} onPointerDown={stop}
             className={`${base} outline-none`} style={btnStyle} />
         ) : (
           <button onClick={handleClick} className={base} style={btnStyle}>
-            {block.text}
+            {block.text}{isArrow && <span className="wb-arrow">→</span>}
           </button>
         )}
       </AnimDiv>
@@ -513,14 +687,14 @@ const ImageBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
   const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
 
   const wrap = (children: React.ReactNode) => (
-    <div className="w-full flex" style={{
+    <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full flex" style={{
       justifyContent: justify,
       paddingTop: `${block.paddingTop ?? block.paddingY ?? 0}px`,
       paddingBottom: `${block.paddingBottom ?? block.paddingY ?? 0}px`,
       paddingLeft: `${block.paddingLeft ?? 0}px`,
       paddingRight: `${block.paddingRight ?? 0}px`,
       backgroundColor: block.bgColor || 'transparent',
-    }}>{children}</div>
+    }}>{children}</AnimDiv>
   );
 
   if (!block.src) {
@@ -606,9 +780,12 @@ const TickerView: React.FC<{ block: any }> = ({ block }) => {
     </span>
   );
 
+  const fadeMask = block.tickerFade
+    ? { WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)' }
+    : {};
   return (
-    <div ref={containerRef} className="w-full overflow-hidden select-none" style={{ backgroundColor: block.bgColor || '#f97316', paddingTop: `${block.paddingY ?? 14}px`, paddingBottom: `${block.paddingY ?? 14}px` }}>
-      <div className="wb-ticker-track" style={{ color: block.textColor || '#ffffff', fontSize: `${block.tickerFontSize || 13}px`, fontWeight: 800, letterSpacing: '0.08em', animationDuration: `${speed * repeat}s` }}>
+    <div ref={containerRef} className={`w-full overflow-hidden select-none ${block.tickerPause ? 'wb-ticker-pause' : ''}`.trim()} style={{ backgroundColor: block.bgColor || '#f97316', paddingTop: `${block.paddingY ?? 14}px`, paddingBottom: `${block.paddingY ?? 14}px`, ...fadeMask }}>
+      <div className="wb-ticker-track" style={{ color: block.textColor || '#ffffff', fontSize: `${block.tickerFontSize || 13}px`, fontWeight: 800, letterSpacing: '0.08em', animationDuration: `${speed * repeat}s`, animationDirection: block.tickerReverse ? 'reverse' : 'normal' }}>
         {half(true)}<span aria-hidden>{half(false)}</span>
       </div>
     </div>
@@ -617,12 +794,12 @@ const TickerView: React.FC<{ block: any }> = ({ block }) => {
 
 const DividerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   /* 흐르는 띠(ticker) 변형 — 구분 요소에 편입 */
-  if (block.variant === 'ticker') return <TickerView block={block} />;
-  return (
+  const inner = block.variant === 'ticker' ? <TickerView block={block} /> : (
     <div className="w-full wb-gutter" style={{ paddingTop: `${block.paddingY || 24}px`, paddingBottom: `${block.paddingY || 24}px`, backgroundColor: block.bgColor || 'transparent' }}>
       <hr style={{ borderStyle: block.style || 'solid', borderTopWidth: `${block.thickness || 1}px`, borderColor: block.color || '#e5e7eb', width: `${block.width || 100}%`, margin: '0 auto' }} />
     </div>
   );
+  return <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">{inner}</AnimDiv>;
 };
 
 /* ─────────────────────────────────────────────
@@ -652,7 +829,7 @@ const StatItemView: React.FC<{ item: any; block: any; animate: boolean }> = ({ i
   useEffect(() => {
     if (!animate || didAnimate.current || isNaN(rawNum)) return;
     didAnimate.current = true;
-    const duration = 1500; const start = Date.now(); let raf: number;
+    const duration = Math.round((block.countDuration ?? 1.5) * 1000); const start = Date.now(); let raf: number;
     const tick = () => {
       const t = Math.min((Date.now() - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
@@ -684,6 +861,7 @@ const StatsBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
   const accentColor = block.accentLineColor || ctx.themeColor;
   const ops = listOps(ctx, block, 'items');
   return (
+    <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
     <div ref={ref} className="wbr-grid-wrap" style={{ backgroundColor: block.bgColor || '#ffffff', paddingTop: `${block.paddingY || 56}px`, paddingBottom: `${block.paddingY || 56}px` }}>
       <div className="wb-gutter wb-inner wbr-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${block.cols || 3}, 1fr)`, gap: isCards ? '20px' : '24px' }}>
         {ops.arr.map((item: any, i: number) => {
@@ -715,40 +893,62 @@ const StatsBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
         </div>
       )}
     </div>
+    </AnimDiv>
   );
+};
+
+/* FAQ 스타일 변형: boxed(검정 박스, 기본) · line(얇은 구분선 에디토리얼) · plain(미니멀 대형) */
+const faqLook = (block: any) => {
+  const v = block.faqStyle || 'boxed';
+  const boxed = v === 'boxed';
+  const big = v === 'plain';
+  return {
+    v, boxed, big,
+    qSize: block.qSize ?? (boxed ? 15 : big ? 22 : 18),
+    qColor: block.qColor || '#111827',
+    aColor: block.aColor || '#6b7280',
+    lineColor: block.faqLineColor || (boxed ? '#000000' : '#e5e7eb'),
+    pad: boxed ? 'px-5 py-4' : (big ? 'py-7' : 'py-5'),
+    aPad: boxed ? 'px-5 py-4' : (big ? 'pb-7' : 'pb-5'),
+  };
 };
 
 const FaqRow: React.FC<{ item: any; idx: number; block: any; ctx: BlockCtx; onUpdate: (f: string, v: string) => void; onDelete: () => void }> = ({ item, idx, block, ctx, onUpdate, onDelete }) => {
   const [open, setOpen] = useState(ctx.edit);
   const isArrow = block.iconStyle === 'arrow';
+  const L = faqLook(block);
+  const numbered = block.faqNumbered;
+  const rowBorder: React.CSSProperties = L.boxed ? {} : { borderBottom: `1px solid ${L.lineColor}` };
+  const numTag = numbered ? <span className="tabular-nums shrink-0 font-black" style={{ color: ctx.themeColor, fontSize: Math.round(L.qSize * 0.7), lineHeight: 1.4 }}>{String(idx + 1).padStart(2, '0')}</span> : null;
   if (ctx.edit) {
     return (
-      <div>
-        <div className="flex items-center gap-3 px-5 py-4 bg-white">
-          <button onClick={e => { stop(e); setOpen(o => !o); }} className="font-black text-xs text-gray-400 shrink-0 w-5 text-left">{idx + 1}</button>
+      <div style={rowBorder}>
+        <div className={`flex items-center gap-3 ${L.pad} ${L.boxed ? 'bg-white' : ''}`}>
+          {numbered ? numTag : <button onClick={e => { stop(e); setOpen(o => !o); }} className="font-black text-xs text-gray-400 shrink-0 w-5 text-left">{idx + 1}</button>}
           <input value={item.question || ''} onChange={e => onUpdate('question', e.target.value)} onClick={stop} onPointerDown={stop}
-            className="flex-1 font-bold outline-none bg-transparent text-sm" placeholder="질문을 입력하세요" />
+            className="flex-1 font-bold outline-none bg-transparent" style={{ fontSize: L.qSize, color: L.qColor }} placeholder="질문을 입력하세요" />
           <button onClick={e => { stop(e); setOpen(o => !o); }} className="text-gray-400 text-sm shrink-0">{isArrow ? (open ? '↑' : '↓') : (open ? '−' : '+')}</button>
           <button onClick={e => { stop(e); onDelete(); }} className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 ml-1">✕</button>
         </div>
         {open && (
-          <div className="px-5 py-4 border-t border-gray-100" style={{ backgroundColor: block.openBg || '#fff7ed' }}>
+          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-gray-100' : ''}`} style={{ backgroundColor: L.boxed ? (block.openBg || '#fff7ed') : 'transparent' }}>
             <textarea value={item.answer || ''} onChange={e => onUpdate('answer', e.target.value)} onClick={stop} onPointerDown={stop} ref={autosize}
-              className="w-full bg-transparent outline-none font-medium text-gray-600 resize-none text-sm leading-relaxed" style={{ overflow: 'hidden', minHeight: '1.5em' }} placeholder="답변을 입력하세요" />
+              className="w-full bg-transparent outline-none font-medium resize-none leading-relaxed" style={{ overflow: 'hidden', minHeight: '1.5em', fontSize: Math.max(13, L.qSize - 4), color: L.aColor }} placeholder="답변을 입력하세요" />
           </div>
         )}
       </div>
     );
   }
   return (
-    <div>
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-3 px-5 py-4 bg-white hover:bg-gray-50 text-left transition-colors">
-        <span className="font-bold flex-1 text-sm">{item.question}</span>
-        <span className="shrink-0 font-black text-lg leading-none transition-transform duration-300" style={{ color: ctx.themeColor, transform: open ? (isArrow ? 'rotate(180deg)' : 'rotate(45deg)') : 'rotate(0deg)', display: 'inline-block' }}>{isArrow ? '↓' : '+'}</span>
+    <div style={rowBorder}>
+      <button onClick={() => setOpen(o => !o)} className={`w-full flex items-center gap-4 ${L.pad} ${L.boxed ? 'bg-white hover:bg-gray-50' : ''} text-left transition-colors`}>
+        {numTag}
+        <span className="font-bold flex-1" style={{ fontSize: L.qSize, color: L.qColor }}>{item.question}</span>
+        <span className="shrink-0 font-black leading-none transition-transform duration-300" style={{ color: ctx.themeColor, fontSize: Math.round(L.qSize * 1.2), transform: open ? (isArrow ? 'rotate(180deg)' : 'rotate(45deg)') : 'rotate(0deg)', display: 'inline-block' }}>{isArrow ? '↓' : '+'}</span>
       </button>
       <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
         <div style={{ overflow: 'hidden' }}>
-          <div className="px-5 py-4 border-t border-gray-100 text-gray-600 font-medium text-sm leading-relaxed" style={{ backgroundColor: block.openBg || '#fff7ed' }}>{item.answer}</div>
+          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-gray-100' : ''} ${numbered && !L.boxed ? 'pl-10' : ''} font-medium leading-relaxed`} style={{ backgroundColor: L.boxed ? (block.openBg || '#fff7ed') : 'transparent', color: L.aColor, fontSize: Math.max(13, L.qSize - 4) }}>{item.answer}</div>
         </div>
       </div>
     </div>
@@ -757,28 +957,41 @@ const FaqRow: React.FC<{ item: any; idx: number; block: any; ctx: BlockCtx; onUp
 
 const FaqBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const ops = listOps(ctx, block, 'items');
+  const L = faqLook(block);
   return (
+    <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
     <div className="wb-gutter max-w-3xl mx-auto w-full" style={{ paddingTop: `${block.paddingY ?? 80}px`, paddingBottom: `${block.paddingY ?? 80}px`, backgroundColor: block.bgColor || 'transparent' }}>
       {(ctx.edit || block.title) && (
         <div className="flex items-center gap-3 mb-6">
-          <MessageSquare className="w-5 h-5 shrink-0" style={{ color: ctx.themeColor }} />
-          <EditText ctx={ctx} tag="h2" multiline={false} value={block.title} onChange={v => ctx.upd?.('title', v)} className="text-2xl font-black w-full" placeholder="자주 묻는 질문" />
+          {L.boxed && <MessageSquare className="w-5 h-5 shrink-0" style={{ color: ctx.themeColor }} />}
+          <EditText ctx={ctx} tag="h2" multiline={false} value={block.title} onChange={v => ctx.upd?.('title', v)} className={`font-black w-full ${L.big ? 'text-4xl' : 'text-2xl'}`} style={{ color: L.qColor }} placeholder="자주 묻는 질문" />
         </div>
       )}
-      <div className="border-2 border-black divide-y divide-black overflow-hidden" style={{ borderRadius: `${block.borderRadius || 0}px` }}>
+      <div className={L.boxed ? 'border-2 border-black divide-y divide-black overflow-hidden' : (L.v === 'line' ? 'border-t' : '')} style={L.boxed ? { borderRadius: `${block.borderRadius || 0}px` } : (L.v === 'line' ? { borderColor: L.lineColor } : undefined)}>
         {ops.arr.map((item: any, i: number) => (
           <FaqRow key={item.id} item={item} idx={i} block={block} ctx={ctx} onUpdate={(f, v) => ops.update(i, { [f]: v })} onDelete={() => ops.removeAt(i)} />
         ))}
       </div>
       {ctx.edit && <div className="mt-3"><AddBtn ctx={ctx} label="FAQ 항목 추가" onClick={() => ops.add({ id: genId(), question: '새 질문', answer: '답변을 입력하세요.' })} className="w-full justify-center !py-2.5" /></div>}
     </div>
+    </AnimDiv>
   );
 };
 
-const TlDot: React.FC<{ idx: number; activeColor: string }> = ({ idx, activeColor }) => (
-  <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-sm shrink-0 z-10"
-    style={idx === 0 ? { backgroundColor: activeColor, color: '#fff', borderColor: activeColor } : { backgroundColor: '#fff', color: '#111', borderColor: '#000' }}>{idx + 1}</div>
-);
+/* 타임라인 노드 스타일: number(번호 원, 기본) · dot(작은 채움 점) · ring(빈 링) · bigNum(대형 번호) */
+const TlDot: React.FC<{ idx: number; activeColor: string; block?: any }> = ({ idx, activeColor, block }) => {
+  const style = block?.nodeStyle || 'number';
+  const on = block?.nodeAllActive || idx === 0;
+  /* dot/ring 은 number(36px 원)와 같은 36px 슬롯 중앙에 두어 연결선과 정렬을 맞춘다. */
+  const slot = (el: React.ReactNode) => <div className="shrink-0 z-10 flex items-center justify-center" style={{ width: 36, height: 36 }}>{el}</div>;
+  if (style === 'dot') return slot(<div className="rounded-full" style={{ width: 14, height: 14, backgroundColor: activeColor, boxShadow: `0 0 0 5px ${activeColor}22` }} />);
+  if (style === 'ring') return slot(<div className="rounded-full border-2" style={{ width: 18, height: 18, borderColor: activeColor, backgroundColor: 'transparent' }} />);
+  if (style === 'bigNum') return <div className="shrink-0 z-10 font-black tabular-nums leading-none" style={{ fontSize: 40, color: activeColor, letterSpacing: -0.02 }}>{String(idx + 1).padStart(2, '0')}</div>;
+  return (
+    <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-sm shrink-0 z-10"
+      style={on ? { backgroundColor: activeColor, color: '#fff', borderColor: activeColor } : { backgroundColor: block?.nodeBg || '#fff', color: block?.nodeNumColor || '#111', borderColor: block?.nodeBorderColor || '#000' }}>{idx + 1}</div>
+  );
+};
 
 const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const layout = block.layout || 'vertical-left';
@@ -846,26 +1059,26 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
       )}
       {layout === 'vertical-left' && (
         <div className="relative">
-          {ops.arr.length > 1 && <div className="absolute left-4 top-5 bottom-5 w-0.5" style={{ backgroundColor: line }} />}
+          {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute left-4 top-5 bottom-5 w-0.5" style={{ backgroundColor: line }} />}
           <div className="flex flex-col">
             {ops.arr.map((node: any, i: number) => (
-              <div key={node.id} className="flex gap-6 pb-10 last:pb-0"><TlDot idx={i} activeColor={active} /><div className="flex-1 pt-1 min-w-0"><NodeContent node={node} i={i} /></div></div>
+              <AnimDiv key={node.id} animation={block.nodeAnim} disabled={ctx.edit} delay={i * (block.nodeStagger ?? 0.12)} className="flex gap-6 pb-10 last:pb-0"><TlDot idx={i} activeColor={active} block={block} /><div className="flex-1 pt-1 min-w-0"><NodeContent node={node} i={i} /></div></AnimDiv>
             ))}
           </div>
         </div>
       )}
       {layout === 'vertical-center' && (
         <div className="relative">
-          {ops.arr.length > 1 && <div className="absolute left-1/2 top-5 bottom-5 w-0.5 -translate-x-1/2" style={{ backgroundColor: line }} />}
+          {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute left-1/2 top-5 bottom-5 w-0.5 -translate-x-1/2" style={{ backgroundColor: line }} />}
           <div className="flex flex-col">
             {ops.arr.map((node: any, i: number) => {
               const isEven = i % 2 === 0;
               return (
-                <div key={node.id} className="flex items-start gap-6 pb-10 last:pb-0">
+                <AnimDiv key={node.id} animation={block.nodeAnim} disabled={ctx.edit} delay={i * (block.nodeStagger ?? 0.12)} className="flex items-start gap-6 pb-10 last:pb-0">
                   <div className="flex-1 pt-1 min-w-0">{isEven && <NodeContent node={node} i={i} right />}</div>
-                  <TlDot idx={i} activeColor={active} />
+                  <TlDot idx={i} activeColor={active} block={block} />
                   <div className="flex-1 pt-1 min-w-0">{!isEven && <NodeContent node={node} i={i} />}</div>
-                </div>
+                </AnimDiv>
               );
             })}
           </div>
@@ -874,9 +1087,9 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
       {layout === 'horizontal' && (
         <div className="overflow-x-auto pb-2">
           <div className="relative flex" style={{ minWidth: `${Math.max(ops.arr.length * 140, 300)}px` }}>
-            {ops.arr.length > 1 && <div className="absolute top-4 h-0.5 z-0" style={{ backgroundColor: line, left: '36px', right: '36px' }} />}
+            {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute top-4 h-0.5 z-0" style={{ backgroundColor: line, left: '36px', right: '36px' }} />}
             {ops.arr.map((node: any, i: number) => (
-              <div key={node.id} className="flex-1 flex flex-col items-center gap-3 relative z-10 px-1"><TlDot idx={i} activeColor={active} /><NodeContent node={node} i={i} small /></div>
+              <AnimDiv key={node.id} animation={block.nodeAnim} disabled={ctx.edit} delay={i * (block.nodeStagger ?? 0.12)} className="flex-1 flex flex-col items-center gap-3 relative z-10 px-1"><TlDot idx={i} activeColor={active} block={block} /><NodeContent node={node} i={i} small /></AnimDiv>
             ))}
           </div>
         </div>
@@ -907,6 +1120,9 @@ const HeroSliderBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }
 
   const themeColor = ctx.themeColor;
   const isLight = themeColor === '#ffffff' || ctx.activeTheme === 'white';
+  const vClassE = block.vAlign === 'top' ? 'justify-start' : block.vAlign === 'bottom' ? 'justify-end' : 'justify-center';
+  const cMaxWE = block.contentMaxW ?? 672;
+  const eyebrowColorE = (themeColor === '#ffffff' ? '#ffffff' : themeColor);
 
   if (ctx.edit) {
     const slide = slides[idx];
@@ -916,10 +1132,14 @@ const HeroSliderBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }
     return (
       <div className="relative w-full overflow-hidden" style={{ ...bgStyle, minHeight: `${block.height || 60}vh` }}>
         {slide.bgType === 'image' && slide.bgValue && <div className="absolute inset-0 bg-black" style={{ opacity: (slide.overlayOpacity || 0) / 100 }} />}
-        <div className={`relative z-10 flex flex-col justify-center wb-gutter py-8 md:py-12 h-full ${slide.align === 'center' ? 'items-center text-center' : slide.align === 'right' ? 'items-end text-right' : 'items-start text-left'}`} style={{ minHeight: `${block.height || 60}vh` }}>
-          <EditText ctx={ctx} tag="h1" value={slide.h1} onChange={v => updSlide('h1', v)} className="font-black text-white leading-tight max-w-2xl" style={{ fontSize: `clamp(28px, 4.5vw, ${block.h1Size || 48}px)` }} placeholder="메인 카피 (H1)" />
-          <EditText ctx={ctx} tag="p" value={slide.subtitle} onChange={v => updSlide('subtitle', v)} className="text-white/70 mt-4 max-w-2xl" style={{ fontSize: `clamp(14px, 1.5vw, ${block.subtitleSize || 18}px)` }} placeholder="서브 카피" />
-          {slide.href && <div className="mt-6 inline-flex items-center gap-1 text-white/50 text-[11px] font-bold"><span>🔗 클릭 시 이동: {slide.href}</span></div>}
+        <div className={`relative z-10 flex flex-col ${vClassE} wb-gutter py-8 md:py-12 h-full ${slide.align === 'center' ? 'items-center text-center' : slide.align === 'right' ? 'items-end text-right' : 'items-start text-left'}`} style={{ minHeight: `${block.height || 60}vh` }}>
+          <div style={{ maxWidth: `${cMaxWE}px`, width: '100%' }}>
+            <EditText ctx={ctx} tag="p" value={slide.eyebrow} onChange={v => updSlide('eyebrow', v)} multiline={false} className="font-black mb-3 uppercase" style={{ fontSize: 13, letterSpacing: '0.18em', color: eyebrowColorE }} placeholder="작은 라벨 (선택)" />
+            <EditText ctx={ctx} tag="h1" value={slide.h1} onChange={v => updSlide('h1', v)} className="font-black text-white leading-tight" style={{ fontSize: `clamp(28px, 4.5vw, ${block.h1Size || 48}px)` }} placeholder="메인 카피 (H1)" />
+            <EditText ctx={ctx} tag="p" value={slide.subtitle} onChange={v => updSlide('subtitle', v)} className="text-white/70 mt-4" style={{ fontSize: `clamp(14px, 1.5vw, ${block.subtitleSize || 18}px)` }} placeholder="서브 카피" />
+            {slide.ctaText && <div className="mt-6"><span className="inline-flex items-center gap-2 px-7 py-3.5 font-black text-sm rounded" style={{ backgroundColor: themeColor, color: readableTextOn(themeColor) }}>{slide.ctaText}</span></div>}
+            {slide.href && <div className="mt-4 inline-flex items-center gap-1 text-white/50 text-[11px] font-bold"><span>🔗 클릭 시 이동: {slide.href}</span></div>}
+          </div>
         </div>
         {/* 슬라이드 네비 — 좌상단 명칭 우측(우측 위젯 툴바와 겹치지 않도록) */}
         <div className="absolute top-1 left-16 flex flex-wrap gap-1 z-20">
@@ -933,22 +1153,34 @@ const HeroSliderBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }
     );
   }
 
+  const vClass = block.vAlign === 'top' ? 'justify-start' : block.vAlign === 'bottom' ? 'justify-end' : 'justify-center';
+  const cMaxW = block.contentMaxW ?? 672;
+  const ken = block.slideKen && block.slideKen !== 'none' ? block.slideKen : null;
+  const textAnimClass = block.textAnim && block.textAnim !== 'none' ? `wb-anim-${block.textAnim}` : '';
+  const eyebrowColor = (themeColor === '#ffffff' ? '#ffffff' : themeColor);
   return (
     <div className="relative w-full overflow-hidden" style={{ height: `${block.height || 60}vh` }}>
       {slides.map((slide, i) => {
-        const bgStyle = slide.bgType === 'image' && slide.bgValue
-          ? { backgroundImage: `url(${slide.bgValue})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-          : { backgroundColor: slide.bgValue || '#111111' };
-        const slideStyle = anim === 'fade'
+        const isImg = slide.bgType === 'image' && slide.bgValue;
+        const slideStyle: React.CSSProperties = anim === 'fade'
           ? { opacity: i === idx ? 1 : 0, zIndex: i === idx ? 1 : 0, transition: 'opacity 0.8s ease' }
+          : anim === 'zoom'
+          ? { opacity: i === idx ? 1 : 0, transform: `scale(${i === idx ? 1 : 1.06})`, transition: 'opacity 0.8s ease, transform 0.8s ease', zIndex: i === idx ? 1 : 0 }
           : { transform: `translateX(${(i - idx) * 100}%)`, transition: 'transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94)', zIndex: 1 };
         return (
-          <div key={slide.id} className="absolute inset-0" style={{ ...bgStyle, ...slideStyle }}>
-            {slide.bgType === 'image' && slide.bgValue && <div className="absolute inset-0 bg-black" style={{ opacity: (slide.overlayOpacity || 0) / 100 }} />}
-            <div className={`relative z-10 h-full flex flex-col justify-center wb-gutter wb-inner py-8 md:py-12 ${slide.align === 'center' ? 'items-center text-center' : slide.align === 'right' ? 'items-end text-right' : 'items-start text-left'} ${slide.href ? 'cursor-pointer' : ''}`}
+          <div key={slide.id} className="absolute inset-0" style={{ backgroundColor: isImg ? undefined : (slide.bgValue || '#111111'), ...slideStyle }}>
+            {isImg && (ken
+              ? <div aria-hidden className={`wb-kenburns wb-ken-${ken}`} style={{ backgroundImage: `url(${slide.bgValue})` }} />
+              : <div aria-hidden className="absolute inset-0" style={{ backgroundImage: `url(${slide.bgValue})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />)}
+            {isImg && <div className="absolute inset-0 bg-black" style={{ opacity: (slide.overlayOpacity || 0) / 100 }} />}
+            <div className={`relative z-10 h-full flex flex-col ${vClass} wb-gutter wb-inner py-10 ${slide.align === 'center' ? 'items-center text-center' : slide.align === 'right' ? 'items-end text-right' : 'items-start text-left'} ${slide.href ? 'cursor-pointer' : ''}`}
               onClick={slide.href ? () => window.open(slide.href, '_blank', 'noopener,noreferrer') : undefined}>
-              {slide.h1 && <h1 className="font-black text-white leading-tight whitespace-pre-line max-w-full" style={{ fontSize: `clamp(28px, 4.5vw, ${block.h1Size || 48}px)` }}>{renderRichText(slide.h1, themeColor)}</h1>}
-              {slide.subtitle && <p className="text-white/70 mt-4 max-w-full" style={{ fontSize: `clamp(14px, 1.5vw, ${block.subtitleSize || 18}px)` }}>{renderRichText(slide.subtitle, themeColor)}</p>}
+              <div key={`${slide.id}-${idx}`} className={i === idx ? textAnimClass : ''} style={{ maxWidth: `${cMaxW}px`, width: '100%' }}>
+                {slide.eyebrow && <div className="font-black mb-3 uppercase" style={{ fontSize: 13, letterSpacing: '0.18em', color: eyebrowColor }}>{slide.eyebrow}</div>}
+                {slide.h1 && <h1 className="font-black text-white leading-tight whitespace-pre-line" style={{ fontSize: `clamp(28px, 4.5vw, ${block.h1Size || 48}px)` }}>{renderRichText(slide.h1, themeColor)}</h1>}
+                {slide.subtitle && <p className="text-white/70 mt-4 whitespace-pre-line" style={{ fontSize: `clamp(14px, 1.5vw, ${block.subtitleSize || 18}px)` }}>{renderRichText(slide.subtitle, themeColor)}</p>}
+                {slide.ctaText && <div className="mt-7"><a href={slide.ctaHref || undefined} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-2 px-7 py-3.5 font-black text-sm rounded" style={{ backgroundColor: themeColor, color: readableTextOn(themeColor) }}>{slide.ctaText}</a></div>}
+              </div>
             </div>
           </div>
         );
@@ -966,7 +1198,7 @@ const HeroSliderBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }
   );
 };
 
-const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell: (field: string, val: any) => void }> = ({ cell, ctx, onCell }) => {
+const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell: (field: string, val: any) => void; cellIdx?: number }> = ({ cell, block, ctx, onCell, cellIdx = 0 }) => {
   const pos = cell.imgPosition || 'top';
   const imgH = cell.imgHeight || 180;
   const onBg = pos === 'bg' && cell.imgSrc;
@@ -1001,9 +1233,24 @@ const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell:
       </div>
     );
   }
+  /* 카드 스타일 변형(레퍼런스 '우리가 하는 일' 섹션 톤): plain(기본)·numbered(대형 인덱스)·accentTop(상단 강조바)·minimal(보더 없이 강조 라인) */
+  const cardStyle = block?.cardStyle || 'plain';
+  const accent = block?.cardAccent || ctx.themeColor;
+  const noBorder = cardStyle === 'minimal' || cardStyle === 'numbered';
+  const cardHeader = cardStyle === 'numbered'
+    ? <div className="font-black tabular-nums leading-none mb-5" style={{ fontSize: 42, color: accent, letterSpacing: -0.02 }}>{String(cellIdx + 1).padStart(2, '0')}</div>
+    : cardStyle === 'minimal'
+    ? <div style={{ width: 34, height: 3, background: accent, marginBottom: 20 }} />
+    : null;
   return (
-    <div className="w-full h-full" style={{ backgroundColor: cell.bgColor || '#fff', padding: `${cell.padding || 24}px`, borderRadius: `${cell.borderRadius || 8}px`, border: `${cell.borderWidth || 1}px solid ${cell.borderColor || '#e5e7eb'}` }}>
+    <div className="w-full h-full" style={{
+      backgroundColor: cardStyle === 'minimal' ? 'transparent' : (cell.bgColor || '#fff'),
+      padding: `${cell.padding || 24}px`, borderRadius: `${cell.borderRadius || 8}px`,
+      border: noBorder ? 'none' : `${cell.borderWidth ?? 1}px solid ${cell.borderColor || '#e5e7eb'}`,
+      borderTop: cardStyle === 'accentTop' ? `3px solid ${accent}` : undefined,
+    }}>
       {pos !== 'bottom' && cellImg && <div className="mb-4">{cellImg}</div>}
+      {cardHeader}
       {titleEl}{textEl}{arrow}
       {pos === 'bottom' && cellImg && <div className="mt-4">{cellImg}</div>}
     </div>
@@ -1013,7 +1260,7 @@ const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell:
 const LayoutCell: React.FC<{ cell: any; block: any; ctx: BlockCtx; cellIdx: number; onCell: (field: string, val: any) => void; onRemove?: () => void }> = ({ cell, block, ctx, cellIdx, onCell, onRemove }) => {
   const hoverCls = ctx.edit ? '' : (HOVER_CLASS[cell.hoverEffect || (block.cellHover || 'lift')] || '');
   const gridStyle: React.CSSProperties = { gridColumn: cell.colSpan ? `span ${cell.colSpan}` : undefined, gridRow: cell.rowSpan ? `span ${cell.rowSpan}` : undefined };
-  const inner = <LayoutCellInner cell={cell} block={block} ctx={ctx} onCell={onCell} />;
+  const inner = <LayoutCellInner cell={cell} block={block} ctx={ctx} onCell={onCell} cellIdx={cellIdx} />;
   const body = ctx.edit ? (
     <div className="relative">
       {inner}
@@ -1061,15 +1308,22 @@ const LayoutContainerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, 
   // TABS
   if (mode === 'tabs') {
     const tabPos = block.tabPosition || 'top';
+    const tStyle = block.tabStyle || 'filled';
+    const accent = block.activeTabBg || themeColor;
     const active = Math.min(tabIdx, cells.length - 1);
     const tabBar = (
-      <div className={`flex ${tabPos === 'left' ? 'flex-col' : 'overflow-x-auto'} gap-1.5`} style={{ borderBottom: tabPos === 'top' ? `1px solid ${block.tabBorderColor || '#e5e7eb'}` : undefined, marginBottom: tabPos === 'top' ? '24px' : 0 }}>
+      <div className={`flex ${tabPos === 'left' ? 'flex-col' : 'overflow-x-auto'} ${tStyle === 'filled' ? 'gap-1.5' : 'gap-6'}`} style={{ borderBottom: tabPos === 'top' && tStyle !== 'minimal' ? `1px solid ${block.tabBorderColor || '#e5e7eb'}` : undefined, marginBottom: tabPos === 'top' ? '28px' : 0 }}>
         {cells.map((cell: any, i: number) => {
           const isActive = i === active;
+          const tStyleCss: React.CSSProperties = tStyle === 'filled'
+            ? { backgroundColor: isActive ? accent : 'transparent', color: isActive ? (block.activeTabText || '#ffffff') : (block.tabText || '#6b7280'), borderRadius: `${block.tabRadius ?? 6}px`, padding: '8px 16px' }
+            : tStyle === 'underline'
+            ? { color: isActive ? accent : (block.tabText || '#6b7280'), borderBottom: `2px solid ${isActive ? accent : 'transparent'}`, marginBottom: '-1px', padding: '6px 2px 12px' }
+            : { color: isActive ? accent : (block.tabText || '#9ca3af'), padding: '6px 2px', opacity: isActive ? 1 : 0.85 };
           return (
-            <button key={cell.id} onClick={e => { stop(e); setTabIdx(i); }} className="px-4 py-2 text-sm font-black transition-colors text-left shrink-0"
-              style={{ backgroundColor: isActive ? (block.activeTabBg || themeColor) : 'transparent', color: isActive ? (block.activeTabText || '#ffffff') : (block.tabText || '#6b7280'), borderRadius: `${block.tabRadius ?? 6}px`, whiteSpace: 'nowrap' }}>
-              {cell.tabLabel || cell.title || `탭 ${i + 1}`}
+            <button key={cell.id} onClick={e => { stop(e); setTabIdx(i); }} className={`font-black transition-colors text-left shrink-0 ${tStyle === 'minimal' && !isActive ? '' : ''} ${block.tabSize === 'lg' ? 'text-base' : 'text-sm'}`}
+              style={{ ...tStyleCss, whiteSpace: 'nowrap' }}>
+              {block.tabNumbered ? <span className="tabular-nums opacity-50 mr-1.5">{String(i + 1).padStart(2, '0')}</span> : null}{cell.tabLabel || cell.title || `탭 ${i + 1}`}
             </button>
           );
         })}
@@ -1080,9 +1334,9 @@ const LayoutContainerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, 
       <div style={containerStyle}>
         <div className="mx-auto wb-gutter" style={{ position: 'relative', zIndex: 1, maxWidth: block.maxWidth ? `${block.maxWidth}px` : undefined }}>
           {tabPos === 'left' ? (
-            <div className="flex gap-8"><div style={{ minWidth: '180px' }}>{tabBar}</div><div className="flex-1 min-w-0">{activeCell && <LayoutCellInner cell={activeCell} block={block} ctx={ctx} onCell={onCellField(active)} />}</div></div>
+            <div className="flex gap-8"><div style={{ minWidth: '180px' }}>{tabBar}</div><div className="flex-1 min-w-0">{activeCell && <LayoutCellInner cell={activeCell} block={block} ctx={ctx} onCell={onCellField(active)} cellIdx={active} />}</div></div>
           ) : (
-            <>{tabBar}<div key={activeCell?.id} className={ctx.edit ? '' : 'wb-anim-fadeIn'}>{activeCell && <LayoutCellInner cell={activeCell} block={block} ctx={ctx} onCell={onCellField(active)} />}</div></>
+            <>{tabBar}<div key={activeCell?.id} className={ctx.edit ? '' : 'wb-anim-fadeIn'}>{activeCell && <LayoutCellInner cell={activeCell} block={block} ctx={ctx} onCell={onCellField(active)} cellIdx={active} />}</div></>
           )}
           {ctx.edit && <div className="mt-3 flex gap-2">{cells.length > 1 && <button onClick={e => { stop(e); ops.removeAt(active); setTabIdx(Math.max(0, active - 1)); }} className="px-3 py-1 border border-dashed border-red-200 hover:border-red-400 text-red-300 hover:text-red-500 text-xs font-bold rounded">− 탭 삭제</button>}<AddBtn ctx={ctx} label="탭 추가" onClick={() => { ops.add(mkCell(cells.length + 1)); setTabIdx(cells.length); }} /></div>}
         </div>
@@ -1165,21 +1419,35 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
     return out;
   };
 
-  const UnitBoxes = ({ items, edit }: { items: [string, number][]; edit?: boolean }) => (
-    <div className="flex items-end justify-center gap-3 flex-wrap">
-      {items.map(([unit, val]) => (
-        <div key={unit} className="flex flex-col items-center gap-1.5">
-          <div className="font-black tabular-nums leading-none px-3 py-3 border-2 border-black" style={{ backgroundColor: acc, color: '#fff', fontSize: edit ? '34px' : 'clamp(24px, 5vw, 34px)', minWidth: '64px' }}>{pad(val)}</div>
-          <span className="text-[11px] font-bold" style={{ color: block.textColor || '#ffffff', opacity: 0.6 }}>{unit}</span>
+  /* 카운트다운 스타일: boxed(검정 박스, 기본) · plain(대형 플랫 숫자) · minimal(콜론 인라인) */
+  const cdStyle = block.cdStyle || 'boxed';
+  const digitColor = block.digitColor || (cdStyle === 'boxed' ? '#ffffff' : acc);
+  const UnitBoxes = ({ items, edit }: { items: [string, number][]; edit?: boolean }) => {
+    if (cdStyle === 'minimal') {
+      return (
+        <div className="flex items-center justify-center gap-2 font-black tabular-nums leading-none" style={{ color: digitColor, fontSize: edit ? '40px' : 'clamp(28px, 7vw, 52px)', letterSpacing: -0.02 }}>
+          {items.map(([unit, val], i) => <React.Fragment key={unit}>{i > 0 && <span style={{ opacity: 0.35 }}>:</span>}<span>{pad(val)}</span></React.Fragment>)}
         </div>
-      ))}
-    </div>
-  );
+      );
+    }
+    return (
+      <div className="flex items-end justify-center gap-3 flex-wrap">
+        {items.map(([unit, val]) => (
+          <div key={unit} className="flex flex-col items-center gap-1.5">
+            <div className={`font-black tabular-nums leading-none ${cdStyle === 'boxed' ? 'px-3 py-3 border-2 border-black' : ''}`}
+              style={{ backgroundColor: cdStyle === 'boxed' ? acc : 'transparent', color: digitColor, fontSize: edit ? (cdStyle === 'plain' ? '56px' : '34px') : (cdStyle === 'plain' ? 'clamp(40px, 9vw, 80px)' : 'clamp(24px, 5vw, 34px)'), minWidth: cdStyle === 'boxed' ? '64px' : undefined, letterSpacing: cdStyle === 'plain' ? -0.02 : 0 }}>{pad(val)}</div>
+            <span className="text-[11px] font-bold" style={{ color: block.textColor || '#ffffff', opacity: 0.6 }}>{unit}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   // edit 모드: 샘플 값으로 미리보기 + 라벨 편집
   if (ctx.edit) {
     const sampleMs = 7 * 86400000 + 12 * 3600000 + 34 * 60000 + 56 * 1000;
     return (
+      <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
       <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#0a0a0a', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
         <input value={block.label || ''} placeholder="라벨 (예: 마감까지)" onChange={e => ctx.upd?.('label', e.target.value)} onClick={stop} onPointerDown={stop}
           className="block mx-auto mb-5 text-center bg-transparent outline-none border-b border-transparent focus:border-current font-black tracking-widest text-sm" style={{ color: block.textColor || '#ffffff' }} />
@@ -1188,10 +1456,12 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
           {block.endAt ? `종료: ${String(block.endAt).replace('T', ' ')}` : 'ⓘ 우측 패널에서 종료 시간을 설정하세요.'}
         </div>
       </div>
+      </AnimDiv>
     );
   }
 
   return (
+    <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
     <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#0a0a0a', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
       {diff && diff > 0 ? (
         <>
@@ -1202,6 +1472,7 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
         <div className="font-black tracking-widest" style={{ color: block.textColor || '#ffffff', fontSize: 'clamp(18px, 3vw, 24px)' }}>{block.expiredText || '마감되었습니다'}</div>
       )}
     </div>
+    </AnimDiv>
   );
 };
 
@@ -1225,6 +1496,8 @@ export function resolveSectionBg(block: any): React.CSSProperties {
     return { background: `linear-gradient(${g.angle ?? 135}deg, ${g.from || '#111827'}, ${g.to || '#1f2937'})` };
   }
   if (t === 'image' && block.bgImage) {
+    /* Ken Burns 가 켜진 경우 배경은 별도 애니메이션 레이어(.wb-kenburns)가 그린다 → 여기선 비워둠. */
+    if (block.bgKenBurns && block.bgKenBurns !== 'none') return { backgroundColor: '#000' };
     return { backgroundImage: `url(${block.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   }
   return { backgroundColor: block.bgColor || 'transparent' };
@@ -1236,12 +1509,98 @@ export const rowGridTemplate = (row: any): string =>
     ? row.colRatios.map((x: number) => `${x}fr`).join(' ')
     : `repeat(${row.cols || 1}, minmax(0, 1fr))`;
 
+/* ── 섹션 컬럼 카드화 (공개 렌더 SectionBlock + 에디터 Workspace 공용 — drift 방지) ──
+   row.cardStyle: none(기본) · plain(보더 박스) · numbered(대형 인덱스) · accentTop(상단 강조바) · minimal(보더 없이 강조 라인) */
+export const rowCardWrapStyle = (row: any, accent: string): React.CSSProperties | null => {
+  const v = row?.cardStyle;
+  if (!v || v === 'none') return null;
+  const noBorder = v === 'minimal' || v === 'numbered';
+  return {
+    backgroundColor: v === 'minimal' ? 'transparent' : (row.cardBg || '#ffffff'),
+    border: noBorder ? 'none' : `1px solid ${row.cardBorderColor || '#e5e7eb'}`,
+    borderTop: v === 'accentTop' ? `3px solid ${row.cardAccent || accent}` : undefined,
+    borderRadius: `${row.cardRadius ?? 12}px`,
+    padding: `${row.cardPadding ?? 28}px`,
+  };
+};
+export const RowCardHeader: React.FC<{ row: any; idx: number; accent: string }> = ({ row, idx, accent }) => {
+  const a = row.cardAccent || accent;
+  if (row?.cardStyle === 'numbered') return <div className="font-black tabular-nums leading-none" style={{ fontSize: 42, color: a, letterSpacing: -0.02, marginBottom: 4 }}>{String(idx + 1).padStart(2, '0')}</div>;
+  if (row?.cardStyle === 'minimal') return <div aria-hidden style={{ width: 34, height: 3, background: a, marginBottom: 4 }} />;
+  return null;
+};
+
+/** 셰이프 모양별 border-radius (circle/blob/square). */
+const SHAPE_RADIUS: Record<string, string> = {
+  circle: '50%',
+  blob: '42% 58% 70% 30% / 45% 45% 55% 55%',
+  square: '0',
+};
+
+/** 워터마크 위치 프리셋 → 컨테이너 정렬. */
+const WM_POS: Record<string, React.CSSProperties> = {
+  'top-left':     { alignItems: 'flex-start', justifyContent: 'flex-start' },
+  'center':       { alignItems: 'center',     justifyContent: 'center' },
+  'bottom-right': { alignItems: 'flex-end',   justifyContent: 'flex-end' },
+};
+
+/**
+ * 섹션 배경 장식(워터마크 텍스트 + 데코 셰이프) — 공개·에디터 공유 단일 소스.
+ * 항상 자체 overflow:hidden 레이어 안에 그려 섹션 경계로 클리핑(에디터/공개 동일).
+ * 콘텐츠(zIndex 2) 뒤(zIndex 0)에 깔리며 클릭/선택을 가로채지 않는다.
+ */
+export const SectionDecor: React.FC<{ block: any }> = ({ block }) => {
+  const wm = block.bgWatermark;
+  const sh = block.bgShape;
+  const hasWm = wm && (wm.text ?? '').trim() !== '';
+  const hasShape = sh && sh.type && sh.type !== 'none';
+  if (!hasWm && !hasShape) return null;
+  return (
+    <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
+      {hasShape && (
+        <div style={{
+          position: 'absolute',
+          left: `${sh.x ?? 80}%`, top: `${sh.y ?? 20}%`, transform: 'translate(-50%, -50%)',
+          width: `${sh.size ?? 360}px`, height: `${sh.size ?? 360}px`,
+          background: sh.color || '#f97316',
+          borderRadius: SHAPE_RADIUS[sh.type] ?? '50%',
+          opacity: (sh.opacity ?? 12) / 100,
+        }} />
+      )}
+      {hasWm && (() => {
+        const useXY = wm.x != null || wm.y != null;   // X/Y 지정 시 자유 배치, 아니면 기존 프리셋
+        const spanStyle: React.CSSProperties = {
+          fontSize: `${wm.fontSize ?? 200}px`, lineHeight: 0.9, fontWeight: 900,
+          color: wm.color || '#111827', opacity: (wm.opacity ?? 6) / 100,
+          whiteSpace: 'nowrap', userSelect: 'none', letterSpacing: '-0.03em',
+        };
+        return useXY ? (
+          <span style={{ position: 'absolute', left: `${wm.x ?? 50}%`, top: `${wm.y ?? 50}%`, transform: 'translate(-50%, -50%)', ...spanStyle }}>{wm.text}</span>
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', padding: '0 4%', ...(WM_POS[wm.position || 'center']) }}>
+            <span style={spanStyle}>{wm.text}</span>
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
 const SectionBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const rows: any[] = block.rows || [];
-  const hasOverlay = block.bgType === 'image' && (block.bgOverlay ?? 0) > 0;
+  const hasImage = block.bgType === 'image' && block.bgImage;
+  const hasOverlay = hasImage && (block.bgOverlay ?? 0) > 0;
+  const kenBurns = hasImage && block.bgKenBurns && block.bgKenBurns !== 'none' ? block.bgKenBurns : null;
+  const gradOverlay = hasImage && block.bgGradOverlay;
   return (
     <div className="wb-section" style={{ position: 'relative', overflow: 'hidden', ...resolveSectionBg(block) }}>
+      {kenBurns && (
+        <div aria-hidden className={`wb-kenburns wb-ken-${kenBurns}`} style={{ backgroundImage: `url(${block.bgImage})`, zIndex: 0 }} />
+      )}
+      <SectionDecor block={block} />
       {hasOverlay && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(block.bgOverlay || 0) / 100})`, zIndex: 1 }} />}
+      {/* 텍스트 가독용 하단 그라데이션 오버레이(히어로) */}
+      {gradOverlay && <div aria-hidden style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 100%)', zIndex: 1, pointerEvents: 'none' }} />}
       <div style={{
         position: 'relative', zIndex: 2,
         maxWidth: block.maxWidth ? `${block.maxWidth}px` : '100%', margin: '0 auto',
@@ -1249,16 +1608,22 @@ const SectionBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) =
         paddingLeft: `${block.paddingX ?? 32}px`, paddingRight: `${block.paddingX ?? 32}px`,
         display: 'flex', flexDirection: 'column', gap: `${block.gap ?? 32}px`,
       }}>
-        {rows.map((row: any) => (
+        {rows.map((row: any) => {
+          const cardStyle = rowCardWrapStyle(row, ctx.themeColor);
+          const cardHover = cardStyle && row.cardHover ? (HOVER_CLASS[row.cardHover] || '') : '';
+          return (
           <div key={row.id} className="wb-section-row" data-collapse={(row.cols || 1) >= 2 ? '' : undefined}
-            style={{ display: 'grid', gridTemplateColumns: rowGridTemplate(row), gap: `${row.gap ?? 24}px`, alignItems: 'start' }}>
-            {(row.columns || []).map((col: any) => (
-              <div key={col.id} style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0 }}>
+            style={{ display: 'grid', gridTemplateColumns: rowGridTemplate(row), gap: `${row.gap ?? 24}px`, alignItems: cardStyle ? 'stretch' : 'start' }}>
+            {(row.columns || []).map((col: any, ci: number) => (
+              <div key={col.id} className={cardStyle ? `wbr-cell-wrap ${cardHover}`.trim() : ''}
+                style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0, height: cardStyle ? '100%' : undefined, ...(cardStyle || {}) }}>
+                {cardStyle && <RowCardHeader row={row} idx={ci} accent={ctx.themeColor} />}
                 {(col.widgets || []).map((w: any) => <BlockBody key={w.id} block={w} ctx={ctx} />)}
               </div>
             ))}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

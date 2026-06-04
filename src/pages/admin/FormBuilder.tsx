@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
 
 interface Question {
@@ -554,7 +555,7 @@ export default function FormBuilder() {
                         </div>
                         {recruitment.deadline && (
                           <p className="text-xs text-gray-500 font-bold">
-                            마감: {new Date(recruitment.deadline).toLocaleDateString('ko-KR')}
+                            마감: {formatDate(recruitment.deadline)}
                           </p>
                         )}
                         {recruitment.status === '진행중' && (

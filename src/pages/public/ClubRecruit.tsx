@@ -5,6 +5,7 @@ import {
   Star, MessageSquare, ChevronDown, Plus, Eye,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -416,7 +417,7 @@ function StorySection({ title, description, stories, clubSlug }: { title: string
                   <p className="text-sm text-gray-500 font-medium line-clamp-2 mb-3">{s.content.replace(/[#*>`-]/g, ' ').trim()}</p>
                 )}
                 <p className="text-xs text-gray-400 font-bold mt-auto">
-                  {new Date(s.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                  {formatDate(s.created_at, 'monthDay')}
                 </p>
               </div>
             </Link>
@@ -698,7 +699,7 @@ function JDModal({ recruitment: r, onClose, onApply, brand }: { recruitment: Rec
                 {(() => {
                   const d = new Date(r.deadline);
                   const daysLeft = Math.ceil((d.getTime() - Date.now()) / 86400000);
-                  return daysLeft < 0 ? '마감됨' : daysLeft === 0 ? '오늘 마감' : `D-${daysLeft} · ${d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`;
+                  return daysLeft < 0 ? '마감됨' : daysLeft === 0 ? '오늘 마감' : `D-${daysLeft} · ${formatDate(d, 'monthDay')}`;
                 })()}
               </p>
             )}

@@ -9,7 +9,27 @@
       "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/b2b_applications?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
       "Bash(git ls-files *)",
       "Bash(grep -rn \"__preview\\\\|__BuilderPreview\\\\|__seedPages\\\\|seedPages\\\\|BuilderPreview\" src/ --include=*.tsx --include=*.ts)",
-      "Bash(ls __preview_*.png)"
+      "Bash(ls __preview_*.png)",
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/club_members?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(xargs wc -l)",
+      "Bash(node -e ' *)",
+      "Bash(cp c:/tmp/probe.mjs ./_probe.mjs)",
+      "Bash(node ./_probe.mjs)",
+      "Bash(rm -f ./_probe.mjs)",
+      "Bash(wc -l src/pages/admin/Workspace.tsx src/components/blockKit.tsx src/components/admin/BlockPropertiesPanel.tsx src/components/admin/WorkspaceProperties.tsx src/lib/sectionTree.ts)",
+      "Bash(ls src/lib/templates)",
+      "Bash(ls src/*.css)",
+      "Bash(grep -rn \"\\\\.css\" src/main.tsx src/index.tsx)",
+      "Bash(grep -rln \"scrollbar\\\\|::-webkit-scrollbar\" src/)",
+      "Bash(npm run *)",
+      "Bash(rm build_out.txt)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell($env:NODE_OPTIONS=\"--max-old-space-size=8192\"; npm run build 2>&1 | Select-Object -Last 15)",
+      "PowerShell(npx vite build --logLevel info 2>&1)",
+      "PowerShell(npx vite build; Write-Output \"REALEXIT=$LASTEXITCODE\")",
+      "Bash(ls src/components/ui/)",
+      "Bash(ls src/lib/ src/utils/)",
+      "Bash(node -e \"console.log\\(require\\('@supabase/supabase-js/package.json'\\).version\\)\")"
     ]
   }
 }

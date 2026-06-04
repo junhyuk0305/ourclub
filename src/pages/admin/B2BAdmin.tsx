@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 
 type AppStatus = '미열람' | '검토중' | '미팅요청' | '매칭완료' | '거절';
 
@@ -167,7 +168,7 @@ export default function B2BAdmin() {
                           <td className="p-4">
                             <p className="font-black text-orange-600">{formatBudget(app.b2b_projects?.budget ?? null)}</p>
                             <p className="text-xs font-bold text-gray-400 mt-1">
-                              {new Date(app.submitted_at).toLocaleDateString('ko-KR')}
+                              {formatDate(app.submitted_at)}
                             </p>
                           </td>
                         </tr>
@@ -197,7 +198,7 @@ export default function B2BAdmin() {
                             {proj.deadline && (
                               <span className="text-xs font-bold text-gray-400 flex items-center gap-0.5">
                                 <Calendar className="w-3 h-3" />
-                                {new Date(proj.deadline).toLocaleDateString('ko-KR')} 마감
+                                {formatDate(proj.deadline)} 마감
                               </span>
                             )}
                           </div>

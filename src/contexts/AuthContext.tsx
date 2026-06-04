@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isMaster, setIsMaster] = useState(false);
   const [loading, setLoading] = useState(true);
+  /* 이미 로드된 사용자 id — 같은 사용자에 대한 SIGNED_IN 재발생(탭 포커스 복귀 등)을 식별해
+     불필요한 setUser/프로필 재조회로 인한 전역 리렌더(=화면 새로고침 체감)를 막는다. */
+  const loadedUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -76,6 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // → AdminContext 등 user에 의존하는 effect가 재실행되지 않음
         return;
       }
+
+      const newId = s?.user?.id ?? null;
+      // 이미 로드된 동일 사용자에 대한 SIGNED_IN 재발생(탭 포커스 복귀 등)은 무시:
+      // user/profile/isMaster 를 그대로 유지해 전역 리렌더(화면 새로고침 체감)를 막는다.
+      // 실제 로그인/계정 전환(newId 변경)·로그아웃(null)은 정상 처리.
+      if (newId && newId === loadedUserIdRef.current) return;
+      loadedUserIdRef.current = newId;
 
       setUser(s?.user ?? null);
 

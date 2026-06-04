@@ -8,7 +8,7 @@ const PROFILE_SETUP_PATH = '/profile-setup';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import {
-  Home, Clubs, B2BLounge, TextPage, InfoPage, Stories, StoryDetail,
+  Home, Clubs, B2BLounge, InfoPage, Stories, StoryDetail,
   ClubDetail, ClubApply, ClubRecruit, ClubStories, Onboarding, ProfileSetup, ClubSetup, ClubJoin, ClubRegister,
   ClubDemoPage
 } from './pages/public';
@@ -20,7 +20,6 @@ import {
 } from './pages/admin';
 import { CorpDashboard, CorpScouts } from './pages/corp';
 import { Overview, ClubsAdmin, Registrations, JoinRequests } from './pages/master';
-import BuilderPreview from './pages/public/__BuilderPreview';
 import { INFO_PAGES } from './data/infoPages';
 
 // 미로그인 시 로그인 페이지로 보내되, 원래 가려던 위치를 기억
@@ -94,8 +93,7 @@ function AppRoutes() {
     location.pathname.startsWith('/corp') ||
     location.pathname.startsWith('/master') ||
     location.pathname === '/workspace' ||
-    location.pathname === '/demo' ||
-    location.pathname === '/__preview';
+    location.pathname === '/demo';
   // 동아리 상세 페이지(/clubs/:id, 단 /clubs/:id/... 하위는 제외)에서는 헤더를 hover 시에만 노출
   const isClubIntroPage = /^\/clubs\/[^/]+\/?$/.test(location.pathname);
 
@@ -125,7 +123,6 @@ function AppRoutes() {
           <Route path="/login"          element={<Onboarding />} />
           <Route path="/profile-setup"  element={<RequireAuth><ProfileSetup /></RequireAuth>} />
           <Route path="/demo"           element={<ClubDemoPage />} />
-          <Route path="/__preview"      element={<BuilderPreview />} />
 
           {/* 로그인 전용 */}
           <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />

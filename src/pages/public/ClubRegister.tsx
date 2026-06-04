@@ -101,6 +101,10 @@ export default function ClubRegister() {
   const [pageState, setPageState] = useState<'form' | 'success'>('form');
   // 보완요청 건 재제출 모드 (해당 신청서 id를 담으면 UPDATE 모드)
   const [editId, setEditId] = useState<string | null>(null);
+  // 로드 상태: 진행중 신청 차단(pending) / 보완 재제출(edit) / 신규(fresh)
+  const [loadState, setLoadState] = useState<'loading' | 'fresh' | 'pending' | 'edit'>('loading');
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Step 1
   const [clubName, setClubName] = useState('');
@@ -126,36 +130,104 @@ export default function ClubRegister() {
   const [accidentDescription, setAccidentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // ── 보완요청 건이 있으면 불러와 재제출 모드로 ────────────────
+  const draftKey = user ? `clubreg_draft_${user.id}` : null;
+
+  // ── 진행중 신청 차단(중복 방지) · 보완 재제출 · 임시저장 복원 ──
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('club_registration_requests')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', '보완요청')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return;
-        setEditId(data.id);
-        setClubName(data.club_name ?? '');
-        setClubType(data.club_type ?? '');
-        setOneLineDesc(data.one_line_desc ?? '');
-        setDescription(data.description ?? '');
-        setLocation(data.location ?? '');
-        if (data.registration_doc_url) setRegistrationDoc({ name: '기존 제출 파일', path: data.registration_doc_url });
-        if (data.activity_doc_url) setActivityDoc({ name: '기존 제출 파일', path: data.activity_doc_url });
-        if (data.member_list_doc_url) setMemberListDoc({ name: '기존 제출 파일', path: data.member_list_doc_url });
-        if (data.representative_id_url) setRepresentativeId({ name: '기존 제출 파일', path: data.representative_id_url });
-        if (data.member_count != null) setMemberCount(String(data.member_count));
-        setHasRegularMeeting(data.has_regular_meeting);
-        setMeetingLocation(data.meeting_location ?? '');
-        setHasMembershipFee(data.has_membership_fee);
-        if (data.membership_fee_amount != null) setMembershipFeeAmount(String(data.membership_fee_amount));
-        setHasAccidentHistory(data.has_accident_history);
-        setAccidentDescription(data.accident_description ?? '');
-      });
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('club_registration_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['보완요청', '검토대기', '검토중'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const req = data?.[0];
+
+      // 이미 심사 진행 중 → 중복 신청 차단
+      if (req && (req.status === '검토대기' || req.status === '검토중')) {
+        setPendingStatus(req.status);
+        setLoadState('pending');
+        return;
+      }
+
+      // 보완요청 건 → 재제출(UPDATE) 모드로 기존 값 로드
+      if (req && req.status === '보완요청') {
+        setEditId(req.id);
+        setClubName(req.club_name ?? '');
+        setClubType(req.club_type ?? '');
+        setOneLineDesc(req.one_line_desc ?? '');
+        setDescription(req.description ?? '');
+        setLocation(req.location ?? '');
+        if (req.registration_doc_url) setRegistrationDoc({ name: '기존 제출 파일', path: req.registration_doc_url });
+        if (req.activity_doc_url) setActivityDoc({ name: '기존 제출 파일', path: req.activity_doc_url });
+        if (req.member_list_doc_url) setMemberListDoc({ name: '기존 제출 파일', path: req.member_list_doc_url });
+        if (req.representative_id_url) setRepresentativeId({ name: '기존 제출 파일', path: req.representative_id_url });
+        if (req.member_count != null) setMemberCount(String(req.member_count));
+        setHasRegularMeeting(req.has_regular_meeting);
+        setMeetingLocation(req.meeting_location ?? '');
+        setHasMembershipFee(req.has_membership_fee);
+        if (req.membership_fee_amount != null) setMembershipFeeAmount(String(req.membership_fee_amount));
+        setHasAccidentHistory(req.has_accident_history);
+        setAccidentDescription(req.accident_description ?? '');
+        setLoadState('edit');
+        return;
+      }
+
+      // 신규 → 로컬 임시저장 복원
+      try {
+        const raw = draftKey ? localStorage.getItem(draftKey) : null;
+        if (raw) {
+          const d = JSON.parse(raw);
+          setClubName(d.clubName ?? '');
+          setClubType(d.clubType ?? '');
+          setOneLineDesc(d.oneLineDesc ?? '');
+          setDescription(d.description ?? '');
+          setLocation(d.location ?? '');
+          setRegistrationDoc(d.registrationDoc ?? null);
+          setActivityDoc(d.activityDoc ?? null);
+          setMemberListDoc(d.memberListDoc ?? null);
+          setRepresentativeId(d.representativeId ?? null);
+          setMemberCount(d.memberCount ?? '');
+          setHasRegularMeeting(d.hasRegularMeeting ?? null);
+          setMeetingLocation(d.meetingLocation ?? '');
+          setHasMembershipFee(d.hasMembershipFee ?? null);
+          setMembershipFeeAmount(d.membershipFeeAmount ?? '');
+          setHasAccidentHistory(d.hasAccidentHistory ?? null);
+          setAccidentDescription(d.accidentDescription ?? '');
+          if (d.step) setStep(d.step);
+          setDraftSaved(true);
+        }
+      } catch { /* 손상된 임시저장 무시 */ }
+      setLoadState('fresh');
+    })();
+    return () => { cancelled = true; };
   }, [user]);
+
+  // ── 임시저장 자동저장 (신규 모드에서만) ──
+  useEffect(() => {
+    if (loadState !== 'fresh' || !draftKey) return;
+    const isEmpty =
+      !clubName && !clubType && !oneLineDesc && !description && !location &&
+      !registrationDoc && !activityDoc && !memberListDoc && !representativeId &&
+      !memberCount && hasRegularMeeting === null && hasMembershipFee === null && hasAccidentHistory === null;
+    if (isEmpty) return;
+    localStorage.setItem(draftKey, JSON.stringify({
+      clubName, clubType, oneLineDesc, description, location,
+      registrationDoc, activityDoc, memberListDoc, representativeId,
+      memberCount, hasRegularMeeting, meetingLocation, hasMembershipFee,
+      membershipFeeAmount, hasAccidentHistory, accidentDescription, step,
+    }));
+    setDraftSaved(true);
+  }, [
+    loadState, clubName, clubType, oneLineDesc, description, location,
+    registrationDoc, activityDoc, memberListDoc, representativeId,
+    memberCount, hasRegularMeeting, meetingLocation, hasMembershipFee,
+    membershipFeeAmount, hasAccidentHistory, accidentDescription, step,
+  ]);
 
   // ── 파일 업로드 ──────────────────────────────────────────────
   const uploadFile = async (file: File, fieldKey: string): Promise<string> => {
@@ -268,6 +340,7 @@ export default function ClubRegister() {
       return;
     }
 
+    if (draftKey) localStorage.removeItem(draftKey);
     setPageState('success');
   };
 
@@ -310,6 +383,51 @@ export default function ClubRegister() {
     );
   }
 
+  // ── 로딩 ────────────────────────────────────────────────────
+  if (loadState === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader className="w-8 h-8 animate-spin text-orange-500" />
+      </div>
+    );
+  }
+
+  // ── 진행중 신청 차단(중복 방지) ──────────────────────────────
+  if (loadState === 'pending') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-lg">
+          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center">
+            <div className="w-16 h-16 bg-orange-100 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-8 h-8 text-orange-500" />
+            </div>
+            <h1 className="text-2xl font-black mb-3">이미 심사 중인 신청이 있어요</h1>
+            <p className="font-bold text-gray-500 mb-2">
+              현재 <span className="text-black font-black">{pendingStatus}</span> 상태의 등록 신청이 진행 중이에요.
+            </p>
+            <p className="text-sm font-bold text-gray-400 mb-8">
+              한 번에 하나의 신청만 가능해요. 진행 상황은 동아리 운영 메뉴에서 확인할 수 있어요.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link
+                to="/club-setup"
+                className="block w-full py-4 bg-black text-white font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors"
+              >
+                신청 상태 확인하기
+              </Link>
+              <Link
+                to="/"
+                className="block w-full py-4 bg-white text-black font-black border-2 border-black hover:bg-gray-100 transition-colors"
+              >
+                메인으로 돌아가기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── 폼 ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -332,6 +450,11 @@ export default function ClubRegister() {
                 ? '담당자 요청 사항을 반영해 수정한 뒤 다시 제출해주세요.'
                 : '안전 인증 심사를 통과하면 오렌지 배찌와 모든 운영 기능이 열려요.'}
             </p>
+            {!editId && draftSaved && (
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-green-600">
+                <CheckCircle className="w-3.5 h-3.5" /> 작성 중인 내용이 자동 저장됐어요. 나중에 이어서 작성할 수 있어요.
+              </p>
+            )}
           </div>
 
           {/* 스텝 인디케이터 */}
