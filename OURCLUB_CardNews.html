@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>OURCLUB 이용 절차 카드뉴스</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f0f0f0;
+    font-family: 'Noto Sans KR', sans-serif;
+    padding: 40px 20px;
+  }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    color: #888;
+    text-align: center;
+    margin: 60px 0 24px;
+    text-transform: uppercase;
+  }
+  .section-label:first-of-type { margin-top: 0; }
+
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  /* ── 카드 기본 ── */
+  .card {
+    width: 540px;
+    height: 540px;
+    border: 3px solid #000;
+    box-shadow: 8px 8px 0 #000;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── 공통 헤더 바 ── */
+  .card-header-bar {
+    height: 6px;
+    background: #F97316;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* ── 브랜드 워터마크 ── */
+  .brand {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #aaa;
+  }
+
+  /* ── 스텝 번호 필 ── */
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #000;
+    color: #F97316;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    padding: 5px 12px;
+    border: 2px solid #000;
+  }
+  .step-pill.orange {
+    background: #F97316;
+    color: #000;
+  }
+  .step-pill.white {
+    background: #fff;
+    color: #000;
+    border-color: #000;
+  }
+
+  /* ────────────────────────────────────
+     SET A — 일반 학생
+  ──────────────────────────────────── */
+
+  /* A-0 커버 */
+  .a0 { background: #000; }
+  .a0 .inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px;
+  }
+  .a0 .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #F97316;
+    color: #000;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    padding: 6px 14px;
+    border: 2px solid #F97316;
+    margin-bottom: 28px;
+    align-self: flex-start;
+  }
+  .a0 h1 {
+    font-size: 46px;
+    font-weight: 900;
+    line-height: 1.15;
+    color: #fff;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+  }
+  .a0 h1 span { color: #F97316; }
+  .a0 .subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #999;
+    line-height: 1.6;
+    max-width: 360px;
+  }
+  .a0 .step-count {
+    position: absolute;
+    bottom: 48px;
+    left: 48px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .a0 .step-count span {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: #555;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; }
+  .dot.on { background: #F97316; }
+
+  /* A-1 ~ A-4 공통 */
+  .a-step { background: #fff; }
+  .a-step .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 36px 40px 48px;
+  }
+  .a-step .step-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .a-step .step-title {
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #000;
+    margin-bottom: 18px;
+  }
+  .a-step .step-title span { color: #F97316; }
+  .a-step .desc {
+    font-size: 15px;
+    font-weight: 700;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+    list-style: none;
+  }
+  .check-icon {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #F97316;
+    background: #FFF7ED;
+    color: #F97316;
+    font-size: 11px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .visual-box {
+    margin-top: auto;
+    border: 2px solid #000;
+    padding: 18px 20px;
+    background: #F9FAFB;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .visual-box .icon-wrap {
+    width: 44px;
+    height: 44px;
+    background: #F97316;
+    border: 2px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .visual-box .vb-text { font-size: 13px; font-weight: 700; color: #444; line-height: 1.5; }
+  .visual-box .vb-text strong { color: #000; font-weight: 900; }
+
+  /* A-1: 회원가입 선택 카드 */
+  .user-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .user-type-item {
+    border: 2px solid #000;
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 900;
+    position: relative;
+  }
+  .user-type-item .ut-icon { font-size: 22px; margin-bottom: 6px; }
+  .user-type-item.active { background: #FFF7ED; border-color: #F97316; }
+  .user-type-item .active-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #F97316;
+    color: #000;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border: 1.5px solid #000;
+  }
+
+  /* 공통 화살표 flow */
+  .flow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .flow-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 2px solid #000;
+    background: #fff;
+  }
+  .flow-item.active-flow { background: #FFF7ED; border-color: #F97316; }
+  .flow-num {
+    width: 24px;
+    height: 24px;
+    background: #000;
+    color: #F97316;
+    font-size: 11px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .flow-num.orange-num { background: #F97316; color: #000; }
+  .flow-text { font-size: 13px; font-weight: 700; color: #222; flex: 1; }
+  .flow-text small { font-size: 11px; color: #888; font-weight: 700; display: block; }
+  .flow-arrow {
+    text-align: center;
+    color: #ccc;
+    font-size: 16px;
+    line-height: 1;
+    margin-left: 16px;
+  }
+
+  /* ── 큰 숫자 강조 ── */
+  .big-num {
+    font-size: 120px;
+    font-weight: 900;
+    color: #F0F0F0;
+    line-height: 1;
+    position: absolute;
+    right: -10px;
+    bottom: 40px;
+    letter-spacing: -0.05em;
+    user-select: none;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .a-step .card-body { position: relative; z-index: 1; }
+
+  /* ────────────────────────────────────
+     SET B — 동아리 운영진
+  ──────────────────────────────────── */
+  .b0 { background: #F97316; }
+  .b0 .inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px;
+  }
+  .b0 .badge-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    align-items: center;
+  }
+  .b0 .badge {
+    background: #000;
+    color: #F97316;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    padding: 5px 12px;
+    border: 2px solid #000;
+  }
+  .b0 h1 {
+    font-size: 44px;
+    font-weight: 900;
+    line-height: 1.15;
+    color: #000;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+  }
+  .b0 .subtitle {
+    font-size: 15px;
+    font-weight: 700;
+    color: #000;
+    opacity: 0.75;
+    line-height: 1.6;
+  }
+  .b0 .deco-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(circle at 2px 2px, rgba(0,0,0,0.15) 1px, transparent 0);
+    background-size: 20px 20px;
+    pointer-events: none;
+  }
+
+  .b-step { background: #fff; }
+  .b-step .card-header-bar { background: #000; }
+  .b-step .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 36px 40px 48px;
+    position: relative;
+    z-index: 1;
+  }
+  .b-step .step-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .b-step .step-title {
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #000;
+    margin-bottom: 16px;
+  }
+  .b-step .step-title span { color: #F97316; }
+  .b-step .desc {
+    font-size: 15px;
+    font-weight: 700;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .badge-explain {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border: 2px solid #F97316;
+    background: #FFF7ED;
+    margin-top: 12px;
+  }
+  .badge-icon-big {
+    font-size: 32px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .badge-explain-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: #555;
+    line-height: 1.6;
+  }
+  .badge-explain-text strong { color: #000; font-weight: 900; }
+
+  /* ────────────────────────────────────
+     SET C — 기업 담당자
+  ──────────────────────────────────── */
+  .c0 {
+    background: #111;
+    position: relative;
+    overflow: hidden;
+  }
+  .c0 .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.08) 1px, transparent 0);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+  .c0 .inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px;
+    position: relative;
+    z-index: 1;
+  }
+  .c0 .top-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: #F97316;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    border: 2px solid #F97316;
+    padding: 6px 14px;
+    align-self: flex-start;
+  }
+  .c0 h1 {
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1.2;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-top: 24px;
+  }
+  .c0 h1 span { color: #F97316; }
+  .c0 .stats-row {
+    display: flex;
+    gap: 0;
+    border: 2px solid #333;
+    margin-top: 32px;
+  }
+  .c0 .stat {
+    flex: 1;
+    padding: 14px 16px;
+    border-right: 2px solid #333;
+  }
+  .c0 .stat:last-child { border-right: none; }
+  .c0 .stat .sv { font-size: 28px; font-weight: 900; color: #fff; }
+  .c0 .stat .sv span { font-size: 14px; color: #F97316; font-weight: 700; }
+  .c0 .stat .sl { font-size: 10px; font-weight: 700; color: #666; margin-top: 2px; letter-spacing: 0.05em; }
+
+  .c-step { background: #fff; }
+  .c-step .card-header-bar { background: #111; }
+  .c-step .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 36px 40px 48px;
+    position: relative;
+    z-index: 1;
+  }
+  .c-step .step-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .c-step .step-pill { background: #111; color: #F97316; }
+  .c-step .step-title {
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #000;
+    margin-bottom: 16px;
+  }
+  .c-step .step-title span { color: #F97316; }
+  .c-step .desc {
+    font-size: 15px;
+    font-weight: 700;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+
+  .kanban-mini {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .kanban-col {
+    border: 2px solid #000;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .kanban-col .kc-label {
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    color: #888;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .kanban-card-mini {
+    background: #fff;
+    border: 1.5px solid #ddd;
+    padding: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #333;
+    text-align: left;
+    margin-bottom: 4px;
+  }
+  .kanban-card-mini.active { border-color: #F97316; background: #FFF7ED; color: #000; }
+  .kanban-col.kc-active { background: #FFF7ED; border-color: #F97316; }
+  .kanban-col.kc-active .kc-label { color: #F97316; }
+
+  /* ── 공통 하단 CTA 박스 ── */
+  .cta-box {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #000;
+    border: 2px solid #000;
+    padding: 14px 18px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+  }
+  .cta-box .url { color: #F97316; font-size: 12px; font-weight: 700; }
+  .cta-box .arrow {
+    width: 32px;
+    height: 32px;
+    background: #F97316;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 1.5px solid #F97316;
+  }
+
+  /* 인쇄/내보내기용 페이지 구분선 */
+  .divider {
+    width: 100%;
+    max-width: 1140px;
+    margin: 48px auto;
+    height: 3px;
+    background: repeating-linear-gradient(90deg, #ddd 0, #ddd 8px, transparent 8px, transparent 16px);
+  }
+
+  /* 인쇄 가이드 */
+  .print-note {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #aaa;
+    margin: 20px 0 40px;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     SET A — 일반 학생 이용 절차 (5장)
+════════════════════════════════════════ -->
+<p class="section-label">SET A — 일반 학생 이용 절차 카드뉴스 (5장)</p>
+
+<div class="card-row">
+
+  <!-- A-0 커버 -->
+  <div class="card a0">
+    <div class="card-header-bar"></div>
+    <div class="inner">
+      <div class="eyebrow">🎯 일반 학생 가이드</div>
+      <h1>동아리 합류부터<br /><span>실무 경험</span>까지<br />4단계 완성</h1>
+      <p class="subtitle">OURCLUB에서 검증된 동아리를 찾고,<br />진짜 스펙을 만들어 보세요.</p>
+    </div>
+    <div class="step-count">
+      <span class="dot on"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span style="font-size:11px;font-weight:900;color:#555;margin-left:6px;">1 / 5</span>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+  <!-- A-1 회원가입 -->
+  <div class="card a-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num">1</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 01</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">회원가입</span>
+      </div>
+      <h2 class="step-title">OURCLUB에<br /><span>일반 학생</span>으로 가입</h2>
+      <p class="desc">ourclub.com에 접속 후 '일반 학생'을<br />선택해 이메일 또는 Google로 가입하세요.</p>
+
+      <div class="user-type-grid">
+        <div class="user-type-item active">
+          <div class="active-badge">✓ 선택</div>
+          <div class="ut-icon">🎓</div>
+          일반 학생
+        </div>
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🏕️</div>
+          동아리<br />운영진
+        </div>
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🏢</div>
+          기업<br />담당자
+        </div>
+      </div>
+
+      <div class="visual-box" style="margin-top:20px;">
+        <div class="icon-wrap">✉️</div>
+        <div class="vb-text">
+          <strong>Google 간편 로그인</strong> 지원<br />
+          가입 후 즉시 동아리 탐색 가능
+        </div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- A-2 동아리 탐색 -->
+  <div class="card a-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num">2</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 02</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">동아리 탐색</span>
+      </div>
+      <h2 class="step-title"><span>오렌지 뱃지</span> 동아리<br />둘러보기</h2>
+      <p class="desc">카테고리와 키워드로 내게 맞는<br />인증 동아리를 찾아보세요.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon">✓</div>
+          <span>카테고리 필터 — IT/개발, 마케팅/기획, 창업, 문화/예술</span>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <span>'모집중인 동아리만 보기' 토글로 지원 가능한 곳만 검색</span>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <span>🔶 오렌지 뱃지 = OURCLUB이 직접 검증한 안전한 동아리</span>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <span>하트 버튼으로 관심 동아리 알림 설정</span>
+        </li>
+      </ul>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+  <!-- A-3 지원서 작성 -->
+  <div class="card a-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num">3</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 03</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">지원서 작성</span>
+      </div>
+      <h2 class="step-title">지원서 작성 &<br /><span>제출</span></h2>
+      <p class="desc">마감일을 확인하고, 지원서 양식에<br />기본 정보와 자기소개를 채워 제출하세요.</p>
+
+      <div class="flow-steps">
+        <div class="flow-item">
+          <div class="flow-num">①</div>
+          <div class="flow-text">이름 · 연락처 · 포트폴리오 링크 입력<small>필수 정보 — 누락 시 제출 불가</small></div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item">
+          <div class="flow-num">②</div>
+          <div class="flow-text">동아리 맞춤 추가 질문 답변<small>동아리마다 질문 항목이 다릅니다</small></div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item active-flow">
+          <div class="flow-num orange-num">③</div>
+          <div class="flow-text" style="font-weight:900;">최종 제출 → 완료!<small>결과는 이메일로 안내</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- A-4 합격 & 활동 -->
+  <div class="card a-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num">4</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill orange">STEP 04</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">활동 시작</span>
+      </div>
+      <h2 class="step-title">합격 후<br /><span>실무 경험</span> 시작</h2>
+      <p class="desc">동아리 합격 후 실제 기업 프로젝트에<br />참여하며 진짜 커리어를 쌓으세요.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">🔶</div>
+          <span>기업 B2B 프로젝트 수주에 팀원으로 참여</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">📋</div>
+          <span>실제 납품 레퍼런스가 이력서 경쟁력이 됩니다</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">💰</div>
+          <span>프로젝트 성사 시 활동비 지급</span>
+        </li>
+      </ul>
+
+      <div class="cta-box">
+        <div>
+          지금 바로 시작하세요<br />
+          <span class="url">ourclub.com → 동아리 탐색</span>
+        </div>
+        <div class="arrow">→</div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+     SET B — 동아리 운영진 이용 절차 (6장)
+════════════════════════════════════════ -->
+<p class="section-label">SET B — 동아리 운영진 이용 절차 카드뉴스 (6장)</p>
+
+<div class="card-row">
+
+  <!-- B-0 커버 -->
+  <div class="card b0">
+    <div class="deco-grid"></div>
+    <div class="card-header-bar" style="background:#000;"></div>
+    <div class="inner">
+      <div class="badge-row">
+        <div class="badge">🔶 운영진 가이드</div>
+      </div>
+      <h1>우리 동아리,<br />이제 기업과<br />협업하세요</h1>
+      <p class="subtitle">오렌지 뱃지 인증부터<br />B2B 프로젝트 수주까지 — 5단계 로드맵</p>
+    </div>
+    <div class="step-count" style="bottom:48px;left:48px;">
+      <span class="dot on" style="background:#000;"></span>
+      <span class="dot" style="background:rgba(0,0,0,0.3);"></span>
+      <span class="dot" style="background:rgba(0,0,0,0.3);"></span>
+      <span class="dot" style="background:rgba(0,0,0,0.3);"></span>
+      <span class="dot" style="background:rgba(0,0,0,0.3);"></span>
+      <span class="dot" style="background:rgba(0,0,0,0.3);"></span>
+      <span style="font-size:11px;font-weight:900;color:rgba(0,0,0,0.6);margin-left:6px;">1 / 6</span>
+    </div>
+    <div class="brand" style="color:rgba(0,0,0,0.4);">OURCLUB</div>
+  </div>
+
+  <!-- B-1 운영진 가입 -->
+  <div class="card b-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">1</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 01</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">회원가입</span>
+      </div>
+      <h2 class="step-title"><span>동아리 운영진</span>으로<br />회원가입</h2>
+      <p class="desc">로그인 화면에서 '동아리 운영진'을<br />선택해 계정을 만드세요.</p>
+
+      <div class="user-type-grid">
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🎓</div>
+          일반 학생
+        </div>
+        <div class="user-type-item active">
+          <div class="active-badge">✓ 선택</div>
+          <div class="ut-icon">🏕️</div>
+          동아리<br />운영진
+        </div>
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🏢</div>
+          기업<br />담당자
+        </div>
+      </div>
+
+      <div class="visual-box" style="margin-top:20px;">
+        <div class="icon-wrap">📋</div>
+        <div class="vb-text">
+          가입 완료 후 자동으로 <strong>동아리 프로필 생성 페이지</strong>로 이동합니다
+        </div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- B-2 프로필 생성 -->
+  <div class="card b-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">2</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 02</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">프로필 생성</span>
+      </div>
+      <h2 class="step-title">동아리<br /><span>프로필</span> 등록</h2>
+      <p class="desc">우리 동아리의 첫인상을 완성하세요.<br />충실한 프로필이 인증 심사에 유리합니다.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon">①</div>
+          <span>동아리명 · 로고 · 대표 이미지 업로드</span>
+        </li>
+        <li>
+          <div class="check-icon">②</div>
+          <span>활동 카테고리 설정 (IT·마케팅·창업·문화예술)</span>
+        </li>
+        <li>
+          <div class="check-icon">③</div>
+          <span>한 줄 소개 & 상세 소개 작성</span>
+        </li>
+        <li>
+          <div class="check-icon">④</div>
+          <span>SNS · 포트폴리오 링크 등록</span>
+        </li>
+      </ul>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+  <!-- B-3 오렌지 뱃지 인증 -->
+  <div class="card b-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">3</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill orange">STEP 03</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">핵심 단계</span>
+      </div>
+      <h2 class="step-title"><span>오렌지 뱃지</span><br />인증 신청</h2>
+      <p class="desc">OURCLUB의 심사를 통과하면<br />오렌지 뱃지가 부여됩니다.</p>
+
+      <div class="badge-explain">
+        <div class="badge-icon-big">🔶</div>
+        <div class="badge-explain-text">
+          <strong>오렌지 뱃지란?</strong><br />
+          신원 검증 + 운영 투명성 + 활동 이력이 모두<br />
+          확인된 동아리에게 OURCLUB이 발급하는<br />
+          <strong>공식 인증 마크</strong>입니다.
+        </div>
+      </div>
+
+      <ul class="checklist" style="margin-top:16px;">
+        <li>
+          <div class="check-icon">✓</div>
+          <span>운영진 신원 검증 서류 제출</span>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <span>최근 1학기 이상 활동 이력 증빙</span>
+        </li>
+        <li>
+          <div class="check-icon">✓</div>
+          <span>운영 회비 내역 투명 공개 동의</span>
+        </li>
+      </ul>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- B-4 리크루팅 오픈 -->
+  <div class="card b-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">4</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill">STEP 04</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">멤버 모집</span>
+      </div>
+      <h2 class="step-title">멤버 모집<br /><span>공고 오픈</span></h2>
+      <p class="desc">관리자 페이지에서 모집 공고를 만들고,<br />지원자를 체계적으로 관리하세요.</p>
+
+      <div class="flow-steps">
+        <div class="flow-item">
+          <div class="flow-num">①</div>
+          <div class="flow-text">공고 제목 · 모집 기간 · 자기소개서 문항 설정<small>폼 빌더로 직접 커스텀 가능</small></div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item">
+          <div class="flow-num">②</div>
+          <div class="flow-text">지원자 칸반 보드로 서류 → 면접 → 합격 관리<small>파이프라인 단계를 자유롭게 설정</small></div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-item active-flow">
+          <div class="flow-num orange-num">③</div>
+          <div class="flow-text" style="font-weight:900;">합격자 자동 멤버 등록 · 출석 관리<small>어드민 대시보드에서 통합 관리</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+  <!-- B-5 B2B 수주 -->
+  <div class="card b-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">5</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill orange">STEP 05</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">수익 창출</span>
+      </div>
+      <h2 class="step-title">B2B 프로젝트<br /><span>수주 제안</span></h2>
+      <p class="desc">오렌지 뱃지 동아리만 접근 가능한<br />기업 프로젝트 라운지에서 수주하세요.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">🔍</div>
+          <span>B2B 프로젝트 라운지에서 기업 의뢰 탐색</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">📝</div>
+          <span>수주 제안서 작성 및 제출</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">🤝</div>
+          <span>기업과 미팅 → 최종 매칭 완료</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">💼</div>
+          <span>프로젝트 수행 → 활동비 수령</span>
+        </li>
+      </ul>
+
+      <div class="cta-box">
+        <div>
+          인증 신청하러 가기<br />
+          <span class="url">ourclub.com → 관리자 페이지</span>
+        </div>
+        <div class="arrow">→</div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════
+     SET C — 기업 담당자 이용 절차 (5장)
+════════════════════════════════════════ -->
+<p class="section-label">SET C — 기업 담당자 이용 절차 카드뉴스 (5장)</p>
+
+<div class="card-row">
+
+  <!-- C-0 커버 -->
+  <div class="card c0">
+    <div class="grid-bg"></div>
+    <div class="card-header-bar" style="background:#F97316;"></div>
+    <div class="inner">
+      <div class="top-badge">🏢 기업 담당자 가이드</div>
+      <h1>검증된 팀과<br /><span>4단계</span>로<br />협업 시작</h1>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="sv">385<span>건</span></div>
+          <div class="sl">누적 매칭</div>
+        </div>
+        <div class="stat">
+          <div class="sv">124<span>팀</span></div>
+          <div class="sl">인증 동아리</div>
+        </div>
+        <div class="stat">
+          <div class="sv">45<span>건</span></div>
+          <div class="sl">이번달 진행</div>
+        </div>
+      </div>
+    </div>
+    <div class="brand" style="color:#555;">OURCLUB</div>
+  </div>
+
+  <!-- C-1 기업 회원가입 -->
+  <div class="card c-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">1</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill" style="background:#111;color:#F97316;">STEP 01</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">기업 등록</span>
+      </div>
+      <h2 class="step-title"><span>기업 계정</span><br />생성 & 등록</h2>
+      <p class="desc">OURCLUB에 기업 담당자로 가입하고<br />기업 프로필을 등록하세요.</p>
+
+      <div class="user-type-grid">
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🎓</div>
+          일반 학생
+        </div>
+        <div class="user-type-item" style="opacity:0.4;">
+          <div class="ut-icon">🏕️</div>
+          동아리<br />운영진
+        </div>
+        <div class="user-type-item active">
+          <div class="active-badge">✓ 선택</div>
+          <div class="ut-icon">🏢</div>
+          기업<br />담당자
+        </div>
+      </div>
+
+      <div class="visual-box" style="margin-top:20px;">
+        <div class="icon-wrap">🔐</div>
+        <div class="vb-text">
+          가입 후 <strong>기업 대시보드(Corp Dashboard)</strong>에서<br />
+          프로젝트 등록 및 제안 관리
+        </div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- C-2 프로젝트 등록 -->
+  <div class="card c-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">2</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill" style="background:#111;color:#F97316;">STEP 02</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">의뢰 등록</span>
+      </div>
+      <h2 class="step-title">협업 프로젝트<br /><span>등록하기</span></h2>
+      <p class="desc">기업 대시보드에서 원하는 협업 과제를<br />작성하면 오렌지 뱃지 동아리에게 공개됩니다.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon">①</div>
+          <span>프로젝트 제목 · 카테고리 선택 (마케팅·IT·기획 등)</span>
+        </li>
+        <li>
+          <div class="check-icon">②</div>
+          <span>예산 · 마감일 · 필요 스킬 태그 설정</span>
+        </li>
+        <li>
+          <div class="check-icon">③</div>
+          <span>상세 요구사항 작성 (마크다운 지원)</span>
+        </li>
+        <li>
+          <div class="check-icon">④</div>
+          <span>등록 즉시 B2B 프로젝트 라운지에 OPEN 상태로 노출</span>
+        </li>
+      </ul>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+  <!-- C-3 제안서 검토 -->
+  <div class="card c-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">3</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill" style="background:#111;color:#F97316;">STEP 03</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">제안 검토</span>
+      </div>
+      <h2 class="step-title">동아리 제안서<br /><span>검토 & 선택</span></h2>
+      <p class="desc">동아리에서 수주 제안서를 보내오면<br />대시보드 칸반 보드로 체계적으로 관리하세요.</p>
+
+      <div class="kanban-mini">
+        <div class="kanban-col">
+          <div class="kc-label">미열람</div>
+          <div class="kanban-card-mini">동아리 A</div>
+          <div class="kanban-card-mini">동아리 B</div>
+        </div>
+        <div class="kanban-col">
+          <div class="kc-label">검토중</div>
+          <div class="kanban-card-mini">동아리 C</div>
+        </div>
+        <div class="kanban-col kc-active">
+          <div class="kc-label">⚡ 미팅요청</div>
+          <div class="kanban-card-mini active">동아리 D</div>
+        </div>
+        <div class="kanban-col">
+          <div class="kc-label">매칭완료</div>
+          <div class="kanban-card-mini" style="border-color:#7c3aed;color:#7c3aed;">동아리 E</div>
+        </div>
+      </div>
+
+      <p style="font-size:12px;font-weight:700;color:#888;margin-top:14px;">
+        미열람 → 검토중 → 미팅 요청 → 매칭 완료 순으로<br />상태를 직접 업데이트하며 협업 파트너를 선정합니다.
+      </p>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<div class="card-row">
+
+  <!-- C-4 매칭 & 협업 -->
+  <div class="card c-step">
+    <div class="card-header-bar"></div>
+    <div class="big-num" style="color:#F5F5F5;">4</div>
+    <div class="card-body">
+      <div class="step-meta">
+        <span class="step-pill orange">STEP 04</span>
+        <span style="font-size:12px;font-weight:700;color:#aaa;">협업 시작</span>
+      </div>
+      <h2 class="step-title">매칭 완료 →<br /><span>협업 시작</span></h2>
+      <p class="desc">오렌지 뱃지 동아리와의 신뢰 기반<br />협업으로 기업의 과제를 해결하세요.</p>
+
+      <ul class="checklist">
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">🤝</div>
+          <span>100% 신원 검증된 운영진과 계약 체결</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">📊</div>
+          <span>대학생 특유의 트렌드 감각 · 가성비 인력 확보</span>
+        </li>
+        <li>
+          <div class="check-icon" style="background:#FFF7ED;border-color:#F97316;">✅</div>
+          <span>납품 완료 후 리뷰 → 동아리 신뢰도 누적</span>
+        </li>
+      </ul>
+
+      <div class="cta-box">
+        <div>
+          지금 프로젝트 등록하기<br />
+          <span class="url">ourclub.com → B2B 라운지</span>
+        </div>
+        <div class="arrow">→</div>
+      </div>
+    </div>
+    <div class="brand">OURCLUB</div>
+  </div>
+
+</div>
+
+<p class="print-note">
+  ※ 각 카드를 개별 스크린샷으로 캡처하여 SNS 카드뉴스로 활용하세요 (권장 사이즈: 1080 × 1080px)<br />
+  ※ 브라우저 줌 200% 또는 개발자 도구 Device Emulation 1080px 너비 기준 캡처 권장
+</p>
+
+</body>
+</html>

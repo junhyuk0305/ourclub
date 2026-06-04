@@ -10,6 +10,8 @@ export { default as InfoPage } from './InfoPage';
 export { default as StoryDetail } from './StoryDetail';
 export { default as ClubStories } from './ClubStories';
 export { default as Onboarding } from './Onboarding';
+export { default as ProfileSetup } from './ProfileSetup';
 export { default as ClubSetup } from './ClubSetup';
 export { default as ClubJoin } from './ClubJoin';
 export { default as ClubRegister } from './ClubRegister';
+export { default as ClubDemoPage } from './ClubDemoPage';

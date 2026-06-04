@@ -19,15 +19,18 @@
       "Bash(git log *)",
       "Bash(git ls-files *)",
       "Bash(git show *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "WebFetch(domain:www.gdweb.co.kr)",
+      "Read(//tmp/refimgs/**)",
+      "Bash(cygpath -w /tmp/refimgs/ref_24154.png)",
+      "Read(//c/Users/장준혁/AppData/Local/Temp/refimgs/**)"
     ]
   },
-   "statusLine": {
+  "statusLine": {
     "enabled": true
   },
-   "env": {
+  "env": {
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
     "OTEL_METRICS_EXPORTER": "otlp"
   }
 }
-

@@ -1,19 +1,9 @@
 import React, { useRef } from 'react';
-import { Palette, AlertCircle, Search } from 'lucide-react';
+import { Palette, AlertCircle } from 'lucide-react';
 
 interface WorkspacePropertiesProps {
   activeTheme: string;
   setActiveTheme: (theme: string) => void;
-  coverImg: string;
-  setCoverImg: (url: string) => void;
-  clubName: string;
-  setClubName: (name: string) => void;
-  hashtag1: string;
-  setHashtag1: (tag: string) => void;
-  hashtag2: string;
-  setHashtag2: (tag: string) => void;
-  badgeText: string;
-  setBadgeText: (text: string) => void;
   showFloatingBtn: boolean;
   setShowFloatingBtn: (show: boolean) => void;
   contentWidth: string;
@@ -22,10 +12,6 @@ interface WorkspacePropertiesProps {
   setPageBgColor: (c: string) => void;
   globalFont: string;
   setGlobalFont: (f: string) => void;
-  pageTitle: string;
-  setPageTitle: (t: string) => void;
-  pageDesc: string;
-  setPageDesc: (d: string) => void;
 }
 
 const PRESET_THEMES = [
@@ -43,17 +29,10 @@ const THEME_HEX: Record<string, string> = {
 
 export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
   activeTheme, setActiveTheme,
-  coverImg, setCoverImg,
-  clubName, setClubName,
-  hashtag1, setHashtag1,
-  hashtag2, setHashtag2,
-  badgeText, setBadgeText,
   showFloatingBtn, setShowFloatingBtn,
   contentWidth, setContentWidth,
   pageBgColor, setPageBgColor,
   globalFont, setGlobalFont,
-  pageTitle, setPageTitle,
-  pageDesc, setPageDesc,
 }) => {
   const customColorRef = useRef<HTMLInputElement>(null);
   const isCustomTheme = !PRESET_THEMES.some(t => t.key === activeTheme);
@@ -105,14 +84,14 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
           {isCustomTheme && (
             <div className="flex items-center gap-2 mt-1">
               <div className="w-4 h-4 rounded-full border border-black" style={{ backgroundColor: activeTheme.replace('custom:', '') }} />
-              <span className="text-[10px] font-mono text-gray-500 uppercase">{activeTheme.replace('custom:', '')}</span>
+              <span className="text-[12px] font-mono text-gray-500 uppercase">{activeTheme.replace('custom:', '')}</span>
             </div>
           )}
         </div>
 
         {/* Layout Settings */}
         <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
-          <div className="text-[9px] font-black uppercase tracking-widest text-gray-300">페이지 레이아웃</div>
+          <div className="text-[12px] font-black uppercase tracking-widest text-gray-300">페이지 레이아웃</div>
 
           <div className="flex flex-col gap-2">
             <label className="font-black text-sm flex items-center gap-2">본문 최대 너비 <Tooltip text="데스크톱 기준 페이지 콘텐츠의 최대 너비입니다."/></label>
@@ -152,43 +131,10 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
           </div>
         </div>
 
-        {/* Global Cover Setting */}
-        <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
-          <div className="text-[9px] font-black uppercase tracking-widest text-gray-300">히어로 커버</div>
-          <label className="font-black text-sm">상단 커버 이미지</label>
-          <input
-            type="text"
-            value={coverImg}
-            onChange={(e) => setCoverImg(e.target.value)}
-            className="w-full p-2 text-sm border border-black font-bold outline-none focus:border-orange-500 bg-gray-50"
-          />
-          <div className="h-20 bg-gray-200 border border-black w-full overflow-hidden">
-            <img src={coverImg} alt="Cover Preview" className="w-full h-full object-cover" />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <label className="font-black text-sm">동아리명</label>
-          <input
-            type="text"
-            value={clubName}
-            onChange={(e) => setClubName(e.target.value)}
-            className="w-full p-2 text-sm border border-black font-bold outline-none focus:border-orange-500"
-          />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <label className="font-black text-sm flex items-center gap-2">검색 키워드 태그 <Tooltip text="플랫폼 내 검색 엔진에 노출되는 주요 키워드입니다."/></label>
-          <div className="flex gap-2">
-            <input type="text" value={hashtag1} onChange={e=>setHashtag1(e.target.value)} className="w-full p-2 text-sm border border-black font-bold" />
-            <input type="text" value={hashtag2} onChange={e=>setHashtag2(e.target.value)} className="w-full p-2 text-sm border border-black font-bold" />
-          </div>
-        </div>
-
-        {/* Safety Badge */}
-        <div className="flex flex-col gap-3 pb-4 border-b border-gray-200">
-           <label className="font-black text-sm text-green-600 flex items-center gap-1">✅ 오렌지 뱃지 노출 문구</label>
-           <input type="text" value={badgeText} onChange={e=>setBadgeText(e.target.value)} className="w-full p-2 text-sm border border-gray-300 bg-green-50 text-green-800 font-bold" />
+        {/* 동아리명 · 한 줄 소개 등 기본 정보는 '동아리 환경 설정'에서 관리합니다. */}
+        <div className="flex items-start gap-2 border border-gray-200 bg-gray-50 p-3 text-xs font-bold text-gray-500">
+          <AlertCircle className="w-4 h-4 shrink-0 text-gray-400 mt-px" />
+          <span>동아리명·한 줄 소개·로고 등 기본 정보는 <strong className="text-gray-700">동아리 환경 설정</strong>에서 관리합니다. 상단 영역은 위젯(히어로 슬라이더 등)으로 자유롭게 구성하세요.</span>
         </div>
 
         {/* Sticky Apply Button Toggle */}
@@ -201,26 +147,6 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
             <input type="checkbox" checked={showFloatingBtn} onChange={()=>setShowFloatingBtn(!showFloatingBtn)} className="sr-only peer" />
             <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none border-2 border-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-black after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${showFloatingBtn ? 'bg-orange-500' : ''}`}></div>
           </label>
-        </div>
-
-        {/* SEO Settings */}
-        <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-blue-500" />
-            <span className="font-black text-sm text-blue-700">SEO 메타 설정</span>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500">페이지 제목 (Title)</label>
-            <input type="text" value={pageTitle} onChange={e => setPageTitle(e.target.value)}
-              className="w-full p-2 text-sm border border-gray-300 font-bold outline-none focus:border-orange-500"
-              placeholder="동아리명 | OurClub" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500">페이지 설명 (Description)</label>
-            <textarea value={pageDesc} onChange={e => setPageDesc(e.target.value)}
-              className="w-full p-2 text-sm border border-gray-300 font-bold outline-none focus:border-orange-500 resize-none"
-              rows={3} placeholder="검색 결과에 표시될 설명을 입력하세요." />
-          </div>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 p-4 font-bold text-sm text-blue-800">

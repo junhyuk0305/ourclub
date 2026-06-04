@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 520" width="840" height="520" role="img" aria-label="ourclub fish mark">
+  <g fill="none" stroke="#F97316" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <!-- body (o) -->
+    <ellipse cx="295" cy="260" rx="205" ry="150"/>
+    <!-- tail: figure-8, overlapping body right edge -->
+    <path d="M 505 260
+             C 535 165 715 165 730 235
+             C 742 292 588 305 505 260
+             C 588 215 742 228 730 285
+             C 715 355 535 355 505 260 Z"/>
+  </g>
+  <!-- eye -->
+  <circle cx="198" cy="258" r="21" fill="#F97316"/>
+</svg>

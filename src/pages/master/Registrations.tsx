@@ -125,6 +125,7 @@ export default function Registrations() {
         status: newStatus,
         reviewer_note: reviewerNote || null,
         reviewed_at: new Date().toISOString(),
+        reviewed_by: user?.id ?? null,
       })
       .eq('id', selected.id);
     setSaving(false);
@@ -134,60 +135,23 @@ export default function Registrations() {
     setSelected(prev => prev ? { ...prev, status: newStatus, reviewer_note: reviewerNote } : null);
   };
 
-  // 최종 승인 (clubs + club_members 생성 + status='승인')
+  // 최종 승인 — clubs+club_members+status를 단일 트랜잭션 RPC로 처리 (원자적)
   const handleApprove = async () => {
     if (!selected) return;
     setApproving(true);
     setActionMsg('');
 
-    try {
-      // 1. clubs 생성
-      const slug = `club-${Date.now()}`;
-      const { data: club, error: clubErr } = await supabase
-        .from('clubs')
-        .insert({
-          slug,
-          name: selected.club_name,
-          type: selected.club_type,
-          one_line_desc: selected.one_line_desc,
-          description: selected.description,
-          location: selected.location,
-          is_certified: true,
-          theme_color: '#f97316',
-        })
-        .select('id')
-        .single();
+    const { data: slug, error } = await supabase.rpc('approve_club_registration', {
+      p_request_id: selected.id,
+      p_note: reviewerNote || null,
+    });
 
-      if (clubErr) throw new Error('동아리 생성 실패: ' + clubErr.message);
+    setApproving(false);
+    if (error) { setActionMsg('승인 실패: ' + error.message); return; }
 
-      // 2. club_members 생성 (신청자를 운영진으로)
-      const { error: memberErr } = await supabase
-        .from('club_members')
-        .insert({
-          user_id: selected.user_id,
-          club_id: club.id,
-          role: '운영진',
-          status: '활동중',
-        });
-
-      if (memberErr) throw new Error('운영진 등록 실패: ' + memberErr.message);
-
-      // 3. 신청서 상태 → 승인
-      const { error: updateErr } = await supabase
-        .from('club_registration_requests')
-        .update({ status: '승인', reviewer_note: reviewerNote || null, reviewed_at: new Date().toISOString() })
-        .eq('id', selected.id);
-
-      if (updateErr) throw new Error('상태 업데이트 실패: ' + updateErr.message);
-
-      setActionMsg(`✅ 승인 완료! 슬러그: ${slug}`);
-      fetchList();
-      setSelected(null);
-    } catch (err: unknown) {
-      setActionMsg((err as Error).message);
-    } finally {
-      setApproving(false);
-    }
+    setActionMsg(`✅ 승인 완료! 슬러그: ${slug}`);
+    fetchList();
+    setSelected(null);
   };
 
   const docFields = selected ? [

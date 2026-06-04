@@ -12,6 +12,8 @@ interface Profile {
   skills: string[] | null;
   resume_url: string | null;
   portfolio_url: string | null;
+  birthdate: string | null;
+  academic_status: string | null;
 }
 
 interface AuthContextValue {
@@ -19,8 +21,9 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   isMaster: boolean;
+  isProfileComplete: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: (redirectPath?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -90,12 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
-    return { error: error?.message ?? null };
+    // 이메일 인증이 켜져 있으면 session이 비어있음 → 메일 확인 안내 필요
+    return { error: error?.message ?? null, needsConfirmation: !error && !data.session };
   };
 
   const signIn = async (email: string, password: string) => {
@@ -122,8 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  // 필수 프로필 완성 여부 (대학교·전공·학적상태·전화번호·생년월일)
+  const isProfileComplete = !!(
+    profile?.university &&
+    profile?.major &&
+    profile?.academic_status &&
+    profile?.phone &&
+    profile?.birthdate
+  );
+
   return (
-    <AuthContext.Provider value={{ session, user, profile, isMaster, loading, signUp, signIn, signInWithGoogle, signOut, refreshProfile, deleteAccount }}>
+    <AuthContext.Provider value={{ session, user, profile, isMaster, isProfileComplete, loading, signUp, signIn, signInWithGoogle, signOut, refreshProfile, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

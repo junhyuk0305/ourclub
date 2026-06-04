@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 500" width="720" height="500" role="img" aria-label="ourclub logo lockup">
+  <!-- fish mark -->
+  <g transform="translate(122 10) scale(0.58)">
+    <g fill="none" stroke="#F97316" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="295" cy="260" rx="205" ry="150"/>
+      <path d="M 505 260
+               C 535 165 715 165 730 235
+               C 742 292 588 305 505 260
+               C 588 215 742 228 730 285
+               C 715 355 535 355 505 260 Z"/>
+    </g>
+    <circle cx="198" cy="258" r="21" fill="#F97316"/>
+  </g>
+  <!-- wordmark -->
+  <text x="360" y="438" text-anchor="middle"
+        font-family="'Fredoka','Baloo 2','Arial Rounded MT Bold','Nunito',sans-serif"
+        font-weight="600" font-size="140" letter-spacing="-2" fill="#F97316">ourclub</text>
+</svg>

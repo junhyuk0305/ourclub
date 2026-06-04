@@ -198,18 +198,14 @@ export default function RecruitAdmin() {
       applicant,
       fromStage: applicant.status,
       toStage,
-      body: `안녕하세요, ${applicant.profiles?.name ?? '지원자'}님!\n\n${selectedRecruitment?.title ?? ''}에 지원해주셔서 감사합니다.\n\n현재 '${toStage}' 단계로 진행되었습니다. 추가 안내는 이메일로 연락드리겠습니다.\n\n감사합니다.`,
+      body: `안녕하세요, ${applicant.profiles?.name ?? '지원자'}님!\n\n${selectedRecruitment?.title ?? ''}에 지원해주셔서 감사합니다.\n\n현재 '${toStage}' 단계로 진행되었습니다. 자세한 내용은 마이페이지 알림에서 확인하실 수 있어요.\n\n감사합니다.`,
     });
   };
 
-  const confirmStageMove = async (sendEmail: boolean) => {
+  const confirmStageMove = async () => {
     if (!emailModal) return;
     await changeStatus(emailModal.applicant.id, emailModal.toStage);
-    showToast(
-      sendEmail
-        ? `${emailModal.applicant.profiles?.name ?? ''} → '${emailModal.toStage}' 이동 및 이메일 발송`
-        : `${emailModal.applicant.profiles?.name ?? ''} → '${emailModal.toStage}' 이동`
-    );
+    showToast(`${emailModal.applicant.profiles?.name ?? ''} → '${emailModal.toStage}' 이동`);
     setEmailModal(null);
   };
 
@@ -638,16 +634,10 @@ export default function RecruitAdmin() {
 
             <div className="p-6 border-t border-black bg-gray-50 flex justify-end gap-3">
               <button
-                onClick={() => confirmStageMove(false)}
-                className="px-6 py-2.5 border border-black font-bold bg-white hover:bg-gray-100 text-sm"
-              >
-                이메일 없이 이동
-              </button>
-              <button
-                onClick={() => confirmStageMove(true)}
+                onClick={() => confirmStageMove()}
                 className="px-6 py-2.5 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors flex items-center gap-2 text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none"
               >
-                <Mail className="w-4 h-4" /> 이메일 발송 & 이동
+                <Mail className="w-4 h-4" /> 단계 이동
               </button>
             </div>
           </div>

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/email_templates?select=id&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/recruitment_applications?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/clubs?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/b2b_projects?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(curl -s \"https://vlzmostrjkkwmwhlqssb.supabase.co/rest/v1/b2b_applications?select=*&limit=1\" -H \"apikey: sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\" -H \"Authorization: Bearer sb_publishable_cSrVYOFXFjygEr09gI9YSQ_60sz_6eu\")",
+      "Bash(git ls-files *)",
+      "Bash(grep -rn \"__preview\\\\|__BuilderPreview\\\\|__seedPages\\\\|seedPages\\\\|BuilderPreview\" src/ --include=*.tsx --include=*.ts)",
+      "Bash(ls __preview_*.png)"
+    ]
+  }
+}

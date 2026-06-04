@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, Loader,
@@ -99,6 +99,8 @@ export default function ClubRegister() {
   const [step, setStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState('');
   const [pageState, setPageState] = useState<'form' | 'success'>('form');
+  // 보완요청 건 재제출 모드 (해당 신청서 id를 담으면 UPDATE 모드)
+  const [editId, setEditId] = useState<string | null>(null);
 
   // Step 1
   const [clubName, setClubName] = useState('');
@@ -123,6 +125,37 @@ export default function ClubRegister() {
   const [hasAccidentHistory, setHasAccidentHistory] = useState<boolean | null>(null);
   const [accidentDescription, setAccidentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // ── 보완요청 건이 있으면 불러와 재제출 모드로 ────────────────
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('club_registration_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', '보완요청')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setEditId(data.id);
+        setClubName(data.club_name ?? '');
+        setClubType(data.club_type ?? '');
+        setOneLineDesc(data.one_line_desc ?? '');
+        setDescription(data.description ?? '');
+        setLocation(data.location ?? '');
+        if (data.registration_doc_url) setRegistrationDoc({ name: '기존 제출 파일', path: data.registration_doc_url });
+        if (data.activity_doc_url) setActivityDoc({ name: '기존 제출 파일', path: data.activity_doc_url });
+        if (data.member_list_doc_url) setMemberListDoc({ name: '기존 제출 파일', path: data.member_list_doc_url });
+        if (data.representative_id_url) setRepresentativeId({ name: '기존 제출 파일', path: data.representative_id_url });
+        if (data.member_count != null) setMemberCount(String(data.member_count));
+        setHasRegularMeeting(data.has_regular_meeting);
+        setMeetingLocation(data.meeting_location ?? '');
+        setHasMembershipFee(data.has_membership_fee);
+        if (data.membership_fee_amount != null) setMembershipFeeAmount(String(data.membership_fee_amount));
+        setHasAccidentHistory(data.has_accident_history);
+        setAccidentDescription(data.accident_description ?? '');
+      });
+  }, [user]);
 
   // ── 파일 업로드 ──────────────────────────────────────────────
   const uploadFile = async (file: File, fieldKey: string): Promise<string> => {
@@ -199,8 +232,7 @@ export default function ClubRegister() {
     setSubmitting(true);
     setErrorMsg('');
 
-    const { error } = await supabase.from('club_registration_requests').insert({
-      user_id: user!.id,
+    const payload = {
       club_name: clubName.trim(),
       club_type: clubType,
       one_line_desc: oneLineDesc.trim(),
@@ -217,7 +249,17 @@ export default function ClubRegister() {
       membership_fee_amount: hasMembershipFee ? Number(membershipFeeAmount) || null : null,
       has_accident_history: hasAccidentHistory,
       accident_description: hasAccidentHistory ? accidentDescription.trim() : null,
-    });
+    };
+
+    // 재제출(보완요청 건): 상태를 검토대기로 되돌리고 심사 메모 초기화
+    const { error } = editId
+      ? await supabase
+          .from('club_registration_requests')
+          .update({ ...payload, status: '검토대기', reviewer_note: null, reviewed_at: null })
+          .eq('id', editId)
+      : await supabase
+          .from('club_registration_requests')
+          .insert({ user_id: user!.id, ...payload });
 
     setSubmitting(false);
 
@@ -238,15 +280,15 @@ export default function ClubRegister() {
             <div className="w-16 h-16 bg-orange-100 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6">
               <Shield className="w-8 h-8 text-orange-500" />
             </div>
-            <h1 className="text-2xl font-black mb-3">등록 신청 완료!</h1>
+            <h1 className="text-2xl font-black mb-3">{editId ? '재제출 완료!' : '등록 신청 완료!'}</h1>
             <p className="font-bold text-gray-500 mb-2">
-              <span className="text-black font-black">{clubName}</span> 등록 신청이 접수됐어요.
+              <span className="text-black font-black">{clubName}</span> {editId ? '보완 내용이 다시 접수됐어요.' : '등록 신청이 접수됐어요.'}
             </p>
             <p className="text-sm font-bold text-gray-400 mb-2">
               안전 인증 심사는 보통 <span className="text-black font-black">2~3주</span> 소요돼요.
             </p>
             <p className="text-sm font-bold text-gray-400 mb-8">
-              심사 결과는 이메일로 안내되며, 승인 시 오렌지 배찌와 함께 운영 페이지가 열려요.
+              심사 결과는 알림으로 안내되며, 승인 시 오렌지 배찌와 함께 운영 페이지가 열려요.
             </p>
             <div className="flex flex-col gap-3">
               <Link
@@ -284,9 +326,11 @@ export default function ClubRegister() {
         <div className="w-full max-w-2xl">
           {/* 헤더 */}
           <div className="mb-8">
-            <h1 className="text-4xl font-black mb-2">새 동아리 등록</h1>
+            <h1 className="text-4xl font-black mb-2">{editId ? '보완 후 재제출' : '새 동아리 등록'}</h1>
             <p className="font-bold text-gray-500">
-              안전 인증 심사를 통과하면 오렌지 배찌와 모든 운영 기능이 열려요.
+              {editId
+                ? '담당자 요청 사항을 반영해 수정한 뒤 다시 제출해주세요.'
+                : '안전 인증 심사를 통과하면 오렌지 배찌와 모든 운영 기능이 열려요.'}
             </p>
           </div>
 
@@ -563,7 +607,7 @@ export default function ClubRegister() {
                 >
                   {submitting && <Loader className="w-5 h-5 animate-spin" />}
                   <Shield className="w-5 h-5" />
-                  안전 인증 신청 제출
+                  {editId ? '보완 내용 재제출' : '안전 인증 신청 제출'}
                 </button>
               )}
             </div>

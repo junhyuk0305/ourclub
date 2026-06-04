@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Palette, Briefcase, Calendar, CheckSquare, Users, Edit3, Settings, MessageSquare, FileText, ChevronDown, ChevronRight, Globe, ClipboardList, PenTool } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Settings, ChevronDown, ChevronRight, Palette, ClipboardList } from 'lucide-react';
 
 type MenuItem = {
   name: string;
@@ -17,13 +17,16 @@ type MenuGroup = {
 export function AdminSidebar() {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    '웹사이트 관리': true,
+    '커스터마이징': true,
     '모집 및 지원 관리': true,
     '멤버 및 활동 관리': true,
     '운영 및 성과 평가': true
   });
 
-  const isActive = (path: string) => location.pathname === path || (path !== '/workspace' && path !== '/admin/dashboard' && location.pathname.startsWith(path));
+  const EXACT_ONLY = ['/workspace', '/admin/dashboard', '/admin/sessions'];
+  const isActive = (path: string) =>
+    location.pathname === path ||
+    (!EXACT_ONLY.includes(path) && location.pathname.startsWith(path));
 
   const toggleGroup = (groupName: string) => {
     setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
@@ -31,19 +34,21 @@ export function AdminSidebar() {
 
   const menuGroups: MenuGroup[] = [
     { name: '대시보드', path: '/admin/dashboard', icon: LayoutDashboard },
-    { 
-      name: '웹사이트 관리', 
-      icon: Globe,
+    {
+      name: '커스터마이징',
+      icon: Palette,
       items: [
-        { name: '1-Page 프로필 꾸미기', path: '/workspace' }
+        { name: '1-Page 프로필', path: '/workspace' },
+        { name: '채용 메인 페이지 제작', path: '/admin/recruit-page' },
       ]
     },
     {
       name: '모집 및 지원 관리',
       icon: ClipboardList,
       items: [
-        { name: '지원서 폼 빌더', path: '/admin/form-builder' },
-        { name: '리크루팅 진행 상황', path: '/admin/recruit' }
+        { name: '전체 채용', path: '/admin/recruitments' },
+        { name: '모집 대시보드', path: '/admin/recruit-dashboard' },
+        { name: '분석 리포트', path: '/admin/recruit-analytics' },
       ]
     },
     {
@@ -51,7 +56,8 @@ export function AdminSidebar() {
       icon: Users,
       items: [
         { name: '부원 명단 관리', path: '/admin/members' },
-        { name: '출석 및 세션 관리', path: '/admin/attendance' }
+        { name: '세션 출석기록 생성', path: '/admin/sessions/new' },
+        { name: '전체 세션 관리', path: '/admin/sessions' },
       ]
     },
     {

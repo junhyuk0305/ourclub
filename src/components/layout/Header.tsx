@@ -39,6 +39,39 @@ function useAlertNotifications(userId: string | undefined) {
   return { alerts, loading, refetch: fetch };
 }
 
+interface NotificationItem {
+  id: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+function useUserNotifications(userId: string | undefined) {
+  const [items, setItems] = useState<NotificationItem[]>([]);
+
+  const fetch = async () => {
+    if (!userId) { setItems([]); return; }
+    const { data } = await supabase
+      .from('notifications')
+      .select('id, title, body, link, is_read, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setItems((data as NotificationItem[]) ?? []);
+  };
+
+  useEffect(() => { fetch(); }, [userId]);
+
+  const markRead = async (id: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    setItems(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
+  };
+
+  return { items, markRead };
+}
+
 const NAV_LINKS = [
   { to: '/clubs',   label: '동아리 찾기' },
   { to: '/b2b',     label: '기업 라운지' },
@@ -56,12 +89,14 @@ export const Header = () => {
   const { isAdmin } = useAdmin();
   const { isCorpUser } = useCorp();
   const { alerts, loading: alertLoading } = useAlertNotifications(user?.id);
+  const { items: notifications, markRead } = useUserNotifications(user?.id);
 
   const activeAlerts = alerts.filter(a => {
     const recs = Array.isArray(a.clubs?.recruitments) ? a.clubs.recruitments : [];
     return recs.some(r => ['진행중', '모집중'].includes(r.status));
   });
-  const dotVisible = activeAlerts.length > 0;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const dotVisible = activeAlerts.length > 0 || unreadCount > 0;
 
   // 페이지 이동 시 모바일 드로어 닫기 + 맨 위로 스크롤
   useEffect(() => {
@@ -118,6 +153,11 @@ export const Header = () => {
               <Link to="/mypage" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
                 학생 마이페이지
               </Link>
+              {!isAdmin && !isCorpUser && (
+                <Link to="/club-setup" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
+                  동아리 운영하기
+                </Link>
+              )}
               {isAdmin && (
                 <Link to="/admin/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
                   운영진 워크스페이스
@@ -146,14 +186,32 @@ export const Header = () => {
                 {bellOpen && (
                   <div className="absolute right-0 top-full mt-1 w-80 bg-white border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-50">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-black bg-gray-50">
-                      <span className="font-black text-sm">모집 알림</span>
+                      <span className="font-black text-sm">알림</span>
                       <button onClick={() => setBellOpen(false)} className="p-1 hover:bg-gray-200 rounded transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="max-h-72 overflow-y-auto">
+                    <div className="max-h-96 overflow-y-auto">
+                      {/* 서비스 알림 (등록 심사 결과 등) */}
+                      {notifications.map(n => (
+                        <button
+                          key={n.id}
+                          onClick={() => { markRead(n.id); setBellOpen(false); if (n.link) navigate(n.link); }}
+                          className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-100 text-left ${!n.is_read ? 'bg-orange-50/60' : ''}`}
+                        >
+                          <span className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-orange-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-sm">{n.title}</p>
+                            {n.body && <p className="text-xs font-bold text-gray-500 mt-0.5 break-words">{n.body}</p>}
+                          </div>
+                        </button>
+                      ))}
+
+                      {/* 모집 알림 */}
                       {alertLoading ? (
-                        <div className="px-4 py-6 text-center text-sm font-bold text-gray-400">불러오는 중...</div>
+                        notifications.length === 0 && (
+                          <div className="px-4 py-6 text-center text-sm font-bold text-gray-400">불러오는 중...</div>
+                        )
                       ) : activeAlerts.length > 0 ? (
                         activeAlerts.map(a => {
                           const recs = Array.isArray(a.clubs?.recruitments) ? a.clubs.recruitments : [];
@@ -187,13 +245,13 @@ export const Header = () => {
                             </button>
                           );
                         })
-                      ) : (
+                      ) : notifications.length === 0 ? (
                         <div className="px-4 py-8 flex flex-col items-center gap-2">
                           <Bell className="w-8 h-8 text-gray-200" />
-                          <p className="text-sm font-bold text-gray-400 text-center">현재 모집 중인 알림이 없습니다</p>
-                          <p className="text-xs font-medium text-gray-400 text-center">동아리 목록에서 ♥를 눌러 알림을 설정하세요</p>
+                          <p className="text-sm font-bold text-gray-400 text-center">새 알림이 없습니다</p>
+                          <p className="text-xs font-medium text-gray-400 text-center">동아리 목록에서 ♥를 눌러 모집 알림을 설정하세요</p>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     <div className="border-t border-black px-4 py-3 bg-gray-50">
                       <Link to="/clubs" onClick={() => setBellOpen(false)}
@@ -255,6 +313,11 @@ export const Header = () => {
               <Link to="/mypage" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
                 학생 마이페이지 <ChevronRight className="w-4 h-4 text-gray-400" />
               </Link>
+              {!isAdmin && !isCorpUser && (
+                <Link to="/club-setup" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
+                  동아리 운영하기 <ChevronRight className="w-4 h-4 text-gray-400" />
+                </Link>
+              )}
               {isAdmin && (
                 <Link to="/admin/dashboard" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
                   운영진 워크스페이스 <ChevronRight className="w-4 h-4 text-gray-400" />

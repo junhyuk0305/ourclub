@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, Heart, FileText, Bell, Loader, LogOut, X, Check, ClipboardList, Star, ArrowRight, Trash2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
+import { useCorp } from '../../contexts/CorpContext';
 import { supabase } from '../../lib/supabaseClient';
 
 type Tab = 'applications' | 'attendance' | 'scraps' | 'notifications';
@@ -34,7 +36,7 @@ export default function MyPage() {
     { key: 'applications', label: '지원 내역',     icon: <FileText className="w-5 h-5" /> },
     { key: 'attendance',   label: '활동 및 출결',  icon: <ClipboardList className="w-5 h-5" /> },
     { key: 'scraps',       label: '스크랩한 동아리', icon: <Heart className="w-5 h-5" /> },
-    { key: 'notifications',label: '알림 설정',     icon: <Bell className="w-5 h-5" /> },
+    { key: 'notifications',label: '알림',          icon: <Bell className="w-5 h-5" /> },
   ];
 
   return (
@@ -123,6 +125,9 @@ export default function MyPage() {
 
           {/* ── 메인 콘텐츠 ── */}
           <div className="col-span-1 md:col-span-2 flex flex-col gap-8">
+            {/* 역할별 전환 유도 배너 (운영진/기업 사용자) */}
+            <RoleNudgeBanner />
+
             {/* Phase 5: Pulse Check 배너 (진행중 설문 있을 때만 표시) */}
             <PulseCheckBanner />
 
@@ -403,6 +408,64 @@ function AttendanceSection() {
 // ──────────────────────────────────────────
 // Phase 3: 지원 내역 탭
 // ──────────────────────────────────────────
+// ──────────────────────────────────────────
+// 역할별 전환 유도 배너 (운영진/기업 사용자에게만 표시)
+// ──────────────────────────────────────────
+function RoleNudgeBanner() {
+  const { isAdmin } = useAdmin();
+  const { isCorpUser } = useCorp();
+
+  if (isAdmin) {
+    return (
+      <Link
+        to="/admin/dashboard"
+        className="group flex items-center justify-between gap-4 border-2 border-black bg-orange-500 px-6 py-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+      >
+        <div className="min-w-0">
+          <p className="font-black text-lg text-black">운영진 워크스페이스</p>
+          <p className="font-bold text-sm text-black/70 truncate">우리 동아리 모집·부원·홈페이지를 관리하세요.</p>
+        </div>
+        <span className="flex items-center gap-1 font-black text-black whitespace-nowrap">
+          이동 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </span>
+      </Link>
+    );
+  }
+
+  if (isCorpUser) {
+    return (
+      <Link
+        to="/corp/dashboard"
+        className="group flex items-center justify-between gap-4 border-2 border-black bg-purple-600 px-6 py-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all"
+      >
+        <div className="min-w-0">
+          <p className="font-black text-lg text-white">기업 비즈니스 센터</p>
+          <p className="font-bold text-sm text-white/70 truncate">프로젝트 등록과 동아리 매칭을 관리하세요.</p>
+        </div>
+        <span className="flex items-center gap-1 font-black text-white whitespace-nowrap">
+          이동 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </span>
+      </Link>
+    );
+  }
+
+  // 일반 학생 — 동아리 운영(등록/합류) 진입 보조 안내
+  return (
+    <Link
+      to="/club-setup"
+      className="group flex items-center justify-between gap-4 border-2 border-dashed border-gray-300 bg-white px-6 py-4 hover:border-black transition-colors"
+    >
+      <div className="min-w-0">
+        <p className="font-black text-sm">동아리를 운영하시나요?</p>
+        <p className="font-bold text-xs text-gray-500 truncate">새 동아리를 등록하거나 기존 동아리에 운영진으로 합류하세요.</p>
+      </div>
+      <span className="flex items-center gap-1 font-black text-sm text-gray-600 group-hover:text-orange-500 whitespace-nowrap transition-colors">
+        등록·합류 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      </span>
+    </Link>
+  );
+}
+
 function ApplicationsSection() {
   const { user } = useAuth();
   const [apps, setApps] = useState<any[]>([]);
@@ -668,32 +731,116 @@ function ScrapsSection() {
 // ──────────────────────────────────────────
 // 알림 설정 (placeholder)
 // ──────────────────────────────────────────
+interface NotifRow {
+  id: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+function notifTimeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return '방금';
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}일 전`;
+  return new Date(iso).toLocaleDateString('ko-KR');
+}
+
 function NotificationsSection() {
-  const upcomingItems = [
-    { label: '동아리 모집 시작 알림', desc: '스크랩한 동아리의 다음 기수 모집이 시작되면 알려드립니다.' },
-    { label: '지원 결과 알림',       desc: '서류·면접·최종 합격 여부를 실시간으로 알려드립니다.' },
-    { label: '출결 세션 오픈 알림',  desc: '운영진이 출석 코드를 열면 즉시 알림을 받을 수 있습니다.' },
-  ];
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [items, setItems] = useState<NotifRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    if (!user) { setItems([]); setLoading(false); return; }
+    const { data } = await supabase
+      .from('notifications')
+      .select('id, title, body, link, is_read, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setItems((data as NotifRow[]) ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [user?.id]);
+
+  const markRead = async (id: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    setItems(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)));
+  };
+
+  const markAllRead = async () => {
+    if (!user) return;
+    const unreadIds = items.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
+    setItems(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const open = (n: NotifRow) => {
+    if (!n.is_read) markRead(n.id);
+    if (n.link) navigate(n.link);
+  };
+
+  const unread = items.filter(n => !n.is_read).length;
+
   return (
     <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
-      <h3 className="text-2xl font-black mb-2 flex items-center gap-2">
-        <Bell className="w-6 h-6 text-orange-500" /> 알림 설정
-      </h3>
-      <p className="text-sm font-bold text-gray-400 mb-6">곧 제공될 알림 기능을 미리 확인하세요.</p>
-      <div className="flex flex-col gap-3">
-        {upcomingItems.map(item => (
-          <div key={item.label} className="flex items-start gap-4 p-4 border border-gray-200 bg-gray-50 opacity-60">
-            <div className="w-5 h-5 border-2 border-gray-300 rounded-sm shrink-0 mt-0.5" />
-            <div>
-              <p className="font-black text-sm text-gray-700">{item.label}</p>
-              <p className="text-xs font-bold text-gray-400 mt-0.5">{item.desc}</p>
-            </div>
-            <span className="ml-auto shrink-0 px-2 py-0.5 bg-gray-200 text-gray-500 text-xs font-bold border border-gray-300">
-              준비중
-            </span>
-          </div>
-        ))}
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-black flex items-center gap-2">
+          <Bell className="w-6 h-6 text-orange-500" /> 알림
+          {unread > 0 && (
+            <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-black rounded-full">{unread}</span>
+          )}
+        </h3>
+        {unread > 0 && (
+          <button onClick={markAllRead} className="text-xs font-black text-gray-500 hover:text-black flex items-center gap-1">
+            <Check className="w-4 h-4" /> 모두 읽음
+          </button>
+        )}
       </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-400">
+          <Loader className="w-6 h-6 animate-spin" />
+        </div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+          <Bell className="w-10 h-10" />
+          <p className="font-bold text-sm">아직 받은 알림이 없습니다.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {items.map(n => (
+            <button
+              key={n.id}
+              onClick={() => open(n)}
+              className={`text-left flex items-start gap-4 p-4 border transition-colors ${
+                n.is_read
+                  ? 'border-gray-200 bg-white hover:bg-gray-50'
+                  : 'border-orange-300 bg-orange-50 hover:bg-orange-100'
+              } ${n.link ? 'cursor-pointer' : 'cursor-default'}`}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${n.is_read ? 'bg-gray-200' : 'bg-orange-500'}`} />
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-sm text-gray-900">{n.title}</p>
+                {n.body && <p className="text-xs font-bold text-gray-500 mt-1 whitespace-pre-wrap break-words">{n.body}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-gray-400">{notifTimeAgo(n.created_at)}</span>
+                {n.link && <ArrowRight className="w-4 h-4 text-gray-400" />}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -707,6 +854,8 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [university, setUniversity] = useState(profile?.university ?? '');
   const [major, setMajor] = useState(profile?.major ?? '');
+  const [birthdate, setBirthdate] = useState<string>(profile?.birthdate ?? '');
+  const [academicStatus, setAcademicStatus] = useState<string>(profile?.academic_status ?? '');
   const [skillInput, setSkillInput] = useState('');
   const [skills, setSkills] = useState<string[]>(profile?.skills ?? []);
   const [saving, setSaving] = useState(false);
@@ -729,6 +878,8 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
         phone: phone.trim() || null,
         university: university.trim() || null,
         major: major.trim() || null,
+        birthdate: birthdate || null,
+        academic_status: academicStatus || null,
         skills,
       })
       .eq('id', user.id);
@@ -763,6 +914,32 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
             />
           </div>
         ))}
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="font-black text-sm">생년월일</label>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={e => setBirthdate(e.target.value)}
+              className="border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 transition-colors bg-white cursor-pointer"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="font-black text-sm">학적 상태</label>
+            <select
+              value={academicStatus}
+              onChange={e => setAcademicStatus(e.target.value)}
+              className="border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
+            >
+              <option value="">선택 안 함</option>
+              <option value="재학">재학</option>
+              <option value="휴학">휴학</option>
+              <option value="수료">수료</option>
+              <option value="졸업">졸업</option>
+            </select>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-1">
           <label className="font-black text-sm">스킬 태그</label>

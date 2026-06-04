@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRight } from 'lucide-react';
+import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -134,17 +134,26 @@ export default function ClubSetup() {
 
             {!isSupplementNeeded && (
               <p className="text-sm font-bold text-gray-500 mb-6">
-                검토 완료 후 이메일로 결과를 안내해 드립니다.<br />
+                검토 완료 후 결과를 알림으로 안내해 드립니다.<br />
                 승인되면 자동으로 동아리 운영 페이지에 접근할 수 있어요.
               </p>
             )}
 
-            <Link
-              to="/"
-              className="block w-full py-4 bg-black text-white text-center font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors"
-            >
-              메인으로 돌아가기
-            </Link>
+            {isSupplementNeeded ? (
+              <button
+                onClick={() => navigate('/club-register')}
+                className="block w-full py-4 bg-orange-500 text-black text-center font-black border-2 border-black hover:bg-black hover:text-orange-500 transition-colors"
+              >
+                수정하고 다시 제출하기
+              </button>
+            ) : (
+              <Link
+                to="/"
+                className="block w-full py-4 bg-black text-white text-center font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors"
+              >
+                메인으로 돌아가기
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -189,10 +198,10 @@ export default function ClubSetup() {
     );
   }
 
-  // ── 분기 선택 ────────────────────────────────────────────────
+  // ── 분기 선택 (의도 기반: 부원 / 운영진) ──────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
-      <div className="text-center mb-12">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 py-16 font-sans">
+      <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 bg-orange-100 border-2 border-orange-300 px-4 py-2 font-black text-orange-700 text-sm mb-6">
           <CheckCircle className="w-4 h-4" /> 회원가입 완료
         </div>
@@ -200,45 +209,73 @@ export default function ClubSetup() {
           어떻게 시작하시겠어요?
         </h1>
         <p className="text-lg font-bold text-gray-500">
-          기존 동아리에 합류하거나, 새 동아리를 직접 등록할 수 있어요.
+          동아리에 부원으로 가입하거나, 동아리를 직접 운영할 수 있어요.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
-        {/* 기존 동아리 합류 */}
+      <div className="w-full max-w-3xl flex flex-col gap-8">
+        {/* 부원으로 가입 (가장 일반적인 경로 — 강조) */}
         <div
-          onClick={() => navigate('/club-join')}
-          className="group bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all cursor-pointer flex flex-col"
+          onClick={() => navigate('/clubs')}
+          className="group bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-6"
         >
-          <div className="w-16 h-16 bg-blue-100 border-4 border-black rounded-full flex items-center justify-center mb-6">
-            <Users className="w-8 h-8 text-blue-600" />
+          <div className="w-16 h-16 bg-yellow-100 border-4 border-black rounded-full flex items-center justify-center shrink-0">
+            <Search className="w-8 h-8 text-yellow-600" />
           </div>
-          <h2 className="text-2xl font-black mb-3">기존 동아리 합류</h2>
-          <p className="font-bold text-gray-500 flex-1 mb-6 leading-relaxed">
-            이미 OURCLUB에 등록된 동아리의<br />운영진으로 참여 신청해요.<br />
-            <span className="text-sm text-gray-400 mt-1 block">기존 운영진의 승인이 필요해요.</span>
-          </p>
-          <div className="flex items-center justify-between w-full py-4 bg-black text-white px-5 font-black border-2 border-black group-hover:bg-blue-600 transition-colors">
-            합류 신청하기 <ArrowRight className="w-5 h-5" />
+          <div className="flex-1">
+            <h2 className="text-2xl font-black mb-2">동아리에 가입하고 싶어요</h2>
+            <p className="font-bold text-gray-500 leading-relaxed">
+              모집 중인 동아리를 둘러보고 지원하세요. 합격하면 자동으로 부원이 됩니다.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 py-4 px-6 bg-yellow-400 text-black font-black border-2 border-black group-hover:bg-black group-hover:text-yellow-400 transition-colors whitespace-nowrap">
+            동아리 둘러보기 <ArrowRight className="w-5 h-5" />
           </div>
         </div>
 
-        {/* 새 동아리 등록 */}
-        <div
-          onClick={() => navigate('/club-register')}
-          className="group bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all cursor-pointer flex flex-col"
-        >
-          <div className="w-16 h-16 bg-orange-100 border-4 border-black rounded-full flex items-center justify-center mb-6">
-            <PlusCircle className="w-8 h-8 text-orange-600" />
+        {/* 운영진 영역 구분 */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex-1 h-px bg-gray-300" />
+          <span className="text-sm font-black text-gray-400">동아리를 운영하시나요?</span>
+          <div className="flex-1 h-px bg-gray-300" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 기존 동아리 합류 */}
+          <div
+            onClick={() => navigate('/club-join')}
+            className="group bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all cursor-pointer flex flex-col"
+          >
+            <div className="w-16 h-16 bg-blue-100 border-4 border-black rounded-full flex items-center justify-center mb-6">
+              <Users className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-black mb-3">기존 동아리 합류</h2>
+            <p className="font-bold text-gray-500 flex-1 mb-6 leading-relaxed">
+              이미 OURCLUB에 등록된 동아리의<br />운영진으로 참여 신청해요.<br />
+              <span className="text-sm text-gray-400 mt-1 block">기존 운영진의 승인이 필요해요.</span>
+            </p>
+            <div className="flex items-center justify-between w-full py-4 bg-black text-white px-5 font-black border-2 border-black group-hover:bg-blue-600 transition-colors">
+              합류 신청하기 <ArrowRight className="w-5 h-5" />
+            </div>
           </div>
-          <h2 className="text-2xl font-black mb-3">새 동아리 등록</h2>
-          <p className="font-bold text-gray-500 flex-1 mb-6 leading-relaxed">
-            새로운 동아리를 직접 등록해요.<br />안전 인증 심사를 통과하면<br />
-            <span className="text-orange-500 font-black">오렌지 배찌</span>와 모든 운영 기능이 열려요.
-            <span className="text-sm text-gray-400 mt-1 block">서류 제출 + 안전 설문 필요, 심사 2~3주.</span>
-          </p>
-          <div className="flex items-center justify-between w-full py-4 bg-orange-500 text-black px-5 font-black border-2 border-black group-hover:bg-black group-hover:text-orange-500 transition-colors">
-            등록 시작하기 <ArrowRight className="w-5 h-5" />
+
+          {/* 새 동아리 등록 */}
+          <div
+            onClick={() => navigate('/club-register')}
+            className="group bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all cursor-pointer flex flex-col"
+          >
+            <div className="w-16 h-16 bg-orange-100 border-4 border-black rounded-full flex items-center justify-center mb-6">
+              <PlusCircle className="w-8 h-8 text-orange-600" />
+            </div>
+            <h2 className="text-2xl font-black mb-3">새 동아리 등록</h2>
+            <p className="font-bold text-gray-500 flex-1 mb-6 leading-relaxed">
+              새로운 동아리를 직접 등록해요.<br />안전 인증 심사를 통과하면<br />
+              <span className="text-orange-500 font-black">오렌지 배찌</span>와 모든 운영 기능이 열려요.
+              <span className="text-sm text-gray-400 mt-1 block">서류 제출 + 안전 설문 필요, 심사 2~3주.</span>
+            </p>
+            <div className="flex items-center justify-between w-full py-4 bg-orange-500 text-black px-5 font-black border-2 border-black group-hover:bg-black group-hover:text-orange-500 transition-colors">
+              등록 시작하기 <ArrowRight className="w-5 h-5" />
+            </div>
           </div>
         </div>
       </div>

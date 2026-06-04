@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, ClipboardList, Users, LogOut } from 'lucide-react';
+import { Shield, ClipboardList, Users, LogOut, LayoutDashboard, Building2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const NAV = [
+  { path: '/master',               label: '운영 대시보드',   icon: LayoutDashboard },
+  { path: '/master/clubs',         label: '동아리 관리',     icon: Building2 },
   { path: '/master/registrations', label: '동아리 등록 심사', icon: ClipboardList },
   { path: '/master/join-requests', label: '합류 신청 심사',   icon: Users },
 ];

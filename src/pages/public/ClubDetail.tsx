@@ -33,7 +33,10 @@ interface Post {
 
 interface ClubPage {
   id: string;
+  /** 발행된 공개본 — 방문자가 보는 스냅샷 */
   blocks: { blocks: any[]; config: any } | null;
+  /** 작업 중인 초안 — 운영진 미리보기용 (방문자 노출 안 됨) */
+  draft: { blocks: any[]; config: any } | null;
   published_at: string | null;
 }
 
@@ -91,7 +94,7 @@ export default function ClubDetail() {
           .limit(4),
         supabase
           .from('club_pages')
-          .select('id, blocks, published_at')
+          .select('id, blocks, draft, published_at')
           .eq('club_id', clubData.id)
           .maybeSingle(),
       ]);
@@ -159,20 +162,32 @@ export default function ClubDetail() {
     </div>
   );
 
-  /* ── 커스텀 페이지가 있는 경우 (발행 여부: 어드민은 미발행도 미리보기, 일반은 발행만) ── */
-  const hasCustomPage = clubPage?.blocks?.blocks && (clubPage.published_at || isOwnClub);
+  /* ── 커스텀 페이지 노출 ──
+     방문자: 발행된 공개본(blocks)만. 운영진: 작업 중인 초안(draft)을 미리보기.
+     초안/공개본이 없으면 아래 기본 정적 레이아웃으로 폴백(페이지는 항상 노출됨). */
+  const publishedSource = clubPage?.published_at ? clubPage?.blocks : null;
+  const draftSource = clubPage?.draft ?? clubPage?.blocks;
+  const previewSource = isOwnClub ? draftSource : publishedSource;
+  const hasCustomPage = !!previewSource?.blocks;
 
   if (hasCustomPage) {
-    const isDraft = !clubPage!.published_at;
+    /* 운영진 안내 배너: 미발행이거나, 초안이 공개본과 달라 발행이 필요한 경우 */
+    const isPublished = !!clubPage?.published_at;
+    const draftDiffers = JSON.stringify(clubPage?.draft ?? null) !== JSON.stringify(clubPage?.blocks ?? null);
+    const showDraftBanner = isOwnClub && (!isPublished || draftDiffers);
     return (
       <div className="bg-white min-h-screen">
-        {/* 미발행 상태 배너 (어드민 전용) */}
-        {isOwnClub && isDraft && (
+        {/* 초안 미리보기 배너 (운영진 전용) */}
+        {showDraftBanner && (
           <div className="fixed top-0 left-0 right-0 z-[70] bg-yellow-400 border-b-2 border-black px-6 py-2 flex items-center justify-between">
-            <span className="font-black text-sm text-black">미발행 상태 미리보기 — 방문자에게는 보이지 않습니다.</span>
+            <span className="font-black text-sm text-black">
+              {!isPublished
+                ? '초안 미리보기 — 아직 발행 전입니다. 방문자에게는 기본 소개 페이지가 보입니다.'
+                : '초안 미리보기 — 발행되지 않은 변경사항이 있습니다. 방문자에게는 마지막 발행본이 보입니다.'}
+            </span>
             <Link
               to="/workspace"
-              className="px-4 py-1 bg-black text-white font-black text-xs border border-black hover:bg-orange-500 hover:text-black transition-colors"
+              className="px-4 py-1 bg-black text-white font-black text-xs border border-black hover:bg-orange-500 hover:text-black transition-colors whitespace-nowrap"
             >
               웹빌더에서 발행하기 →
             </Link>
@@ -180,7 +195,7 @@ export default function ClubDetail() {
         )}
 
         {isOwnClub && (
-          <div className={`fixed left-4 z-[60] flex flex-col gap-2 ${isDraft ? 'top-16' : 'top-20'}`}>
+          <div className={`fixed left-4 z-[60] flex flex-col gap-2 ${showDraftBanner ? 'top-16' : 'top-20'}`}>
             <Link
               to="/workspace"
               className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 text-black border-2 border-black font-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-0.5 transition-all"
@@ -210,8 +225,8 @@ export default function ClubDetail() {
 
         {activeTab === 'intro' && (
           <ClubPageRenderer
-            blocks={clubPage.blocks.blocks}
-            config={clubPage.blocks.config ?? {}}
+            blocks={previewSource!.blocks}
+            config={previewSource!.config ?? {}}
             activeRecruit={activeRecruit}
             onApply={handleApply}
           />
