@@ -3,7 +3,8 @@
 > 목적: **기능은 그대로 유지**하면서 불필요한 코드를 제거하고, 거대 파일·중복·데이터 접근 분산을 정리해 유지보수 비용을 낮춘다.
 > 측정 기준일: 2026-06-04 · 대상: `src/` (81파일 / 26,712줄)
 > 검증 수단: `npm run lint` (tsc --noEmit). **자동 테스트 없음** → 작게 쪼개고 매 단계 검증.
-> 주의: 현재 `npm run build`는 청크 렌더 단계에서 네이티브 크래시(`0xC0000409`)로 실패 — 최적화와 무관한 선재 이슈. 검증은 `lint`만 사용. (선재 lint 에러 7개 존재 → 새 에러 0개 유지 기준)
+> 주의: 현재 `npm run build`는 `0xC0000409`(STATUS_STACK_BUFFER_OVERRUN)로 실패. 검증은 `lint`만 사용.
+> **[근본원인 — 정밀 규명 완료]** rollup의 `generate()` 단계(=`buildEnd` 직후, `renderStart` 직전)에서 발생하는 **네이티브 스택오버런**. 모듈 그래프 실행순서 분석(`analyzeModuleExecution`, 재귀)이 이 앱 규모(2773 모듈)에서 깊게 재귀 → Node v24의 C++ 스택에서 하드 크래시(catch 불가, RangeError 대신 `0xC0000409`). **배제된 가설(전부 시도, 무효)**: wasm↔네이티브 rollup, rollup 4.60.2↔4.61.1, minify off, treeshake off, 코드스플리팅, preserveModules, tailwind off, `--stack-size` 증가. **확인**: 최소 vite 프로젝트는 정상 빌드됨 → 툴체인 자체는 정상, 이 앱 그래프 규모+Node24 조합 문제. **결론**: 소스/버전 수정으로 못 고침. **실효 수정안**: ① Node LTS(20/22)로 빌드(가장 유력) ② 또는 vite/rollup 메이저 업그레이드(그래프 분석 iterative화 버전). 둘 다 환경 변경이라 repo 편집 범위 밖 → **미적용**(시도했던 의존성 변경은 효과 없어 원복함). **검증 대안**: `npm run dev`(esbuild, 정상)로 런타임 스모크 가능 — prod build 없이 Phase 4/5 동작 확인 가능(실제로 MyPage/RecruitAdmin 분해를 이 방식으로 검증함).
 
 ---
 
@@ -133,6 +134,22 @@
 - **[Phase 2 완료]** `src/lib/format.ts`(formatDate, 3 preset)·`src/lib/statusColor.ts`(상태→Tailwind 리터럴 클래스 맵) 유틸 + `src/components/ui/`에 Button·StatusBadge·Card·EmptyState·Spinner 프리미티브 추가(교체 없이 추가만). ※Tailwind v4 JIT는 동적 클래스 스캔 불가 → statusColor는 리터럴 전체 클래스로 보관.
 - **[Phase 3a 완료]** 날짜 인라인 ~25곳 → `formatDate()` 교체(16개 파일). ko-KR에서 `month:'long'==short`라 medium preset과 동일 출력인 곳까지 포함. **남긴 것**: hour/minute 포함·`year+month`만 있는 포맷(프리셋 미존재), 그리고 파일 내 자체 상대시간 helper(`Stories`/`ClubStories`/`StoryDetail`의 로컬 `formatDate`, `MyPage.notifTimeAgo`)는 이름충돌·관심사 상이로 유지.
 - **[Phase 3b 보류]** 상태색상 맵 40여 곳은 파일마다 **색/명도가 제각각**(예: `거절`이 한 곳은 gray-600, statusColor 맵은 red / `검토중`이 yellow vs blue)이라 일괄 교체 시 시각이 바뀜 → "시각 동일" 위반. `statusColor`/`StatusBadge`는 신규 코드용으로만 두고, 기존 맵은 손대지 않음.
+- **[P2 완료]** `App.tsx` 라우트 전부 `React.lazy` + `<Suspense>`로 코드 스플리팅(배럴 대신 페이지 파일 직접 import → 청크 분리). **단, build 크래시는 해결 안 됨** — 크래시는 번들 크기 OOM이 아니라 rollup 청크 렌더 단계의 네이티브 스택오버런(`STATUS_STACK_BUFFER_OVERRUN`)으로, minify off·stack-size 증가·스플리팅 모두 무효. 빌드는 계속 검증 제외(선재 인프라 이슈).
+- **[P5 완료]** `App.tsx` 전체를 `Sentry.ErrorBoundary`(fallback UI + 새로고침)로 감싸 렌더 크래시 → 화이트스크린 방지 + Sentry 리포트. (참고: `main.tsx`·`App.tsx` 이중 `AuthProvider` 래핑은 선재 — 미수정.)
+- **[P4 보류]** `supabase gen types`는 로컬 Supabase 스택(Docker) 또는 링크된 원격 프로젝트+토큰 필요 → 현재 환경에서 실행 불가. DB 접근 가능 시 `Database` 타입 생성 후 적용 권장.
+- **[Phase 5 진행: MyPage 완료]** `pages/user/MyPage.tsx` **1039 → 166줄**. 독립 컴포넌트 9개를 `pages/user/sections/`로 분리(ApplicationsSection·AttendanceSection·AttendanceHistorySection·ScrapsSection·NotificationsSection·RoleNudgeBanner·PulseCheckBanner(+Modal)·EditProfileModal·DeleteAccountModal). 각 섹션이 자체 state/fetch를 갖는 무결합 구조라 순수 이동으로 안전. lint green. **RecruitAdmin도 완료**: `pages/admin/RecruitAdmin.tsx` **1012 → 638줄**. prop 기반 프레젠테이션 컴포넌트 3개(`SortTh`·`KanbanCard`·`ApplicantModal`)와 공유 타입을 `pages/admin/recruit-admin/`(+`types.ts`)로 분리. 메인(상태 보유) 컴포넌트는 그대로. lint green. (메인이 여전히 638줄이지만 한 덩어리 상태 단위라 추가 분해는 런타임 검증 동반 필요.)
+**검증**: `npm run dev`(esbuild, 정상) 띄워 App·MyPage·RecruitAdmin·신규 섹션 모듈 전부 200 + transform/resolve 에러 0 확인(런타임 스모크 통과).
+**ApplicantsTab·MembersAdmin도 완료(prop 컴포넌트 추출)**:
+- `ApplicantsTab.tsx` **1171 → 513줄**: `EmailMoveModal·SortTh·KanbanCard·ApplicantModal·TagEditor·ApplicationTabContent·InterviewTabContent`(+공유타입) → `components/admin/recruitment/applicants/`.
+- `MembersAdmin.tsx` **1617 → 1085줄**: `ColumnHeaderFilter·ColumnSettingsModal·InviteModal·GenManagerModal`(+공유타입) → `pages/admin/members/`. (메인이 여전히 1085줄 — 상태 대부분이 메인에 있어 모달만 추출됨. 추가 분해는 내부 state 끌어올리기 필요.)
+- 둘 다 lint green + `npm run dev` 스모크(전 모듈 200, transform/resolve 에러 0) 통과.
+
+**Phase 5 결과: 6개 중 4개 분해 완료**(MyPage·RecruitAdmin·ApplicantsTab·MembersAdmin). 모두 prop 기반 프레젠테이션 컴포넌트를 하위 폴더로 추출하는 안전한 순수 이동 + 공유타입은 `types.ts`로 분리(런타임 순환 import 방지).
+**남은 2개는 기계적 분해 불가**:
+- `FormBuilder.tsx`(1081)는 사실상 **단일 거대 컴포넌트**(추출 가능한 건 7줄짜리 `Field` helper뿐). 팔레트/에디터/미리보기가 한 컴포넌트 안에 인라인 → 분해하려면 내부 state 끌어올리기(동작회귀 위험) 필요.
+- `blockKit.tsx`(1287)는 `BlockBody`가 블록들을 상호 재귀 렌더링하는 강결합 레지스트리.
+→ 이 2개는 "기계적 이동"이 아니라 **내부 아키텍처 리팩터 + 충분한 런타임 테스트**가 필요. 빌드/테스트 안전망 확보 후 진행 권장.
+- **[Phase 4·5(잔여)·P1 미착수 — 사유]** 이들은 런타임 데이터흐름/구조를 바꾸는 대형 리팩터인데, **검증 게이트가 막혀 있음**: 자동 테스트 없음 + `npm run build` 크래시(선재) → Phase 5의 플랜 정의 검증("build + 수동 스모크") 자체가 불가. lint(tsc)는 타입오류만 잡고 동작회귀(상태 끌어올리기·effect deps·쿼리 파라미터 표류)는 못 잡음. `blockKit.tsx`는 블록들이 `BlockBody`로 상호 재귀 렌더링하는 강결합 구조라 기계적 분해도 위험. → "기능 그대로 유지" 원칙상 **런타임 검증 루프(파일 단위로 띄워서 스모크 테스트)와 함께 점진 진행** 필요. 권장 순서: ① build 크래시 원인 격리/복구 → 검증 안전망 확보 → ② Phase 4(쿼리→`src/api` 순수 추출, lint로 가드) → ③ Phase 5(파일 단위 분해, 매번 스모크).
 - 마이그레이션(`supabase/migrations/`)은 별도 SQL 작업과 병렬 진행 중 → 본 계획에서 제외(손대지 않음).
 - 측정 명령(재측정용):
   - 큰 파일: `find src -name "*.tsx" -o -name "*.ts" | xargs wc -l | sort -rn | head`
