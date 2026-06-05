@@ -18,3 +18,17 @@ export function formatDate(value: DateInput, preset: DatePreset = 'short'): stri
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('ko-KR', DATE_PRESETS[preset]);
 }
+
+/** 피드용 상대 시간. 방금 전 / N분 전 / N시간 전 / N일 전, 일주일 넘으면 절대 날짜. */
+export function formatRelativeDate(value: DateInput): string {
+  if (value == null || value === '') return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return '';
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (diff < 0) return d.toLocaleDateString('ko-KR');
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
+  return d.toLocaleDateString('ko-KR');
+}

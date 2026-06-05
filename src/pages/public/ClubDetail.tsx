@@ -255,7 +255,7 @@ export default function ClubDetail() {
                 </div>
 
                 {/* 피처드 첫 번째 스토리 */}
-                <Link to={`/stories/${posts[0].id}`} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
+                <Link to={`/stories/${posts[0].id}`} state={{ backTo: `/clubs/${slug}`, backLabel: '동아리 페이지' }} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
                   <div className="flex flex-col md:flex-row">
                     <div className="md:w-1/2 h-64 md:h-80 overflow-hidden relative bg-gray-100 border-b-2 md:border-b-0 md:border-r-2 border-black">
                       {posts[0].images?.[0] ? (
@@ -290,6 +290,7 @@ export default function ClubDetail() {
                       <Link
                         key={post.id}
                         to={`/stories/${post.id}`}
+                        state={{ backTo: `/clubs/${slug}`, backLabel: '동아리 페이지' }}
                         className="min-w-[260px] border border-black bg-white group snap-center hover:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-0.5 transition-all block shrink-0"
                       >
                         <div className="h-44 border-b border-black overflow-hidden relative bg-gray-100">
@@ -451,7 +452,7 @@ export default function ClubDetail() {
                 </div>
 
                 {/* 피처드 첫 번째 스토리 */}
-                <Link to={`/stories/${posts[0].id}`} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
+                <Link to={`/stories/${posts[0].id}`} state={{ backTo: `/clubs/${slug}`, backLabel: '동아리 페이지' }} className="block mb-6 border-2 border-black group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all">
                   <div className="flex flex-col md:flex-row">
                     <div className="md:w-1/2 h-64 md:h-80 overflow-hidden relative bg-gray-100 border-b-2 md:border-b-0 md:border-r-2 border-black">
                       {posts[0].images?.[0] ? (
@@ -486,6 +487,7 @@ export default function ClubDetail() {
                       <Link
                         key={post.id}
                         to={`/stories/${post.id}`}
+                        state={{ backTo: `/clubs/${slug}`, backLabel: '동아리 페이지' }}
                         className="min-w-[260px] border border-black bg-white group snap-center hover:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-0.5 transition-all block shrink-0"
                       >
                         <div className="h-44 border-b border-black overflow-hidden relative bg-gray-100">

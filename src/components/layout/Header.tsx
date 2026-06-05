@@ -63,6 +63,12 @@ function useUserNotifications(userId: string | undefined) {
   };
 
   useEffect(() => { fetch(); }, [userId]);
+  // push 구독이 없어, 탭 복귀 시 다시 불러와 새 알림/읽음 상태를 마이페이지와 동기화
+  useEffect(() => {
+    const onFocus = () => fetch();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [userId]);
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
@@ -196,7 +202,7 @@ export const Header = () => {
                       {notifications.map(n => (
                         <button
                           key={n.id}
-                          onClick={() => { markRead(n.id); setBellOpen(false); if (n.link) navigate(n.link); }}
+                          onClick={() => { markRead(n.id); setBellOpen(false); if (n.link && n.link.startsWith('/') && !n.link.startsWith('//')) navigate(n.link); }}
                           className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-100 text-left ${!n.is_read ? 'bg-orange-50/60' : ''}`}
                         >
                           <span className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-orange-500'}`} />

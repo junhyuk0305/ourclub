@@ -16,7 +16,7 @@ export default function ApplicationsSection() {
       .from('recruitment_applications')
       .select(`
         id, status, submitted_at,
-        recruitments ( title, clubs ( name ) )
+        recruitments ( title, clubs ( name, slug ) )
       `)
       .eq('user_id', user.id)
       .order('submitted_at', { ascending: false })
@@ -52,19 +52,27 @@ export default function ApplicationsSection() {
         <div className="flex flex-col gap-4">
           {apps.map(app => {
             const recruit = app.recruitments as any;
+            const club = recruit?.clubs;
+            const body = (
+              <>
+                <div className="text-xs font-bold text-gray-400 mb-1">
+                  {formatDate(app.submitted_at)} 지원
+                </div>
+                <div className="font-black text-base truncate">
+                  {club?.name ?? '—'}
+                </div>
+                <div className="font-bold text-sm text-gray-500 truncate mt-0.5">
+                  {recruit?.title ?? '—'}
+                </div>
+              </>
+            );
             return (
               <div key={app.id} className="p-5 border border-black bg-white flex items-center justify-between gap-4 hover:bg-orange-50 transition-colors">
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-gray-400 mb-1">
-                    {formatDate(app.submitted_at)} 지원
-                  </div>
-                  <div className="font-black text-base truncate">
-                    {recruit?.clubs?.name ?? '—'}
-                  </div>
-                  <div className="font-bold text-sm text-gray-500 truncate mt-0.5">
-                    {recruit?.title ?? '—'}
-                  </div>
-                </div>
+                {club?.slug ? (
+                  <Link to={`/clubs/${club.slug}/recruit`} className="min-w-0 group">{body}</Link>
+                ) : (
+                  <div className="min-w-0">{body}</div>
+                )}
                 <span className={`shrink-0 px-3 py-1.5 border border-black font-bold text-xs ${statusStyle[app.status] ?? 'bg-gray-100'}`}>
                   {app.status}
                 </span>

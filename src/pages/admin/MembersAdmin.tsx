@@ -7,6 +7,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
 import { downloadExcel } from '../../lib/excel';
+import { attendanceRate } from '../../lib/attendanceRate';
 import type { MemberStatus, Member, CustomField, CustomFieldType, NewCustomField } from './members/types';
 import { ColumnHeaderFilter } from './members/ColumnHeaderFilter';
 import { ColumnSettingsModal } from './members/ColumnSettingsModal';
@@ -243,13 +244,12 @@ export default function MembersAdmin() {
       (tgtRows ?? []).forEach((t: { member_id: string; session_id: string }) => {
         (denom[t.member_id] ??= new Set()).add(t.session_id);
       });
-      const numer: Record<string, number> = {};
+      const attended: Record<string, string[]> = {};
       (attRows ?? []).forEach((a: { member_id: string; session_id: string }) => {
-        if (denom[a.member_id]?.has(a.session_id)) numer[a.member_id] = (numer[a.member_id] ?? 0) + 1;
+        (attended[a.member_id] ??= []).push(a.session_id);
       });
       members.forEach(m => {
-        const d = denom[m.id]?.size ?? 0;
-        rateMap[m.id] = d > 0 ? Math.round((numer[m.id] ?? 0) / d * 100) : null;
+        rateMap[m.id] = attendanceRate(denom[m.id] ?? new Set(), attended[m.id] ?? []);
       });
     }
 

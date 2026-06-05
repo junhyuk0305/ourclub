@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FadeInText } from '../../components/ui/FadeInText';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { supabase } from '../../lib/supabaseClient';
+import { formatRelativeDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Post {
@@ -84,21 +85,6 @@ function ImageCarousel({ images }: { images: string[] }) {
   );
 }
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 0) return d.toLocaleDateString('ko-KR');
-    if (diff < 60) return '방금 전';
-    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-    if (diff < 604800) return `${Math.floor(diff / 86400)}일 전`;
-    return d.toLocaleDateString('ko-KR');
-  } catch {
-    return '';
-  }
-}
 
 export default function Stories() {
   const [search, setSearch] = useState('');
@@ -479,7 +465,7 @@ export default function Stories() {
                   </div>
                   <div className="flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-auto pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-2">
-                      <span>{formatDate(post.created_at)}</span>
+                      <span>{formatRelativeDate(post.created_at)}</span>
                       <span>·</span>
                       <span className="flex items-center gap-1">
                         <Eye className="w-3.5 h-3.5" /> {post.view_count ?? 0}

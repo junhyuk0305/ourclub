@@ -35,9 +35,17 @@ export default function RecruitPageBuilder() {
     setSaving(true);
     // recruit_page JSONB 유지하되 tagline만 갱신
     const next = { ...settings, tagline: tagline.trim() };
-    const { error } = await supabase.from('clubs').update({ recruit_page: next }).eq('id', adminClubId);
+    const { data, error } = await supabase
+      .from('clubs')
+      .update({ recruit_page: next })
+      .eq('id', adminClubId)
+      .select('id');
     setSaving(false);
     if (error) { showToast(`저장 실패: ${error.message}`, false); return; }
+    if (!data || data.length === 0) {
+      showToast('저장 권한이 없거나 동아리가 선택되지 않았습니다.', false);
+      return;
+    }
     setSettings(next);
     showToast('채용 페이지가 저장되었습니다.', true);
   };

@@ -14,6 +14,7 @@ import React, { useState, useEffect, useRef, useMemo, ElementType } from 'react'
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { useSectionParallax } from '../lib/scrollFx';
+import { REVEAL_IO } from '../lib/useInView';
 import { MessageSquare, Clock, ChevronLeft, ChevronRight, Plus, X, Bold, AlignLeft, AlignCenter, AlignRight, AlignJustify, Baseline, PaintBucket } from 'lucide-react';
 
 /* ── theme / util helpers (단일 소유) ── */
@@ -79,19 +80,40 @@ export const WB_STYLE = `
   @keyframes wbBlurIn { from { opacity:0; filter:blur(14px); } to { opacity:1; filter:blur(0); } }
   @keyframes wbPulse { 0% { transform:scale(1); } 20% { transform:scale(1.12); } 40% { transform:scale(1); } 60% { transform:scale(1.08); } 80%,100% { transform:scale(1); } }
   @keyframes wbBounceIn { 0% { opacity:0; transform:translateY(-24px); } 60% { opacity:1; transform:translateY(8px); } 80% { transform:translateY(-4px); } 100% { transform:translateY(0); } }
-  .wb-anim-fadeIn { animation: wbFadeIn var(--wb-dur,0.7s) var(--wb-ease,ease) forwards; }
-  .wb-anim-slideUp { animation: wbSlideUp var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-slideIn { animation: wbSlideIn var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-slideRight { animation: wbSlideRight var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-zoomIn { animation: wbZoomIn var(--wb-dur,0.6s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-clipUp { animation: wbClipUp var(--wb-dur,0.7s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-fadeIn { animation: wbFadeIn var(--wb-dur,0.8s) var(--wb-ease,ease) forwards; }
+  .wb-anim-slideUp { animation: wbSlideUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-slideIn { animation: wbSlideIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-slideRight { animation: wbSlideRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-zoomIn { animation: wbZoomIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-clipUp { animation: wbClipUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-blurIn { animation: wbBlurIn var(--wb-dur,0.8s) var(--wb-ease,ease) forwards; }
   .wb-anim-pulse { animation: wbPulse var(--wb-dur,1s) var(--wb-ease,ease) forwards; }
   .wb-anim-bounceIn { animation: wbBounceIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  /* ── 신규 등장 효과 10종(드롭다운) — 모두 AnimDiv 메커니즘 재사용(추가만, 회귀 0) ── */
+  @keyframes wbSlideDown { from { opacity:0; transform:translateY(calc(-1 * var(--wb-dist,24px))); } to { opacity:1; transform:none; } }
+  @keyframes wbFadeScale { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
+  @keyframes wbFlipUp { from { opacity:0; transform:perspective(900px) rotateX(16deg) translateY(var(--wb-dist,24px)); } to { opacity:1; transform:perspective(900px) rotateX(0) translateY(0); } }
+  @keyframes wbMaskRight { from { opacity:0; clip-path:inset(0 100% 0 0); } to { opacity:1; clip-path:inset(0 0 0 0); } }
+  @keyframes wbSkewIn { from { opacity:0; transform:skewY(4deg) translateY(var(--wb-dist,24px)); } to { opacity:1; transform:skewY(0) translateY(0); } }
+  @keyframes wbDriftIn { from { opacity:0; filter:blur(8px); transform:translateY(34px); } to { opacity:1; filter:blur(0); transform:none; } }
+  @keyframes wbRevealRight { from { opacity:0; transform:translateX(56px); } to { opacity:1; transform:none; } }
+  @keyframes wbUnfoldDown { from { opacity:0; transform:scaleY(0.55); } to { opacity:1; transform:scaleY(1); } }
+  @keyframes wbTiltIn { from { opacity:0; transform:rotate(-4deg) scale(0.95); } to { opacity:1; transform:rotate(0) scale(1); } }
+  @keyframes wbPopIn { 0% { opacity:0; transform:scale(0.6); } 100% { opacity:1; transform:scale(1); } }
+  .wb-anim-slideDown { animation: wbSlideDown var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-fadeScale { animation: wbFadeScale var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-flipUp { animation: wbFlipUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-maskRight { animation: wbMaskRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-skewIn { animation: wbSkewIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-driftIn { animation: wbDriftIn var(--wb-dur,0.9s) var(--wb-ease,ease) forwards; }
+  .wb-anim-revealRight { animation: wbRevealRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-unfoldDown { transform-origin: top center; animation: wbUnfoldDown var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-tiltIn { animation: wbTiltIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
+  .wb-anim-popIn { animation: wbPopIn var(--wb-dur,0.7s) var(--wb-ease,cubic-bezier(0.34,1.56,0.64,1)) forwards; }
   /* ── 텍스트 단위 리빌(A5): 단어/글자를 시차(stagger)로 올려 등장 ── */
   @keyframes wbUnitReveal { from { opacity:0; transform: translateY(0.7em); } to { opacity:1; transform: translateY(0); } }
   .wb-reveal-unit { display:inline-block; opacity:0; will-change: transform, opacity; }
-  .wb-reveal-on .wb-reveal-unit { animation: wbUnitReveal var(--wb-rdur,0.6s) cubic-bezier(0.16,1,0.3,1) forwards; }
+  .wb-reveal-on .wb-reveal-unit { animation: wbUnitReveal var(--wb-rdur,0.75s) cubic-bezier(0.16,1,0.3,1) forwards; }
   @media (prefers-reduced-motion: reduce) { .wb-reveal-unit { opacity:1 !important; transform:none !important; animation:none !important; } }
   /* ── Ken Burns 배경(동영상 대체 풀스크린 히어로): 느린 줌/팬 무한 반복 ── */
   @keyframes wbKenZoom { from { transform:scale(1); } to { transform:scale(1.18); } }
@@ -500,7 +522,7 @@ export const AnimDiv: React.FC<{
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => setInView(entry.isIntersecting),
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px' }
+      REVEAL_IO
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -549,7 +571,7 @@ export const RevealText: React.FC<{
   useEffect(() => {
     const el = ref.current; if (!el) return;
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setOn(true); obs.disconnect(); } },
-      { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
+      REVEAL_IO);
     obs.observe(el); return () => obs.disconnect();
   }, []);
   const plain = useMemo(() => isHtml(text) ? htmlToPlain(text) : text, [text]);
@@ -868,7 +890,7 @@ const StatsBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
   useEffect(() => {
     if (ctx.edit) return;
     const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); obs.disconnect(); } }, { threshold: 0.3 });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); obs.disconnect(); } }, REVEAL_IO);
     obs.observe(el); return () => obs.disconnect();
   }, [ctx.edit]);
   const isCards = block.layout === 'cards';

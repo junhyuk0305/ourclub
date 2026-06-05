@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Heart, Share2, Eye, ChevronLeft, ChevronRight, Loader, AlertCircle, CheckCircle } from 'lucide-react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 
@@ -22,16 +23,6 @@ interface Post {
     type: string;
     is_certified?: boolean;
   } | null;
-}
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
-  } catch {
-    return '';
-  }
 }
 
 function ImageGallery({ images }: { images: string[] }) {
@@ -87,8 +78,12 @@ function ImageGallery({ images }: { images: string[] }) {
 
 export default function StoryDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
+  // 진입 출처(예: 동아리 스토리)가 있으면 그쪽으로, 없으면 전역 피드로 돌아간다.
+  const backState = location.state as { backTo?: string; backLabel?: string } | null;
+  const backTo = backState?.backTo ?? '/stories';
+  const backLabel = backState?.backLabel ?? '스토리 목록';
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +92,7 @@ export default function StoryDetail() {
   const [likeCount, setLikeCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
   const [shared, setShared] = useState(false);
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -144,18 +140,20 @@ export default function StoryDetail() {
   }, [id, user?.id]);
 
   const handleLike = async () => {
-    if (!user) { navigate('/login'); return; }
+    if (!user) {
+      setToast('로그인 후 좋아요를 누를 수 있습니다.');
+      setTimeout(() => setToast(''), 2500);
+      return;
+    }
     if (likeLoading || !post) return;
     setLikeLoading(true);
 
     if (liked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', user.id);
-      await supabase.from('posts').update({ like_count: likeCount - 1 }).eq('id', post.id);
       setLiked(false);
       setLikeCount(c => c - 1);
     } else {
       await supabase.from('post_likes').insert({ post_id: post.id, user_id: user.id });
-      await supabase.from('posts').update({ like_count: likeCount + 1 }).eq('id', post.id);
       setLiked(true);
       setLikeCount(c => c + 1);
     }
@@ -189,7 +187,7 @@ export default function StoryDetail() {
           <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
           <h2 className="text-2xl font-black mb-3">스토리를 찾을 수 없습니다.</h2>
           <p className="text-gray-500 font-medium mb-6">삭제되었거나 비공개 처리된 게시글입니다.</p>
-          <Link to="/stories" className="font-black text-orange-500 hover:underline">← 스토리 목록으로</Link>
+          <Link to={backTo} className="font-black text-orange-500 hover:underline">← {backLabel}으로</Link>
         </div>
       </div>
     );
@@ -201,10 +199,10 @@ export default function StoryDetail() {
       <div className="border-b border-black bg-white sticky top-16 z-40">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <Link
-            to="/stories"
+            to={backTo}
             className="inline-flex items-center gap-2 font-bold text-sm text-gray-600 hover:text-black transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> 스토리 목록
+            <ArrowLeft className="w-4 h-4" /> {backLabel}
           </Link>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-gray-400 text-xs font-bold mr-2">
@@ -272,7 +270,7 @@ export default function StoryDetail() {
         {/* 메타 */}
         <div className="flex items-center gap-4 text-sm font-bold text-gray-400 mb-10 pb-6 border-b border-black">
           {post.author && <span>{post.author}</span>}
-          <span>{formatDate(post.created_at)}</span>
+          <span>{formatDate(post.created_at, 'medium')}</span>
         </div>
 
         {/* 이미지 갤러리 */}
@@ -314,6 +312,13 @@ export default function StoryDetail() {
           )}
         </div>
       </div>
+
+      {/* 토스트 알림 */}
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

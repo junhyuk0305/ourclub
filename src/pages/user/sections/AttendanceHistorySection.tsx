@@ -4,6 +4,7 @@ import { ClipboardList, Loader, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatDate } from '../../../lib/format';
+import { attendanceRate } from '../../../lib/attendanceRate';
 
 // ──────────────────────────────────────────
 // Phase 4: 출결 이력 탭
@@ -16,9 +17,9 @@ interface ExcuseRow {
   reviewer_note: string | null;
 }
 
-export default function AttendanceHistorySection() {
+export default function AttendanceHistorySection({ refreshKey }: { refreshKey?: number }) {
   const { user } = useAuth();
-  const [groups, setGroups] = useState<{ clubName: string; rate: number; records: any[] }[]>([]);
+  const [groups, setGroups] = useState<{ clubName: string; rate: number | null; records: any[] }[]>([]);
   const [excuses, setExcuses] = useState<ExcuseRow[]>([]);
   const [fetching, setFetching] = useState(true);
 
@@ -39,16 +40,23 @@ export default function AttendanceHistorySection() {
         const [result, excuseRes] = await Promise.all([
           Promise.all(
             memberships.map(async (m: any) => {
-              const { data: records } = await supabase
-                .from('attendances')
-                .select('status, recorded_at, sessions ( title )')
-                .eq('member_id', m.id)
-                .order('recorded_at', { ascending: false });
+              const [{ data: records }, { data: targets }] = await Promise.all([
+                supabase
+                  .from('attendances')
+                  .select('status, recorded_at, session_id, sessions ( title )')
+                  .eq('member_id', m.id)
+                  .order('recorded_at', { ascending: false }),
+                supabase
+                  .from('session_targets')
+                  .select('session_id')
+                  .eq('member_id', m.id),
+              ]);
 
               const list = records ?? [];
-              // 공결(출석 인정)은 분자 제외 → 출석률 = 출석 / 전체
-              const attended = list.filter(r => r.status === '출석').length;
-              const rate = list.length > 0 ? Math.round((attended / list.length) * 100) : 0;
+              // 운영진 명단과 동일 기준(session_targets 분모, '출석' 분자)으로 통일
+              const targetIds = (targets ?? []).map((t: any) => t.session_id);
+              const attendedIds = list.filter(r => r.status === '출석').map((r: any) => r.session_id);
+              const rate = attendanceRate(targetIds, attendedIds);
 
               return {
                 clubName: `${m.clubs?.name ?? '—'} ${m.generation ?? ''}`.trim(),
@@ -68,7 +76,7 @@ export default function AttendanceHistorySection() {
         setExcuses((excuseRes.data ?? []) as ExcuseRow[]);
         setFetching(false);
       });
-  }, [user]);
+  }, [user, refreshKey]);
 
   const statusColor: Record<string, string> = {
     '출석': 'text-green-600',
@@ -128,7 +136,7 @@ export default function AttendanceHistorySection() {
             <div key={g.clubName}>
               <div className="flex justify-between items-end border-b-2 border-black pb-2 px-2 mb-4">
                 <div className="font-bold text-gray-500">{g.clubName}</div>
-                <div className="font-black text-xl text-orange-500">출석률 {g.rate}%</div>
+                <div className="font-black text-xl text-orange-500">출석률 {g.rate != null ? `${g.rate}%` : '—'}</div>
               </div>
 
               {g.records.length === 0 ? (

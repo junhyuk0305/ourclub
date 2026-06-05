@@ -69,7 +69,7 @@ export default function ClubApply() {
         recruitQuery = recruitQuery.eq('id', rid).eq('club_id', clubData.id);
       } else {
         recruitQuery = recruitQuery
-          .eq('club_id', clubData.id).eq('status', '진행중')
+          .eq('club_id', clubData.id).in('status', ['진행중', '모집중'])
           .order('created_at', { ascending: false }).limit(1);
       }
       const { data: recruitData } = await recruitQuery.maybeSingle();

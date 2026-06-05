@@ -16,33 +16,6 @@ import { WIDGET_PRESETS, type WidgetPreset } from '../../lib/widgetPresets';
    '__all__' 이면(탭 미적용 위젯) 모든 Section 을 보여준다(점진 적용 안전장치). */
 const PanelTabCtx = React.createContext<string>('__all__');
 
-/* 버튼 디자인 템플릿 선택 모달 — 좁은 우측 패널 대신 넓은 모달에서 큰 미리보기로 고른다. */
-const BtnTemplateModal: React.FC<{ primary: string; activeId?: string; onPick: (preset: Record<string, any>, id: string) => void; onClose: () => void }> =
-  ({ primary, activeId, onPick, onClose }) => createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white w-full max-w-2xl max-h-[85vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white">
-          <h3 className="font-black text-base">버튼 디자인 템플릿</h3>
-          <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded transition-colors"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {BTN_TEMPLATES.map(t => {
-            const active = activeId === t.id;
-            return (
-              <button key={t.id} onClick={() => { onPick(t.preset(primary), t.id); onClose(); }}
-                className={`flex flex-col items-center gap-2.5 border-2 rounded-lg p-4 transition-colors ${active ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-black'}`}>
-                <span className="font-black inline-flex items-center justify-center" style={{ padding: '10px 22px', fontSize: 13, ...t.chip(primary) }}>버튼</span>
-                <span className="text-[13px] font-black text-gray-800">{t.label}</span>
-                <span className="text-[11px] font-bold text-gray-400 leading-tight text-center">{t.desc}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-
 interface Props {
   block: any;
   onUpdate: (field: string, value: any) => void;
@@ -75,6 +48,39 @@ const Seg = ({ options, value, onChange }: { options: { v: string; label: string
       </button>
     ))}
   </div>
+);
+
+/* 등장 효과 전체 목록(기존 9 + 신규 10). Seg 는 6개까지라 드롭다운(AnimSelect)으로 노출. */
+const ANIM_OPTIONS: { v: string; label: string }[] = [
+  { v: 'none', label: '없음' },
+  { v: 'fadeIn', label: '페이드' },
+  { v: 'fadeScale', label: '페이드 확대' },
+  { v: 'slideUp', label: '위로' },
+  { v: 'slideDown', label: '아래로' },
+  { v: 'slideIn', label: '좌로' },
+  { v: 'slideRight', label: '우로' },
+  { v: 'revealRight', label: '우측 활강' },
+  { v: 'zoomIn', label: '확대' },
+  { v: 'popIn', label: '팝(탄성)' },
+  { v: 'clipUp', label: '마스크(위)' },
+  { v: 'maskRight', label: '마스크(우)' },
+  { v: 'unfoldDown', label: '펼치기' },
+  { v: 'blurIn', label: '블러' },
+  { v: 'driftIn', label: '드리프트' },
+  { v: 'flipUp', label: '플립' },
+  { v: 'skewIn', label: '기울임' },
+  { v: 'tiltIn', label: '틸트' },
+  { v: 'bounceIn', label: '바운스' },
+  { v: 'pulse', label: '맥박' },
+];
+const AnimSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+  <select
+    value={value || 'none'}
+    onChange={e => onChange(e.target.value)}
+    className="w-full py-1.5 px-2 text-[12px] font-black border border-gray-200 rounded bg-white cursor-pointer outline-none focus:border-black"
+  >
+    {ANIM_OPTIONS.map(({ v, label }) => <option key={v} value={v}>{label}</option>)}
+  </select>
 );
 
 /* allowNone: 배경 색상 등에서 '색상 없음(투명)'을 고를 수 있게 함 — 빈 값('')으로 저장.
@@ -240,15 +246,15 @@ const MotionModal: React.FC<{ block: any; onUpdate: (f: string, v: any) => void;
               <div className="flex flex-col gap-3">
                 <div><Label>등장 효과</Label>
                   {isText
-                    ? <Seg options={[{v:'none',label:'없음'},{v:'fadeIn',label:'페이드'},{v:'slideUp',label:'위로'},{v:'slideIn',label:'좌로'},{v:'slideRight',label:'우로'},{v:'clipUp',label:'마스크'},{v:'blurIn',label:'블러'}]} value={block.animation||'none'} onChange={v => upd('animation', v === 'none' ? undefined : v)} />
+                    ? <AnimSelect value={block.animation||'none'} onChange={v => upd('animation', v === 'none' ? undefined : v)} />
                     : <Seg options={[{v:'none',label:'없음'},{v:'fadeIn',label:'페이드'},{v:'slideUp',label:'위로'},{v:'zoomIn',label:'확대'},{v:'pulse',label:'맥박'},{v:'bounceIn',label:'바운스'}]} value={block.btnAnim||'none'} onChange={v => upd('btnAnim', v === 'none' ? undefined : v)} />}
                 </div>
                 {((isText && block.animation && block.animation !== 'none') || (isBtn && block.btnAnim && block.btnAnim !== 'none')) && (<>
                   <div><Label>이징</Label>
                     <Seg options={[{v:'power',label:'부드럽게'},{v:'ease',label:'기본'},{v:'back',label:'탄성'},{v:'linear',label:'일정'}]} value={block.animEasing||'power'} onChange={v => upd('animEasing', v)} />
                   </div>
-                  <Slider label="속도" value={block.animDuration ?? 0.6} min={0.2} max={2} step={0.1} unit="s" onChange={v => upd('animDuration', v)} />
-                  {isText && ['slideUp','slideIn','slideRight','clipUp'].includes(block.animation) && (
+                  <Slider label="속도" value={block.animDuration ?? 0.8} min={0.2} max={2} step={0.1} unit="s" onChange={v => upd('animDuration', v)} />
+                  {isText && ['slideUp','slideDown','slideIn','slideRight','clipUp','skewIn','flipUp'].includes(block.animation) && (
                     <Slider label="이동 거리" value={block.animDistance ?? 24} min={0} max={120} step={4} unit="px" onChange={v => upd('animDistance', v)} />
                   )}
                 </>)}
@@ -303,75 +309,6 @@ const RATIO_PRESETS: Record<number, { label: string; ratios: number[] | null }[]
   4: [{ label: '균등', ratios: null }],
 };
 
-/* hex 색을 밝게(+)/어둡게(-) 보정 — 그라디언트 톤 생성용. 잘못된 입력은 원본 반환. */
-const shade = (hex: string, amt: number) => {
-  const h = (hex || '').replace('#', '');
-  if (h.length !== 6) return hex;
-  const ch = (i: number) => Math.max(0, Math.min(255, parseInt(h.slice(i, i + 2), 16) + amt)).toString(16).padStart(2, '0');
-  return `#${ch(0)}${ch(2)}${ch(4)}`;
-};
-/* 버튼 디자인 템플릿 — preset(c) 가 적용할 필드 묶음, chip(c) 가 미리보기 스타일.
-   c = 현재 테마색. 클릭하면 preset 의 모든 필드를 __merge 로 한 번에 적용한다.
-   각 preset 은 관련 필드를 '전부' 지정(btnGradient/btnFx/btnShadow 포함, 미사용은 undefined)해
-   이전 템플릿의 잔여값을 깨끗이 리셋한다 → 템플릿 전환이 항상 예측 가능하다. */
-const BTN_TEMPLATES: { id: string; label: string; desc: string; preset: (c: string) => Record<string, any>; chip: (c: string) => React.CSSProperties }[] = [
-  { id: 'solid',    label: '솔리드',   desc: '단색 채움',              preset: c => ({ btnBg: c, btnGradient: undefined, btnTextColor: '#ffffff', borderWidth: 0, radius: 8, btnShadow: 'none', btnFx: undefined }),
-    chip: c => ({ background: c, color: '#fff', borderRadius: 6 }) },
-  { id: 'gradient', label: '그라디언트', desc: '톤 그라디언트 채움',     preset: c => ({ btnGradient: `linear-gradient(135deg, ${shade(c, 26)}, ${shade(c, -30)})`, btnBg: c, btnTextColor: '#ffffff', borderWidth: 0, radius: 10, btnShadow: 'soft', btnFx: undefined }),
-    chip: c => ({ background: `linear-gradient(135deg, ${shade(c, 26)}, ${shade(c, -30)})`, color: '#fff', borderRadius: 6 }) },
-  { id: 'shine',    label: '샤인',     desc: '그라디언트 + 광택 스침',  preset: c => ({ btnGradient: `linear-gradient(135deg, ${shade(c, 16)}, ${shade(c, -24)})`, btnBg: c, btnTextColor: '#ffffff', borderWidth: 0, radius: 8, btnShadow: 'none', btnFx: 'shine' }),
-    chip: c => ({ background: `linear-gradient(135deg, ${shade(c, 16)}, ${shade(c, -24)})`, color: '#fff', borderRadius: 6 }) },
-  { id: 'press',    label: '입체',     desc: '하단 그림자 + 누름',      preset: c => ({ btnBg: c, btnGradient: undefined, btnTextColor: '#ffffff', borderWidth: 0, radius: 8, btnShadow: 'none', btnFx: 'press' }),
-    chip: c => ({ background: c, color: '#fff', borderRadius: 6, boxShadow: '0 4px 0 0 rgba(0,0,0,0.25)' }) },
-  { id: 'glass',    label: '글래스',   desc: '반투명 + 블러 (다크 위)', preset: c => ({ btnBg: c + '26', btnGradient: undefined, btnTextColor: '#ffffff', borderWidth: 1, borderColor: '#ffffff55', radius: 12, btnShadow: 'none', btnFx: 'glass' }),
-    chip: c => ({ background: c + '40', color: '#fff', border: '1px solid #ffffff55', borderRadius: 8 }) },
-  { id: 'outline',  label: '아웃라인', desc: '투명 + 테두리',          preset: c => ({ btnBg: 'transparent', btnGradient: undefined, btnTextColor: c, borderWidth: 2, borderColor: c, radius: 8, btnShadow: 'none', btnFx: undefined }),
-    chip: c => ({ background: 'transparent', color: c, border: `2px solid ${c}`, borderRadius: 6 }) },
-  { id: 'soft',     label: '소프트',   desc: '연한 톤 배경',           preset: c => ({ btnBg: c + '1a', btnGradient: undefined, btnTextColor: c, borderWidth: 0, radius: 10, btnShadow: 'none', btnFx: undefined }),
-    chip: c => ({ background: c + '1a', color: c, borderRadius: 6 }) },
-  { id: 'ghost',    label: '고스트',   desc: '텍스트 + 화살표',        preset: c => ({ btnBg: 'transparent', btnGradient: undefined, btnTextColor: c, borderWidth: 0, radius: 8, btnShadow: 'none', btnFx: undefined, btnHover: 'arrow' }),
-    chip: c => ({ background: 'transparent', color: c }) },
-  { id: 'neon',     label: '네온',     desc: '다크 + 컬러 글로우',     preset: c => ({ btnBg: '#0a0a0a', btnGradient: undefined, btnTextColor: c, borderWidth: 2, borderColor: c, radius: 8, btnShadow: 'glow', btnFx: undefined }),
-    chip: c => ({ background: '#0a0a0a', color: c, border: `2px solid ${c}`, borderRadius: 5, boxShadow: `0 0 8px ${c}` }) },
-  { id: 'pill',     label: '알약',     desc: '완전 둥근 채움',         preset: c => ({ btnBg: c, btnGradient: undefined, btnTextColor: '#ffffff', borderWidth: 0, radius: 999, btnShadow: 'soft', btnFx: undefined }),
-    chip: c => ({ background: c, color: '#fff', borderRadius: 999 }) },
-  { id: 'ink',      label: '잉크',     desc: '흰 배경 + 검정 오프셋',  preset: () => ({ btnBg: '#ffffff', btnGradient: undefined, btnTextColor: '#0a0a0a', borderWidth: 2, borderColor: '#0a0a0a', radius: 0, btnShadow: 'hard', btnFx: undefined }),
-    chip: () => ({ background: '#fff', color: '#0a0a0a', border: '2px solid #0a0a0a', boxShadow: '3px 3px 0 0 #000' }) },
-  { id: 'link',     label: '링크',     desc: '밑줄형 텍스트',          preset: c => ({ btnBg: 'transparent', btnGradient: undefined, btnTextColor: c, borderWidth: 0, radius: 0, btnShadow: 'none', btnFx: undefined, btnHover: 'underline' }),
-    chip: c => ({ background: 'transparent', color: c, textDecoration: 'underline', textUnderlineOffset: 3 }) },
-];
-
-/* FAQ 스타일 템플릿 — 한 클릭으로 변형+아이콘+번호+크기+색을 묶어 적용(__merge 로 원자 적용).
-   각 프리셋이 관련 필드를 '전부' 지정(미사용은 undefined)해 이전 선택의 잔여값을 깨끗이 리셋한다. */
-const FAQ_TEMPLATES: { id: string; label: string; desc: string; patch: Record<string, any> }[] = [
-  { id: 'boxed',     label: '박스 기본',    desc: '검정 박스 + ＋',        patch: { faqStyle: undefined, iconStyle: 'plus',  faqNumbered: undefined, qSize: 15, qColor: undefined, aColor: undefined, faqLineColor: undefined, openBg: '#fff7ed', borderRadius: 0 } },
-  { id: 'lineEdit',  label: '라인 에디토리얼', desc: '얇은 구분선 + 번호 + ↑↓', patch: { faqStyle: 'line', iconStyle: 'arrow', faqNumbered: true, qSize: 19, qColor: '#111827', aColor: '#6b7280', faqLineColor: '#e5e7eb' } },
-  { id: 'minimal',   label: '미니멀 대형',   desc: '보더 거의 없이 큰 질문', patch: { faqStyle: 'plain', iconStyle: 'plus', faqNumbered: true, qSize: 24, qColor: '#0a0a0a', aColor: '#6b7280', faqLineColor: '#eeeeee' } },
-  { id: 'darkLine',  label: '다크 라인',     desc: '다크 섹션용 라이트 텍스트', patch: { faqStyle: 'line', iconStyle: 'arrow', faqNumbered: true, qSize: 19, qColor: '#ffffff', aColor: '#94a3b8', faqLineColor: '#262626' } },
-  { id: 'compact',   label: '컴팩트 박스',   desc: '작고 촘촘한 박스',       patch: { faqStyle: undefined, iconStyle: 'plus', faqNumbered: undefined, qSize: 14, qColor: undefined, aColor: undefined, openBg: '#f9fafb', borderRadius: 8 } },
-  { id: 'numMinimal',label: '번호 미니멀',   desc: '번호 + 얇은 라인',       patch: { faqStyle: 'line', iconStyle: 'plus', faqNumbered: true, qSize: 20, qColor: '#111827', aColor: '#6b7280', faqLineColor: '#e5e7eb' } },
-];
-const FaqTemplateModal: React.FC<{ onPick: (patch: Record<string, any>) => void; onClose: () => void }> = ({ onPick, onClose }) => createPortal(
-  <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-    <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
-      <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white">
-        <h3 className="font-black text-base">FAQ 스타일 템플릿</h3>
-        <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
-      </div>
-      <div className="p-5 grid grid-cols-2 gap-3">
-        {FAQ_TEMPLATES.map(t => (
-          <button key={t.id} onClick={() => { onPick(t.patch); onClose(); }}
-            className="flex flex-col items-start gap-1.5 border-2 border-gray-200 rounded-lg p-4 text-left hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all">
-            <span className="text-[14px] font-black text-gray-800">{t.label}</span>
-            <span className="text-[11px] font-bold text-gray-400 leading-tight">{t.desc}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>,
-  document.body
-);
-
 /* ── 위젯 디자인 프리셋 (WEBBUILDER_TEMPLATES_PLAN §12) ──
    button·faq 의 템플릿 모달 패턴을 일반화 — 선택한 위젯의 '디자인만' 한 번에 바꾼다.
    preset.patch(accent) 번들을 __merge 로 적용. 텍스트·항목 데이터는 패치하지 않아 보존된다. */
@@ -387,6 +324,7 @@ const WidgetPresetModal: React.FC<{ presets: WidgetPreset[]; accent: string; onP
           {presets.map(p => (
             <button key={p.id} onClick={() => { onPick(p); onClose(); }}
               className="flex flex-col items-start gap-1.5 border-2 border-gray-200 rounded-lg p-4 text-left hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all">
+              {p.chip && <span className="font-black inline-flex items-center justify-center mb-0.5" style={{ padding: '8px 18px', fontSize: 12, ...p.chip(accent) }}>버튼</span>}
               <span className="text-[14px] font-black text-gray-800">{p.label}</span>
               <span className="text-[11px] font-bold text-gray-400 leading-tight">{p.desc}</span>
             </button>
@@ -609,8 +547,6 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
 export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDeselect, onDelete, themeHex, activeTheme, kind }) => {
   const [propSlideIdx, setPropSlideIdx] = useState(0);
   const [activeCellIdx, setActiveCellIdx] = useState(0);
-  const [btnTplOpen, setBtnTplOpen] = useState(false);
-  const [faqTplOpen, setFaqTplOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const tabbed = kind === 'widget' && TABBED_WIDGETS.has(block.type);
@@ -1082,22 +1018,6 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             </div>
           </Section>
 
-          <Section title="디자인 템플릿">
-            <button onClick={() => setBtnTplOpen(true)}
-              className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
-              <span className="flex items-center gap-2">
-                <span className="font-black" style={{ padding: '4px 12px', fontSize: 11, ...(BTN_TEMPLATES.find(t => t.id === block.btnTemplate)?.chip(primary) ?? { background: primary, color: '#fff', borderRadius: 4 }) }}>버튼</span>
-                <span className="text-[13px] font-bold text-gray-600">{BTN_TEMPLATES.find(t => t.id === block.btnTemplate)?.label ?? '템플릿 선택'}</span>
-              </span>
-              <span className="text-[12px] font-black text-orange-500">열기 →</span>
-            </button>
-          </Section>
-          {btnTplOpen && (
-            <BtnTemplateModal primary={primary} activeId={block.btnTemplate}
-              onPick={(preset, id) => onUpdate('__merge', { ...preset, btnTemplate: id })}
-              onClose={() => setBtnTplOpen(false)} />
-          )}
-
           <Section title="레이아웃·크기">
             <Seg options={[{v:'s',label:'S'},{v:'m',label:'M'},{v:'l',label:'L'}]} value={block.btnSize||'m'} onChange={v => onUpdate('btnSize', v)} />
           </Section>
@@ -1169,13 +1089,6 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
 
         {/* ──────── FAQ ──────── */}
         {block.type === 'faq' && (<>
-          <Section title="템플릿" tip="박스·라인·미니멀·다크 등 스타일을 한 번에 적용합니다.">
-            <button onClick={() => setFaqTplOpen(true)} className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
-              <span className="text-[13px] font-bold text-gray-600">스타일 템플릿</span>
-              <span className="text-[12px] font-black text-orange-500">열기 →</span>
-            </button>
-          </Section>
-          {faqTplOpen && <FaqTemplateModal onPick={patch => onUpdate('__merge', patch)} onClose={() => setFaqTplOpen(false)} />}
           <Section title="스타일">
             <div>
               <Label>스타일 변형</Label>
@@ -1399,7 +1312,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <ColorPicker label="숫자 색상" value={block.valueColor||'#111827'} onChange={v => onUpdate('valueColor', v)} />
             <ColorPicker label="라벨 색상" value={block.labelColor||'#6b7280'} onChange={v => onUpdate('labelColor', v)} />
           </Section>
-          <Section title="애니메이션">
+          <Section title="애니메이션" tip="에디터 캔버스에선 최종값으로 정적 표시됩니다. 공개 페이지·미리보기에서 스크롤 진입 시 0부터 카운트업됩니다.">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={block.animate !== false} onChange={e => onUpdate('animate', e.target.checked)} className="accent-orange-500 w-3.5 h-3.5" />
               <span className="text-[14px] font-bold">스크롤 인뷰 카운트업 애니메이션</span>
@@ -1437,11 +1350,10 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
 
         {/* ──────── 공통: 등장 효과 (자체 모션이 없는 위젯에만 단일 섹션으로 노출) ──────── */}
         {['image', 'faq', 'stats', 'countdown', 'divider'].includes(block.type) && (
-          <Section title="등장 효과" tab="motion" tip="스크롤로 화면에 들어올 때 한 번 재생됩니다.">
-            <Seg options={[{v:'none',label:'없음'},{v:'fadeIn',label:'페이드'},{v:'slideUp',label:'위로'},{v:'clipUp',label:'마스크'}]}
-              value={block.animation||'none'} onChange={v => onUpdate('animation', v === 'none' ? undefined : v)} />
+          <Section title="등장 효과" tab="motion" tip="스크롤로 화면에 들어올 때 한 번 재생됩니다. 에디터 캔버스에선 정적 표시 · 공개 페이지·미리보기에서 재생됩니다.">
+            <AnimSelect value={block.animation||'none'} onChange={v => onUpdate('animation', v === 'none' ? undefined : v)} />
             {block.animation && block.animation !== 'none' && (
-              <Slider label="속도" value={block.animDuration ?? 0.6} min={0.2} max={2} step={0.1} unit="s" onChange={v => onUpdate('animDuration', v)} />
+              <Slider label="속도" value={block.animDuration ?? 0.8} min={0.2} max={2} step={0.1} unit="s" onChange={v => onUpdate('animDuration', v)} />
             )}
           </Section>
         )}

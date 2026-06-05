@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Eye, Heart, Loader, AlertCircle, Edit3, CheckCircle } from 'lucide-react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatRelativeDate } from '../../lib/format';
 import { useAdmin } from '../../contexts/AdminContext';
 
 interface ClubInfo {
@@ -23,16 +24,6 @@ interface StoryPost {
 }
 
 const PAGE_SIZE = 9;
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return '';
-  }
-}
 
 export default function ClubStories() {
   const { id: slug } = useParams<{ id: string }>();
@@ -238,6 +229,7 @@ export default function ClubStories() {
             {/* 히어로: 첫 번째 스토리 */}
             <Link
               to={`/stories/${posts[0].id}`}
+              state={{ backTo: `/clubs/${slug}/stories`, backLabel: '동아리 스토리' }}
               className="block relative overflow-hidden border-2 border-black group"
             >
               <div className="h-[45vh] md:h-[55vh] relative">
@@ -255,7 +247,7 @@ export default function ClubStories() {
               <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="bg-orange-500 text-black font-black text-xs px-3 py-1.5 border border-black">LATEST</span>
-                  <span className="text-gray-300 font-bold text-sm">{formatDate(posts[0].created_at)}</span>
+                  <span className="text-gray-300 font-bold text-sm">{formatRelativeDate(posts[0].created_at)}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-black text-white leading-tight group-hover:text-orange-300 transition-colors max-w-3xl mb-4">
                   {posts[0].title}
@@ -277,6 +269,7 @@ export default function ClubStories() {
                   <Link
                     key={post.id}
                     to={`/stories/${post.id}`}
+                    state={{ backTo: `/clubs/${slug}/stories`, backLabel: '동아리 스토리' }}
                     className="bg-white border border-black group hover:shadow-[6px_6px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 transition-all flex flex-col"
                   >
                     <div className="relative h-52 border-b border-black overflow-hidden bg-gray-100">
@@ -296,7 +289,7 @@ export default function ClubStories() {
                       </div>
                     </div>
                     <div className="p-5 flex-1 flex flex-col gap-2">
-                      <p className="text-xs font-bold text-gray-400">{formatDate(post.created_at)}</p>
+                      <p className="text-xs font-bold text-gray-400">{formatRelativeDate(post.created_at)}</p>
                       <h3 className="font-black text-base leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors flex-1">
                         {post.title}
                       </h3>

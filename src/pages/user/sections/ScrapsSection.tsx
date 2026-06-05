@@ -27,7 +27,7 @@ export default function ScrapsSection() {
         const ids = bookmarks.map(b => b.target_id);
         const { data: clubs } = await supabase
           .from('clubs')
-          .select('id, name, one_line_desc, type')
+          .select('id, name, slug, one_line_desc, type')
           .in('id', ids);
         const clubMap = Object.fromEntries((clubs ?? []).map(c => [c.id, c]));
         setScraps(bookmarks.map(b => ({ ...b, club: clubMap[b.target_id] })));
@@ -61,12 +61,18 @@ export default function ScrapsSection() {
         <div className="flex flex-col gap-4">
           {scraps.map(s => (
             <div key={s.id} className="p-4 border border-black bg-gray-50 flex items-center justify-between">
-              <div>
-                <div className="font-black text-lg">{s.club?.name ?? s.target_id}</div>
-                <div className="text-sm font-bold text-gray-500">
-                  {s.club?.type} {s.club?.one_line_desc ? `· ${s.club.one_line_desc}` : ''}
+              {s.club ? (
+                <Link to={`/clubs/${s.club.slug}`} className="min-w-0 group">
+                  <div className="font-black text-lg truncate group-hover:text-orange-600 transition-colors">{s.club.name}</div>
+                  <div className="text-sm font-bold text-gray-500 truncate">
+                    {s.club.type} {s.club.one_line_desc ? `· ${s.club.one_line_desc}` : ''}
+                  </div>
+                </Link>
+              ) : (
+                <div className="min-w-0">
+                  <div className="font-black text-lg text-gray-400">삭제된 동아리</div>
                 </div>
-              </div>
+              )}
               <button
                 onClick={() => handleRemove(s.id)}
                 className="text-gray-400 hover:text-red-500 transition-colors p-2 border border-transparent hover:border-red-200 hover:bg-red-50 shrink-0"

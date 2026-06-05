@@ -24,6 +24,8 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState<Tab>('applications');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // 출석 체크/인정 신청 후 출결 탭을 갱신하기 위한 신호
+  const [activityVersion, setActivityVersion] = useState(0);
 
   const handleSignOut = async () => {
     await signOut();
@@ -138,11 +140,11 @@ export default function MyPage() {
             <PulseCheckBanner />
 
             {/* Phase 4: 출석 코드 입력 */}
-            <AttendanceSection />
+            <AttendanceSection onActivityChange={() => setActivityVersion(v => v + 1)} />
 
             {/* 탭 콘텐츠 */}
             {activeTab === 'applications'  && <ApplicationsSection />}
-            {activeTab === 'attendance'    && <AttendanceHistorySection />}
+            {activeTab === 'attendance'    && <AttendanceHistorySection refreshKey={activityVersion} />}
             {activeTab === 'scraps'        && <ScrapsSection />}
             {activeTab === 'notifications' && <NotificationsSection />}
           </div>

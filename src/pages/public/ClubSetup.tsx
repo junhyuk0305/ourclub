@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
@@ -26,10 +26,9 @@ export default function ClubSetup() {
   const navigate = useNavigate();
   const [state, setState] = useState<SetupState>({ kind: 'loading' });
 
-  useEffect(() => {
+  const check = useCallback(async () => {
     if (!user) return;
-
-    const check = async () => {
+    {
       // 1. 이미 운영진이면 대시보드로
       const { data: member } = await supabase
         .from('club_members')
@@ -75,10 +74,18 @@ export default function ClubSetup() {
       }
 
       setState({ kind: 'select' });
-    };
-
-    check();
+    }
   }, [user, navigate]);
+
+  // 최초 진입 시 1회 확인
+  useEffect(() => { check(); }, [check]);
+
+  // 승인 대기 중에는 주기적으로 재확인 → 승인되면 check()가 자동으로 대시보드 전환
+  useEffect(() => {
+    if (state.kind !== 'pending_join' && state.kind !== 'pending_registration') return;
+    const id = setInterval(check, 12000);
+    return () => clearInterval(id);
+  }, [state.kind, check]);
 
   // ── 로딩 ────────────────────────────────────────────────────
   if (state.kind === 'loading') {

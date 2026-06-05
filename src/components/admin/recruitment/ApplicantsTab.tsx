@@ -200,7 +200,25 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
   const bulkChangeStatus = async () => {
     if (!bulkStage || selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
+    // 실제로 단계가 바뀌는 지원자만(현재 단계 != 목표 단계) 로그 대상
+    const moved = applicants.filter(a => selectedIds.has(a.id) && a.status !== bulkStage);
     await supabase.from('recruitment_applications').update({ status: bulkStage }).in('id', ids);
+    // 단건 이동(confirmStageMove)과 동일하게 단계 로그를 남겨 지원자 인앱 알림 트리거를 발화한다.
+    // 일괄 이동은 모달이 없으므로 기본 알림(email_sent=true, 제목/본문 트리거 기본값)으로 통지.
+    if (moved.length > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('application_stage_log').insert(
+        moved.map(a => ({
+          application_id: a.id,
+          from_stage: a.status,
+          to_stage: bulkStage,
+          email_sent: true,
+          email_subject: null,
+          email_body: null,
+          moved_by: user?.id ?? null,
+        }))
+      );
+    }
     setApplicants(prev => prev.map(a => selectedIds.has(a.id) ? { ...a, status: bulkStage } : a));
     showToast(`${ids.length}명 → '${bulkStage}' 이동 완료`);
     setSelectedIds(new Set());

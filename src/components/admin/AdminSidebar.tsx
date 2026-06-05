@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, Users, Settings, ChevronDown, ChevronRight, Palette, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Settings, ChevronDown, ChevronRight, Palette, ClipboardList, Check } from 'lucide-react';
+import { useAdmin } from '../../contexts/AdminContext';
 
 type MenuItem = {
   name: string;
@@ -13,6 +14,54 @@ type MenuGroup = {
   path?: string; // If the group itself is clickable
   items?: MenuItem[]; // Sub-items
 };
+
+function ClubSwitcher() {
+  const { adminClubs, activeClubId, setActiveClub } = useAdmin();
+  const [open, setOpen] = useState(false);
+
+  // 운영 동아리가 1개 이하면 전환 UI 불필요
+  if (adminClubs.length <= 1) return null;
+
+  const active = adminClubs.find((c) => c.id === activeClubId) ?? adminClubs[0];
+
+  return (
+    <div className="relative mb-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 p-3 border border-black bg-white font-bold text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex flex-col items-start min-w-0">
+          <span className="text-[10px] uppercase tracking-widest text-gray-400">운영 동아리</span>
+          <span className="truncate w-full text-left">{active?.name ?? '동아리 선택'}</span>
+        </div>
+        <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-full mt-1 z-20 border border-black bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] max-h-72 overflow-y-auto">
+            {adminClubs.map((club) => {
+              const selected = club.id === active?.id;
+              return (
+                <button
+                  key={club.id}
+                  onClick={() => { setActiveClub(club.id); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
+                    selected ? 'font-black bg-orange-50 text-black' : 'font-bold text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="truncate">{club.name}</span>
+                  {selected && <Check className="w-4 h-4 flex-shrink-0 text-orange-500" />}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function AdminSidebar() {
   const location = useLocation();
@@ -76,6 +125,7 @@ export function AdminSidebar() {
 
   return (
     <div className="flex flex-col gap-1 select-none">
+      <ClubSwitcher />
       {menuGroups.map((group, idx) => {
         const Icon = group.icon;
         

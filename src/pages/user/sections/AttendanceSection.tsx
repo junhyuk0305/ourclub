@@ -17,7 +17,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 // Phase 4: 출석 코드 입력 (INSERT 포함)
 // M1: 출석 인정 신청 패널 추가
 // ──────────────────────────────────────────
-export default function AttendanceSection() {
+export default function AttendanceSection({ onActivityChange }: { onActivityChange?: () => void }) {
   const { user } = useAuth();
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -80,6 +80,7 @@ export default function AttendanceSection() {
 
     setStatus('success'); setMsg('출석이 완료되었습니다!');
     setCode('');
+    onActivityChange?.();
   };
 
   // 출석 인정 패널 열 때 내 활동 멤버십 로드
@@ -143,6 +144,7 @@ export default function AttendanceSection() {
 
     setExMsg({ kind: 'success', text: '출석 인정 신청이 접수되었습니다.' });
     setExReason(''); setExDetail(''); setExFile(null); setExDate(todayStr());
+    onActivityChange?.();
   };
 
   return (

@@ -47,6 +47,12 @@ export default function NotificationsSection() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [user?.id]);
+  // 알림은 push 구독이 없어, 탭으로 돌아왔을 때 다시 불러와 새 알림/읽음 상태를 반영
+  useEffect(() => {
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [user?.id]);
 
   const markRead = async (id: string) => {
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
@@ -63,7 +69,8 @@ export default function NotificationsSection() {
 
   const open = (n: NotifRow) => {
     if (!n.is_read) markRead(n.id);
-    if (n.link) navigate(n.link);
+    // 내부 경로만 허용 (protocol-relative '//' 및 외부 스킴 차단)
+    if (n.link && n.link.startsWith('/') && !n.link.startsWith('//')) navigate(n.link);
   };
 
   const unread = items.filter(n => !n.is_read).length;
