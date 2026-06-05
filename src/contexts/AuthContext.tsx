@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('global_admins')
         .select('id')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       setIsMaster(!!data);
     } catch {
       setIsMaster(false);
