@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { PlayCircle, Loader, Copy, Check } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
@@ -26,6 +26,9 @@ function generateCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+const NO_GEN = '미지정';
+const genKey = (m: MemberRow) => m.generation ?? NO_GEN;
+
 const PRESET_DURATIONS = [
   { label: '10분', minutes: 10 },
   { label: '15분', minutes: 15 },
@@ -45,6 +48,8 @@ export default function AttendanceCreate() {
   const [sessionName, setSessionName] = useState('');
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
   const [allMembers, setAllMembers] = useState<MemberRow[]>([]);
+  const [currentGen, setCurrentGen] = useState<string | null>(null);
+  const [selectedGens, setSelectedGens] = useState<Set<string>>(new Set());
   const [excludedMembers, setExcludedMembers] = useState<Set<string>>(new Set());
   const [durationMin, setDurationMin] = useState(10);
   const [customDuration, setCustomDuration] = useState(false);
@@ -98,16 +103,53 @@ export default function AttendanceCreate() {
   };
 
   const loadMembers = async (clubId: string) => {
-    const { data } = await supabase
-      .from('club_members')
-      .select('id, generation, display_name, profiles(name)')
-      .eq('club_id', clubId)
-      .eq('status', '활동중');
-    setAllMembers((data ?? []) as unknown as MemberRow[]);
+    const [{ data: club }, { data }] = await Promise.all([
+      supabase.from('clubs').select('current_generation').eq('id', clubId).maybeSingle(),
+      supabase
+        .from('club_members')
+        .select('id, generation, display_name, profiles(name)')
+        .eq('club_id', clubId)
+        .eq('status', '활동중'),
+    ]);
+    const members = (data ?? []) as unknown as MemberRow[];
+    setAllMembers(members);
+    const cur = (club?.current_generation ?? null) as string | null;
+    setCurrentGen(cur);
+    // 기본 대상: 현재 활동 기수(없거나 해당 기수 부원이 없으면 전 기수)
+    const opts = Array.from(new Set(members.map(genKey)));
+    setSelectedGens(cur && opts.includes(cur) ? new Set([cur]) : new Set(opts));
   };
 
-  const candidateMembers = allMembers;
+  // 기수 옵션(내림차순: 숫자 우선)
+  const genOptions = useMemo(() => {
+    return Array.from(new Set(allMembers.map(genKey))).sort((a, b) => {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return nb - na;
+      return b.localeCompare(a);
+    });
+  }, [allMembers]);
+
+  const candidateMembers = allMembers.filter(m => selectedGens.has(genKey(m)));
   const targetMembers = candidateMembers.filter(m => !excludedMembers.has(m.id));
+  const allVisibleChecked = candidateMembers.length > 0 && candidateMembers.every(m => !excludedMembers.has(m.id));
+
+  const toggleGen = (g: string) => {
+    setSelectedGens(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setExcludedMembers(prev => {
+      const next = new Set(prev);
+      if (allVisibleChecked) candidateMembers.forEach(m => next.add(m.id));
+      else candidateMembers.forEach(m => next.delete(m.id));
+      return next;
+    });
+  };
 
   const toggleExclude = (id: string) => {
     setExcludedMembers(prev => {
@@ -134,7 +176,7 @@ export default function AttendanceCreate() {
       attendance_code: code,
       expires_at: expiresAt,
       session_date: sessionDate || null,
-      target_generations: [],
+      target_generations: Array.from(selectedGens).filter(g => g !== NO_GEN),
     };
 
     const { data, error } = await supabase
@@ -312,16 +354,56 @@ export default function AttendanceCreate() {
                 </div>
 
                 {/* 예외 처리 */}
-                {candidateMembers.length > 0 && (
+                {allMembers.length > 0 && (
                   <div className="flex flex-col gap-2">
+                    {/* 기수 선택 칩 */}
+                    {genOptions.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-black text-gray-500">기수 선택:</span>
+                        {genOptions.map(g => {
+                          const on = selectedGens.has(g);
+                          const cnt = allMembers.filter(m => genKey(m) === g).length;
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => toggleGen(g)}
+                              className={`px-2.5 py-1 border-2 border-black font-black text-xs flex items-center gap-1 ${
+                                on ? 'bg-orange-500 text-black' : 'bg-white text-gray-400 hover:bg-gray-100'
+                              }`}
+                            >
+                              {g === NO_GEN ? '미지정' : g}
+                              {g === currentGen && <span className="text-[9px] text-orange-700">현재</span>}
+                              <span className={`px-1 rounded ${on ? 'bg-black/10' : 'bg-gray-100'}`}>{cnt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <label className="font-black text-sm">출석 대상자 ({targetMembers.length}명)</label>
-                      <span className="text-xs font-bold text-gray-500">
-                        체크 해제 시 모수에서 제외됩니다
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {candidateMembers.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={toggleAllVisible}
+                            className="text-xs font-black underline hover:no-underline"
+                          >
+                            {allVisibleChecked ? '전체 해제' : '전체 선택'}
+                          </button>
+                        )}
+                        <span className="text-xs font-bold text-gray-500">
+                          체크 해제 시 모수에서 제외됩니다
+                        </span>
+                      </div>
                     </div>
                     <div className="border-2 border-black bg-white max-h-60 overflow-y-auto">
-                      {candidateMembers.map(m => {
+                      {candidateMembers.length === 0 ? (
+                        <p className="px-3 py-6 text-center text-xs font-bold text-gray-400">
+                          위에서 기수를 하나 이상 선택하세요.
+                        </p>
+                      ) : candidateMembers.map(m => {
                         const excluded = excludedMembers.has(m.id);
                         return (
                           <label
