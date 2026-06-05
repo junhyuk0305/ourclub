@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ChevronRight, Loader, AlertCircle, Clock, Briefcase, X, FileText,
-  Star, MessageSquare, ChevronDown, Plus, Eye,
+  Star, MessageSquare, ChevronDown, Plus, Eye, MapPin, Users, CalendarDays,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
@@ -440,7 +440,23 @@ function ReviewsSection({
   title: string; reviews: Review[]; clubId: string; brand: string; onRefresh: () => void;
 }) {
   const [writing, setWriting] = useState(false);
-  const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const [genFilter, setGenFilter] = useState<string>('all');
+
+  // 활동기수 옵션(내림차순)
+  const gens = useMemo(() => {
+    const set = new Set(reviews.map(r => r.generation).filter(Boolean) as string[]);
+    return Array.from(set).sort((a, b) => {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return nb - na;
+      return b.localeCompare(a);
+    });
+  }, [reviews]);
+
+  const filtered = genFilter === 'all' ? reviews : reviews.filter(r => r.generation === genFilter);
+  const avg = filtered.length > 0 ? filtered.reduce((s, r) => s + r.rating, 0) / filtered.length : 0;
+  const recommend = filtered.length > 0 ? Math.round((filtered.filter(r => r.rating >= 4).length / filtered.length) * 100) : 0;
+  const dist = [5, 4, 3, 2, 1].map(star => ({ star, count: filtered.filter(r => r.rating === star).length }));
+  const maxCount = Math.max(1, ...dist.map(d => d.count));
 
   return (
     <section>
@@ -454,35 +470,72 @@ function ReviewsSection({
         </button>
       </div>
 
-      {/* 평점 요약 */}
-      {reviews.length > 0 && (
-        <div className="bg-white border-2 border-black p-6 mb-5 flex items-center gap-6 flex-wrap">
-          <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-black" style={{ color: brand }}>{avg.toFixed(1)}</span>
-            <span className="text-lg font-bold text-gray-400">/ 5.0</span>
+      {/* 평점 요약: 평균 + 추천율 + 별점 분포 */}
+      {filtered.length > 0 && (
+        <div className="bg-white border-2 border-black p-6 mb-5 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 items-center">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-5xl font-black" style={{ color: brand }}>{avg.toFixed(1)}</span>
+                <span className="text-base font-bold text-gray-400">/ 5.0</span>
+              </div>
+              <div className="flex items-center gap-0.5 mt-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="w-4 h-4" style={{ color: i < Math.round(avg) ? brand : '#e5e7eb', fill: i < Math.round(avg) ? brand : '#e5e7eb' }} />
+                ))}
+              </div>
+              <span className="text-xs font-bold text-gray-400 mt-1.5">총 {filtered.length}개 후기</span>
+            </div>
+            <div className="flex flex-col items-center border-l border-gray-200 pl-8">
+              <span className="text-4xl font-black" style={{ color: brand }}>{recommend}%</span>
+              <span className="text-xs font-black text-gray-600 mt-1">추천율</span>
+              <span className="text-[10px] font-bold text-gray-400">4★ 이상 비율</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className="w-6 h-6"
-                style={{ color: i < Math.round(avg) ? brand : '#e5e7eb', fill: i < Math.round(avg) ? brand : '#e5e7eb' }}
-              />
+          {/* 별점 분포 */}
+          <div className="flex flex-col gap-1.5">
+            {dist.map(d => (
+              <div key={d.star} className="flex items-center gap-2 text-xs font-bold">
+                <span className="w-7 text-gray-500">{d.star}★</span>
+                <div className="flex-1 h-2.5 bg-gray-100 border border-gray-200 overflow-hidden">
+                  <div className="h-full" style={{ width: `${(d.count / maxCount) * 100}%`, backgroundColor: brand }} />
+                </div>
+                <span className="w-6 text-right text-gray-500">{d.count}</span>
+              </div>
             ))}
           </div>
-          <span className="text-sm font-bold text-gray-500 ml-auto">총 {reviews.length}개 후기</span>
         </div>
       )}
 
-      {reviews.length === 0 ? (
+      {/* 활동기수 필터 */}
+      {gens.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-black text-gray-400">활동기수:</span>
+          {(['all', ...gens]).map(g => {
+            const on = genFilter === g;
+            return (
+              <button
+                key={g}
+                onClick={() => setGenFilter(g)}
+                className={`px-2.5 py-1 border-2 border-black font-black text-xs ${on ? 'text-black' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
+                style={on ? { backgroundColor: brand } : undefined}
+              >
+                {g === 'all' ? '전체' : g}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
         <div className="bg-white border-2 border-dashed border-gray-300 p-10 text-center">
           <MessageSquare className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="font-bold text-gray-400 text-sm mb-2">아직 작성된 후기가 없습니다.</p>
-          <p className="text-xs text-gray-400 font-medium">첫 번째 후기를 작성해주세요.</p>
+          <p className="font-bold text-gray-400 text-sm mb-2">{genFilter === 'all' ? '아직 작성된 후기가 없습니다.' : '해당 기수의 후기가 없습니다.'}</p>
+          {genFilter === 'all' && <p className="text-xs text-gray-400 font-medium">첫 번째 후기를 작성해주세요.</p>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {reviews.map(r => <ReviewCard key={r.id} review={r} brand={brand} />)}
+          {filtered.map(r => <ReviewCard key={r.id} review={r} brand={brand} />)}
         </div>
       )}
 
@@ -706,27 +759,81 @@ function JDModal({ recruitment: r, onClose, onApply, brand }: { recruitment: Rec
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded shrink-0 mt-0.5"><X className="w-5 h-5" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto px-8 py-6">
-          {r.description ? <MarkdownViewer content={r.description} /> : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="w-10 h-10 text-gray-200 mb-3" />
-              <p className="text-gray-400 font-bold text-sm">상세 모집 요강이 등록되지 않았습니다.</p>
+        {/* 본문(좌) + 모집정보·선발프로세스·지원(우) */}
+        <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row min-h-0">
+          <div className="flex-1 px-8 py-6 lg:border-r-2 lg:border-black min-w-0">
+            {r.description ? <MarkdownViewer content={r.description} /> : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="w-10 h-10 text-gray-200 mb-3" />
+                <p className="text-gray-400 font-bold text-sm">상세 모집 요강이 등록되지 않았습니다.</p>
+              </div>
+            )}
+          </div>
+
+          <aside className="lg:w-80 shrink-0 bg-gray-50 px-6 py-6 flex flex-col gap-6 border-t-2 border-black lg:border-t-0">
+            {/* 모집 정보 */}
+            {(r.targets || r.location || r.regular_meeting || r.deadline || r.generation) && (
+              <div>
+                <h4 className="font-black text-sm mb-3">모집 정보</h4>
+                <dl className="flex flex-col gap-2.5 text-sm">
+                  {r.generation && <InfoRow icon={Users} label="기수" value={r.generation} />}
+                  {r.targets && <InfoRow icon={Users} label="모집 대상" value={r.targets} />}
+                  {r.location && <InfoRow icon={MapPin} label="주요 활동지" value={r.location} />}
+                  {r.regular_meeting && <InfoRow icon={CalendarDays} label="정기 활동일" value={r.regular_meeting} />}
+                  {r.deadline && (
+                    <InfoRow
+                      icon={Clock}
+                      label="마감"
+                      value={(() => {
+                        const d = new Date(r.deadline!);
+                        const dl = Math.ceil((d.getTime() - Date.now()) / 86400000);
+                        return dl < 0 ? '마감됨' : dl === 0 ? '오늘 마감' : `D-${dl} · ${formatDate(d, 'monthDay')}`;
+                      })()}
+                    />
+                  )}
+                </dl>
+              </div>
+            )}
+
+            {/* 선발 프로세스 타임라인 */}
+            <div>
+              <h4 className="font-black text-sm mb-3">선발 프로세스</h4>
+              <ol className="flex flex-col">
+                {(Array.isArray(r.pipeline_stages) && r.pipeline_stages.length > 0 ? r.pipeline_stages : ['서류접수', '면접', '최종합격']).map((s, i, arr) => (
+                  <li key={`${s}-${i}`} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className="w-6 h-6 rounded-full border-2 border-black flex items-center justify-center text-xs font-black shrink-0" style={{ backgroundColor: brand, color: brand === '#000000' ? '#fff' : '#000' }}>{i + 1}</span>
+                      {i < arr.length - 1 && <span className="w-0.5 flex-1 bg-gray-300 my-0.5 min-h-[14px]" />}
+                    </div>
+                    <span className="font-bold text-sm pt-0.5 pb-3">{s}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-[11px] text-gray-400 font-bold leading-relaxed">내부 평가 기준은 공개되지 않으며, 결과는 개별 연락드립니다.</p>
             </div>
-          )}
+
+            {/* 지원하기 */}
+            <button
+              onClick={onApply}
+              className="mt-auto w-full py-3.5 text-white font-black hover:opacity-90 transition-colors flex items-center justify-center gap-2 text-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none"
+              style={{ backgroundColor: brand === '#000000' ? '#000000' : brand }}
+            >
+              지원폼 작성하기 <ChevronRight className="w-4 h-4" />
+            </button>
+          </aside>
         </div>
-        <div className="px-8 py-4 bg-gray-50 border-t border-gray-200 shrink-0">
-          <p className="text-xs text-gray-400 font-bold text-center">내부 평가 프로세스는 공개되지 않으며, 결과는 개별 연락드립니다.</p>
-        </div>
-        <div className="px-8 py-5 border-t-2 border-black bg-white flex gap-3 shrink-0">
-          <button onClick={onClose} className="px-6 py-3 border-2 border-black font-black hover:bg-gray-100 transition-colors text-sm">닫기</button>
-          <button
-            onClick={onApply}
-            className="flex-1 py-3 text-white font-black hover:opacity-90 transition-colors flex items-center justify-center gap-2 text-sm border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none"
-            style={{ backgroundColor: brand === '#000000' ? '#000000' : brand }}
-          >
-            지원폼 작성하기 <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <dt className="text-xs font-bold text-gray-400">{label}</dt>
+        <dd className="font-bold text-sm break-words">{value}</dd>
       </div>
     </div>
   );
