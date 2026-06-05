@@ -29,7 +29,19 @@
       "PowerShell(npx vite build; Write-Output \"REALEXIT=$LASTEXITCODE\")",
       "Bash(ls src/components/ui/)",
       "Bash(ls src/lib/ src/utils/)",
-      "Bash(node -e \"console.log\\(require\\('@supabase/supabase-js/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('@supabase/supabase-js/package.json'\\).version\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/)",
+      "Bash(curl -s \"http://localhost:3001/src/pages/admin/MembersAdmin.tsx\" -o /tmp/ma.js -w \"HTTP %{http_code}  size=%{size_download}\\\\n\")",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"http://localhost:3001/src/pages/admin/AttendanceCreate.tsx\" -o /tmp/ac.js -w \"HTTP %{http_code} size=%{size_download}\\\\n\")",
+      "Bash(curl -s http://localhost:3001/__TRACKED_VAR__ -o /tmp/m.js -w '%{http_code}')",
+      "Bash(curl -s \"http://localhost:3001/src/pages/admin/MembersAnalytics.tsx\" -o /tmp/an.js -w \"HTTP %{http_code} size=%{size_download}\\\\n\")",
+      "Bash(cd \"c:/Users/장준혁/Desktop/02_ourclub1\" && npm run lint 2>&1 | tail -10 && echo \"=== smoke ===\" && for f in src/pages/admin/members/PullApplicantsModal.tsx src/pages/admin/MembersAdmin.tsx; do code=$\\(curl -s \"http://localhost:3001/$f\" -o /tmp/m.js -w \"%{http_code}\"\\); err=$\\(grep -ic \"transform failed\\\\|Failed to resolve\\\\|Pre-transform error\" /tmp/m.js\\); echo \"$f → HTTP $code, errors=$err\"; done)",
+      "Bash(curl -s \"http://localhost:3001/src/pages/public/ClubRecruit.tsx\" -o /tmp/cr.js -w \"HTTP %{http_code} size=%{size_download}\\\\n\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(echo \"C1 done: $?\")",
+      "Bash(echo \"C2 done: $?\")"
     ]
   }
 }
