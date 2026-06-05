@@ -121,6 +121,7 @@ export interface FAQItem {
 
 export interface RecruitPageSettings {
   brand_color: string;
+  tagline: string;
   hero: {
     enabled: boolean;
     slogan: string;
@@ -149,6 +150,7 @@ export interface RecruitPageSettings {
 
 export const DEFAULT_RECRUIT_PAGE: RecruitPageSettings = {
   brand_color: '#F97316',
+  tagline: '',
   hero: {
     enabled: true,
     slogan: '함께 성장할\n인재를 찾습니다.',
@@ -183,6 +185,7 @@ export function mergeRecruitPage(input: unknown): RecruitPageSettings {
   const i = input as Partial<RecruitPageSettings>;
   return {
     brand_color: i.brand_color || DEFAULT_RECRUIT_PAGE.brand_color,
+    tagline: typeof i.tagline === 'string' ? i.tagline : DEFAULT_RECRUIT_PAGE.tagline,
     hero: { ...DEFAULT_RECRUIT_PAGE.hero, ...(i.hero ?? {}) },
     recruitments: { ...DEFAULT_RECRUIT_PAGE.recruitments, ...(i.recruitments ?? {}) },
     story: { ...DEFAULT_RECRUIT_PAGE.story, ...(i.story ?? {}) },
