@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useRef, useMemo, ElementType } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
+import { useSectionParallax } from '../lib/scrollFx';
 import { MessageSquare, Clock, ChevronLeft, ChevronRight, Plus, X, Bold, AlignLeft, AlignCenter, AlignRight, AlignJustify, Baseline, PaintBucket } from 'lucide-react';
 
 /* ── theme / util helpers (단일 소유) ── */
@@ -300,6 +301,14 @@ const RichEditable: React.FC<{ value?: string; onChange?: (v: string) => void; c
       try {
         const span = document.createElement('span');
         span.style.fontSize = `${px}px`;
+        /* 선택이 '글자 배경색'(hiliteColor) span 안에 있을 때, 텍스트를 추출·재포장하면 배경 span 밖으로
+           빠져나가 배경이 글자 크기를 따라오지 않는다. → 상위 배경색을 새 span 에 실어 함께 키운다. */
+        let bg = '';
+        for (let n: Node | null = range.commonAncestorContainer; n && n !== ref.current; n = n.parentNode) {
+          const he = n as HTMLElement;
+          if (he.style && he.style.backgroundColor) { bg = he.style.backgroundColor; break; }
+        }
+        if (bg) span.style.backgroundColor = bg;
         const frag = range.extractContents();
         frag.querySelectorAll('*').forEach(d => { const he = d as HTMLElement; if (he.style && he.style.fontSize) he.style.fontSize = ''; }); // 중첩 방지
         span.appendChild(frag);
@@ -606,7 +615,8 @@ const TextBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
     whiteSpace: 'pre-wrap',
     margin: 0,
   };
-  if (block.textStroke && block.textStrokeColor) (baseStyle as any).WebkitTextStroke = `${block.textStroke}px ${block.textStrokeColor}`;
+  /* 두께만 지정해도 외곽선이 보이도록 색 기본값(검정)을 둔다 — 색 미설정 시에도 즉시 반영. */
+  if (block.textStroke) (baseStyle as any).WebkitTextStroke = `${block.textStroke}px ${block.textStrokeColor || '#000000'}`;
   const hl = block.highlightColor || ctx.themeColor;
   /* 글자/단어 단위 리빌(A5): 공개 렌더에서만 적용, 편집 모드는 일반 인라인 편집 유지 */
   const useReveal = !ctx.edit && block.textReveal && block.textReveal !== 'none';
@@ -707,13 +717,17 @@ const ImageBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
     );
   }
 
+  /* 반응형 srcset — 이미지가 차지하는 폭(width%)에 맞춰 브라우저가 적정 해상도를 고른다.
+     컨테이너가 보통 ≤1024px 라 데스크톱은 (1024×width%)px, 그 이하 뷰포트는 (width%)vw 로 근사. */
+  const wPct = block.width || 100;
+  const sizes = block.srcSet ? `(max-width: 1024px) ${wPct}vw, ${Math.round(1024 * wPct / 100)}px` : undefined;
   const media = aspect ? (
     <div style={{ width: '100%', aspectRatio: aspect, borderRadius: radius, overflow: 'hidden' }}>
-      <img src={block.src} alt={block.alt || ''} loading="lazy"
+      <img src={block.src} srcSet={block.srcSet || undefined} sizes={sizes} alt={block.alt || ''} loading="lazy" decoding="async"
         style={{ width: '100%', height: '100%', objectFit: block.objectFit || 'cover', display: 'block' }} />
     </div>
   ) : (
-    <img src={block.src} alt={block.alt || ''} loading="lazy"
+    <img src={block.src} srcSet={block.srcSet || undefined} sizes={sizes} alt={block.alt || ''} loading="lazy" decoding="async"
       style={{ width: '100%', borderRadius: radius, display: 'block' }} />
   );
 
@@ -1496,8 +1510,8 @@ export function resolveSectionBg(block: any): React.CSSProperties {
     return { background: `linear-gradient(${g.angle ?? 135}deg, ${g.from || '#111827'}, ${g.to || '#1f2937'})` };
   }
   if (t === 'image' && block.bgImage) {
-    /* Ken Burns 가 켜진 경우 배경은 별도 애니메이션 레이어(.wb-kenburns)가 그린다 → 여기선 비워둠. */
-    if (block.bgKenBurns && block.bgKenBurns !== 'none') return { backgroundColor: '#000' };
+    /* Ken Burns/패럴랙스가 켜진 경우 배경은 별도 레이어(.wb-kenburns / 패럴랙스 레이어)가 그린다 → 여기선 비워둠. */
+    if ((block.bgKenBurns && block.bgKenBurns !== 'none') || (block.bgParallax ?? 0) > 0) return { backgroundColor: '#000' };
     return { backgroundImage: `url(${block.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   }
   return { backgroundColor: block.bgColor || 'transparent' };
@@ -1530,10 +1544,9 @@ export const RowCardHeader: React.FC<{ row: any; idx: number; accent: string }> 
   return null;
 };
 
-/** 셰이프 모양별 border-radius (circle/blob/square). */
+/** 셰이프 모양별 border-radius (circle/square). 삼각형은 clip-path 로 별도 처리. */
 const SHAPE_RADIUS: Record<string, string> = {
   circle: '50%',
-  blob: '42% 58% 70% 30% / 45% 45% 55% 55%',
   square: '0',
 };
 
@@ -1557,16 +1570,18 @@ export const SectionDecor: React.FC<{ block: any }> = ({ block }) => {
   if (!hasWm && !hasShape) return null;
   return (
     <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
-      {hasShape && (
-        <div style={{
+      {hasShape && (() => {
+        const isTri = sh.type === 'triangle';
+        return <div style={{
           position: 'absolute',
           left: `${sh.x ?? 80}%`, top: `${sh.y ?? 20}%`, transform: 'translate(-50%, -50%)',
           width: `${sh.size ?? 360}px`, height: `${sh.size ?? 360}px`,
           background: sh.color || '#f97316',
-          borderRadius: SHAPE_RADIUS[sh.type] ?? '50%',
+          borderRadius: isTri ? 0 : (SHAPE_RADIUS[sh.type] ?? '50%'),
+          clipPath: isTri ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined,
           opacity: (sh.opacity ?? 12) / 100,
-        }} />
-      )}
+        }} />;
+      })()}
       {hasWm && (() => {
         const useXY = wm.x != null || wm.y != null;   // X/Y 지정 시 자유 배치, 아니면 기존 프리셋
         const spanStyle: React.CSSProperties = {
@@ -1590,10 +1605,19 @@ const SectionBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) =
   const rows: any[] = block.rows || [];
   const hasImage = block.bgType === 'image' && block.bgImage;
   const hasOverlay = hasImage && (block.bgOverlay ?? 0) > 0;
-  const kenBurns = hasImage && block.bgKenBurns && block.bgKenBurns !== 'none' ? block.bgKenBurns : null;
+  /* 배경 패럴랙스(Track B): 이미지 배경 + 토글 ON + 공개 렌더에서만. Ken Burns 보다 우선(둘 다 배경을 움직임). */
+  const parallax = hasImage && !ctx.edit && (block.bgParallax ?? 0) > 0 ? (block.bgParallax as number) : 0;
+  const kenBurns = !parallax && hasImage && block.bgKenBurns && block.bgKenBurns !== 'none' ? block.bgKenBurns : null;
   const gradOverlay = hasImage && block.bgGradOverlay;
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const parallaxRef = useRef<HTMLDivElement>(null);
+  useSectionParallax(parallaxRef, sectionRef, parallax, !!parallax);
   return (
-    <div className="wb-section" style={{ position: 'relative', overflow: 'hidden', ...resolveSectionBg(block) }}>
+    <div ref={sectionRef} className="wb-section" style={{ position: 'relative', overflow: 'hidden', ...resolveSectionBg(block) }}>
+      {parallax > 0 && (
+        /* 패럴랙스 레이어 — 섹션보다 크게 깔아(상하 여유) 스크롤 이동 시 가장자리가 비지 않게 한다. */
+        <div ref={parallaxRef} aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: '-30%', height: '160%', backgroundImage: `url(${block.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0, willChange: 'transform' }} />
+      )}
       {kenBurns && (
         <div aria-hidden className={`wb-kenburns wb-ken-${kenBurns}`} style={{ backgroundImage: `url(${block.bgImage})`, zIndex: 0 }} />
       )}
@@ -1616,7 +1640,7 @@ const SectionBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) =
             style={{ display: 'grid', gridTemplateColumns: rowGridTemplate(row), gap: `${row.gap ?? 24}px`, alignItems: cardStyle ? 'stretch' : 'start' }}>
             {(row.columns || []).map((col: any, ci: number) => (
               <div key={col.id} className={cardStyle ? `wbr-cell-wrap ${cardHover}`.trim() : ''}
-                style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0, height: cardStyle ? '100%' : undefined, ...(cardStyle || {}) }}>
+                style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? 24}px`, minWidth: 0, height: cardStyle ? '100%' : undefined, ...(cardStyle || {}) }}>
                 {cardStyle && <RowCardHeader row={row} idx={ci} accent={ctx.themeColor} />}
                 {(col.widgets || []).map((w: any) => <BlockBody key={w.id} block={w} ctx={ctx} />)}
               </div>

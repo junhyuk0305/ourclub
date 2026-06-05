@@ -14,6 +14,8 @@ interface Props {
   minDim?: number;
   /** Maximum allowed dimension in px (default 6000). Exceeded → upload rejected. */
   maxDim?: number;
+  /** 지정 시 반응형 다중 해상도(WebP)를 생성·업로드하고 srcset/치수를 함께 돌려준다(이미지 위젯용). */
+  onMeta?: (m: { src: string; srcSet: string; w: number; h: number }) => void;
 }
 
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -31,6 +33,9 @@ function readImageDimensions(file: File): Promise<{ w: number; h: number } | nul
 
 /** 리사이즈 후 가장 긴 변 상한(px) — 웹 표시에 충분하면서 LCP를 낮춘다. */
 const MAX_OUTPUT_DIM = 2000;
+
+/** 반응형 srcset 으로 생성할 가로폭 후보(px). 원본 가로폭/상한을 넘는 값은 자동 제외(업스케일 안 함). */
+const RESPONSIVE_WIDTHS = [640, 1280, 2000];
 
 /** 캔버스로 다운스케일 + WebP 변환. 실패하면 null → 호출부에서 원본을 그대로 올린다(fail open). */
 async function compressToWebp(file: File, dims: { w: number; h: number }): Promise<Blob | null> {
@@ -51,12 +56,30 @@ async function compressToWebp(file: File, dims: { w: number; h: number }): Promi
   }
 }
 
+/** 이미 디코드한 비트맵을 지정 가로폭으로 다운스케일해 WebP Blob 으로 — srcset 변형 생성용(비트맵 재사용). */
+async function webpFromBitmap(bitmap: ImageBitmap, natW: number, natH: number, targetW: number): Promise<Blob | null> {
+  try {
+    const scale = Math.min(1, targetW / natW);
+    const tw = Math.max(1, Math.round(natW * scale));
+    const th = Math.max(1, Math.round(natH * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = tw; canvas.height = th;
+    const cctx = canvas.getContext('2d');
+    if (!cctx) return null;
+    cctx.drawImage(bitmap, 0, 0, tw, th);
+    return await new Promise<Blob | null>(resolve => canvas.toBlob(b => resolve(b), 'image/webp', 0.85));
+  } catch {
+    return null;
+  }
+}
+
 export const ImageUploader: React.FC<Props> = ({
   value, onChange, label,
   maxSizeMB = 5,
   hintAspect,
   minDim = 200,
   maxDim = 6000,
+  onMeta,
 }) => {
   const { adminClubId } = useAdmin();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -103,16 +126,49 @@ export const ImageUploader: React.FC<Props> = ({
       }
     }
 
-    // 4. 다운스케일 + WebP 변환 후 업로드 (변환 실패 시 원본 그대로 — fail open)
+    // 4. 업로드 — onMeta(이미지 위젯)면 반응형 다중 해상도(srcset), 아니면 기존 단일 업로드
     setUploading(true);
+    const folder = adminClubId ?? 'shared';
+    const stamp = Date.now();
+
+    if (onMeta && dims) {
+      const { w: natW, h: natH } = dims;
+      // 후보 너비 중 원본폭/상한 이하만 생성(업스케일 방지) → 중복 제거 후 오름차순
+      const targets = Array.from(new Set(
+        RESPONSIVE_WIDTHS.map(w => Math.min(w, Math.min(natW, MAX_OUTPUT_DIM)))
+      )).sort((a, b) => a - b);
+      let bitmap: ImageBitmap | null = null;
+      try { bitmap = await createImageBitmap(file); } catch { bitmap = null; }
+      const variants: { url: string; w: number }[] = [];
+      if (bitmap) {
+        for (const tw of targets) {
+          const blob = await webpFromBitmap(bitmap, natW, natH, tw);
+          if (!blob) continue;
+          const path = `${folder}/${stamp}_${tw}.webp`;
+          const { error: e } = await supabase.storage.from('club-pages').upload(path, blob, { upsert: true, contentType: 'image/webp' });
+          if (e) { setError(e.message); setUploading(false); bitmap.close?.(); return; }
+          variants.push({ url: supabase.storage.from('club-pages').getPublicUrl(path).data.publicUrl, w: tw });
+        }
+        bitmap.close?.();
+      }
+      if (variants.length) {
+        const srcSet = variants.map(v => `${v.url} ${v.w}w`).join(', ');
+        const largest = variants[variants.length - 1];
+        onMeta({ src: largest.url, srcSet, w: natW, h: natH });
+        setUploading(false);
+        return;
+      }
+      // 변환/디코드 실패 → 아래 단일 업로드로 폴백
+    }
+
+    // 단일 업로드 (기존 동작 / 폴백) — WebP 변환 실패 시 원본 그대로(fail open)
     let uploadBlob: Blob = file;
     let outExt = ['jpg','jpeg','png','webp'].includes(ext) ? ext : 'jpg';
     if (dims) {
       const webp = await compressToWebp(file, dims);
       if (webp && webp.size < file.size) { uploadBlob = webp; outExt = 'webp'; }
     }
-    const folder = adminClubId ?? 'shared';
-    const path = `${folder}/${Date.now()}.${outExt}`;
+    const path = `${folder}/${stamp}.${outExt}`;
     const { error: uploadErr } = await supabase.storage
       .from('club-pages')
       .upload(path, uploadBlob, { upsert: true, contentType: uploadBlob.type || undefined });
@@ -121,8 +177,9 @@ export const ImageUploader: React.FC<Props> = ({
       setUploading(false);
       return;
     }
-    const { data } = supabase.storage.from('club-pages').getPublicUrl(path);
-    onChange(data.publicUrl);
+    const url = supabase.storage.from('club-pages').getPublicUrl(path).data.publicUrl;
+    if (onMeta && dims) onMeta({ src: url, srcSet: '', w: dims.w, h: dims.h });
+    else onChange(url);
     setUploading(false);
   };
 

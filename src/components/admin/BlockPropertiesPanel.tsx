@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
 
 /* 상단 탭(콘텐츠/디자인/모션)을 적용한 위젯 — 점진 적용. 나머지는 기존 평면 레이아웃 유지. */
 const TABBED_WIDGETS = new Set(['text', 'button']);
 const PANEL_TABS: { v: 'content' | 'design' | 'motion'; label: string }[] = [
   { v: 'content', label: '콘텐츠' }, { v: 'design', label: '디자인' }, { v: 'motion', label: '모션' },
 ];
-import { X, Trash2, ChevronUp, ChevronDown, Plus, Info } from 'lucide-react';
+import { X, Trash2, ChevronUp, ChevronDown, Plus, Info, Sparkles } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { genId, BlockBody, resolveThemeHex } from '../../components/blockKit';
+import { WIDGET_PRESETS, type WidgetPreset } from '../../lib/widgetPresets';
 
 /* 우측 패널 탭 컨텍스트 — Section 이 자신의 tab 과 활성 탭이 다르면 숨는다.
    '__all__' 이면(탭 미적용 위젯) 모든 Section 을 보여준다(점진 적용 안전장치). */
@@ -53,8 +55,10 @@ interface Props {
 }
 
 /* ── small reusable controls ── */
+/* 항목 라벨(2단 위계) — 그룹 헤더보다 한 단계 약하게: 작은 캡션톤(연회색·약한 굵기)으로 후퇴시켜
+   그룹 헤더(진한 굵은 글씨)와 명확히 구분한다. 컨트롤이 시각적 주인공이 되도록. */
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[12px] font-black uppercase tracking-widest text-gray-400 mb-1.5">{children}</div>
+  <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{children}</div>
 );
 
 const Row = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -73,17 +77,26 @@ const Seg = ({ options, value, onChange }: { options: { v: string; label: string
   </div>
 );
 
-const ColorPicker = ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label?: string }) => (
-  <div className="flex flex-col gap-1">
-    {label && <Label>{label}</Label>}
-    <div className="flex items-center gap-2 border border-gray-200 rounded p-1.5">
-      <input type="color" value={value || '#000000'} onChange={e => onChange(e.target.value)}
-        className="w-8 h-8 cursor-pointer border-0 bg-transparent shrink-0" style={{ borderRadius: '3px' }} />
-      <input type="text" value={value || ''} onChange={e => onChange(e.target.value)}
-        className="flex-1 font-mono text-[14px] outline-none bg-transparent uppercase" placeholder="#000000" />
+/* allowNone: 배경 색상 등에서 '색상 없음(투명)'을 고를 수 있게 함 — 빈 값('')으로 저장.
+   예) 섹션에 이미지를 깔 때 배경색이 비치지 않도록 색을 비운다. */
+const ColorPicker = ({ value, onChange, label, allowNone }: { value: string; onChange: (v: string) => void; label?: string; allowNone?: boolean }) => {
+  const none = !!allowNone && (!value || value === 'transparent');
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <Label>{label}</Label>}
+      <div className="flex items-center gap-1.5 border border-gray-200 rounded p-1.5">
+        <input type="color" value={none ? '#ffffff' : (value || '#000000')} onChange={e => onChange(e.target.value)}
+          className="w-7 h-7 cursor-pointer border-0 bg-transparent shrink-0" style={{ borderRadius: '3px' }} />
+        <input type="text" value={none ? '' : (value || '')} onChange={e => onChange(e.target.value)}
+          className="flex-1 min-w-0 font-mono text-[13px] outline-none bg-transparent uppercase" placeholder={allowNone ? '없음' : '#000000'} />
+        {allowNone && (
+          <button type="button" onClick={() => onChange('')} title="색상 없음 (투명)"
+            className={`shrink-0 whitespace-nowrap text-[11px] font-black px-1.5 py-1 rounded border transition-colors ${none ? 'bg-black text-white border-black' : 'border-gray-200 text-gray-400 hover:border-black'}`}>없음</button>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const clampVal = (v: number, min?: number, max?: number) => {
   let r = v;
@@ -126,14 +139,25 @@ const NumInput = ({ label, value, onChange, unit = 'px', min, max }: {
 
 /* 설명 툴팁 — 라벨/섹션 제목 옆 info 아이콘에 호버하면 설명이 뜬다(대표 브랜드 컬러와 동일 패턴).
    인라인 설명문을 대체해 패널을 깔끔하게 유지한다. */
-const Tip = ({ text }: { text: string }) => (
-  <span className="relative group/tip inline-flex items-center cursor-help" onClick={e => e.stopPropagation()}>
-    <Info className="w-3.5 h-3.5 text-gray-300 hover:text-black transition-colors" />
-    <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px] bg-black text-white text-[11px] leading-snug font-bold p-2 rounded opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity text-left z-50 normal-case tracking-normal">
-      {text}
+/* 우측 패널은 overflow-y-auto 라 absolute 툴팁이 패널 위쪽 경계에서 잘린다(특히 상단 항목).
+   → 아이콘 위치를 측정해 portal+fixed 로 본문에 띄워 클리핑 없이 항상 위로 다 보이게 한다. */
+const Tip = ({ text }: { text: string }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setPos({ left: r.left + r.width / 2, top: r.top }); };
+  return (
+    <span ref={ref} className="inline-flex items-center cursor-help" onMouseEnter={show} onMouseLeave={() => setPos(null)} onClick={e => e.stopPropagation()}>
+      <Info className="w-3.5 h-3.5 text-gray-300 hover:text-black transition-colors" />
+      {pos && createPortal(
+        <span style={{ position: 'fixed', left: pos.left, top: pos.top - 8, transform: 'translate(-50%, -100%)', zIndex: 200 }}
+          className="w-max max-w-[220px] bg-black text-white text-[11px] leading-snug font-bold p-2 rounded pointer-events-none text-left normal-case tracking-normal">
+          {text}
+        </span>,
+        document.body
+      )}
     </span>
-  </span>
-);
+  );
+};
 
 /* 접이식 카테고리 — 같은 카테고리에 설정이 여러 개라 길어지므로 기본은 '닫힘'.
    헤더를 누르면 펼친다. 위젯을 새로 선택하면(부모에서 key=block.id 로 리마운트) 다시 닫힘으로 초기화.
@@ -144,12 +168,20 @@ const Section = ({ title, children, tab = 'design', defaultOpen = false, tip }: 
   if (active !== '__all__' && active !== tab) return null;
   /* 하위 요소가 하나뿐이면 접을 게 없어 토글 대신 정적 헤더로 항상 펼쳐 보여준다. */
   const flat = React.Children.toArray(children).length <= 1;
+  /* 그룹 헤더(1단 위계) — 진한 굵은 글씨 + 좌측 브랜드 액센트 바로 '그룹의 시작'을 강하게 표시.
+     한국어 타이틀엔 uppercase 가 무의미하므로(과거엔 색 차이만 남아 라벨과 구분 안 됨) 굵기·색·액센트로 위계를 만든다. */
+  const Heading = () => (
+    <>
+      <span aria-hidden className="w-[3px] h-3.5 rounded-full bg-orange-500/80 shrink-0" />
+      <span className="text-[12px] font-black text-gray-900 group-hover:text-black transition-colors">{title}</span>
+      {tip && <Tip text={tip} />}
+    </>
+  );
   if (flat) {
     return (
       <div className="border-b border-gray-100 last:border-0 py-3">
-        <div className="flex items-center gap-1.5 mb-3">
-          <span className="text-[12px] font-black uppercase tracking-widest text-gray-400">{title}</span>
-          {tip && <Tip text={tip} />}
+        <div className="flex items-center gap-2 mb-3">
+          <Heading />
         </div>
         <div className="flex flex-col gap-3">{children}</div>
       </div>
@@ -157,12 +189,14 @@ const Section = ({ title, children, tab = 'design', defaultOpen = false, tip }: 
   }
   return (
     <div className="border-b border-gray-100 last:border-0">
+      {/* 접이식 항목은 우측에 '토글 버튼 박스'를 둬서 일반(펼쳐진) 항목과 한눈에 구분되게 한다. */}
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between py-3 text-left group">
-        <span className="flex items-center gap-1.5">
-          <span className="text-[12px] font-black uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors">{title}</span>
-          {tip && <Tip text={tip} />}
+        <span className="flex items-center gap-2">
+          <Heading />
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-gray-300 group-hover:text-black transition-all ${open ? 'rotate-180' : ''}`} />
+        <span className={`flex items-center justify-center w-5 h-5 rounded border transition-colors shrink-0 ${open ? 'bg-black text-white border-black' : 'border-gray-300 text-gray-500 group-hover:border-black group-hover:text-black'}`}>
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
       {open && <div className="flex flex-col gap-3 pb-4">{children}</div>}
     </div>
@@ -264,8 +298,8 @@ const WIDGET_LABELS: Record<string, string> = {
 
 /* colRatios 프리셋 (행 비율) */
 const RATIO_PRESETS: Record<number, { label: string; ratios: number[] | null }[]> = {
-  2: [{ label: '균등', ratios: null }, { label: '2:1', ratios: [2, 1] }, { label: '1:2', ratios: [1, 2] }, { label: '3:1', ratios: [3, 1] }],
-  3: [{ label: '균등', ratios: null }, { label: '2:1:1', ratios: [2, 1, 1] }, { label: '1:2:1', ratios: [1, 2, 1] }],
+  2: [{ label: '균등', ratios: null }, { label: '2:1', ratios: [2, 1] }, { label: '1:2', ratios: [1, 2] }, { label: '3:1', ratios: [3, 1] }, { label: '1:3', ratios: [1, 3] }],
+  3: [{ label: '균등', ratios: null }, { label: '2:1:1', ratios: [2, 1, 1] }, { label: '1:2:1', ratios: [1, 2, 1] }, { label: '1:1:2', ratios: [1, 1, 2] }],
   4: [{ label: '균등', ratios: null }],
 };
 
@@ -338,15 +372,256 @@ const FaqTemplateModal: React.FC<{ onPick: (patch: Record<string, any>) => void;
   document.body
 );
 
+/* ── 위젯 디자인 프리셋 (WEBBUILDER_TEMPLATES_PLAN §12) ──
+   button·faq 의 템플릿 모달 패턴을 일반화 — 선택한 위젯의 '디자인만' 한 번에 바꾼다.
+   preset.patch(accent) 번들을 __merge 로 적용. 텍스트·항목 데이터는 패치하지 않아 보존된다. */
+const WidgetPresetModal: React.FC<{ presets: WidgetPreset[]; accent: string; onPick: (p: WidgetPreset) => void; onClose: () => void }> =
+  ({ presets, accent, onPick, onClose }) => createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white">
+          <h3 className="font-black text-base flex items-center gap-2"><Sparkles className="w-4 h-4 text-orange-500" /> 디자인 프리셋</h3>
+          <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5 grid grid-cols-2 gap-3">
+          {presets.map(p => (
+            <button key={p.id} onClick={() => { onPick(p); onClose(); }}
+              className="flex flex-col items-start gap-1.5 border-2 border-gray-200 rounded-lg p-4 text-left hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all">
+              <span className="text-[14px] font-black text-gray-800">{p.label}</span>
+              <span className="text-[11px] font-bold text-gray-400 leading-tight">{p.desc}</span>
+            </button>
+          ))}
+        </div>
+        <div className="px-5 pb-4 -mt-1 text-[11px] font-bold text-gray-400">프리셋은 <b className="text-gray-600">디자인만</b> 바꿉니다. 입력한 내용·항목은 그대로 유지됩니다.</div>
+      </div>
+    </div>,
+    document.body
+  );
+
+/* 패널 최상단 '디자인 프리셋' 행 — 프리셋이 정의된 위젯에서만 노출(Track A 3-3 진입점). */
+const WidgetPresetRow: React.FC<{ presets: WidgetPreset[]; accent: string; onApply: (p: WidgetPreset) => void }> = ({ presets, accent, onApply }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="-mx-4 px-4 pb-3 mb-1 border-b border-gray-100">
+      <button onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all bg-gradient-to-r from-orange-50/60 to-transparent">
+        <span className="flex items-center gap-2 text-[13px] font-black text-gray-800"><Sparkles className="w-4 h-4 text-orange-500" /> 디자인 프리셋</span>
+        <span className="text-[12px] font-black text-orange-500">선택 →</span>
+      </button>
+      {open && <WidgetPresetModal presets={presets} accent={accent} onPick={onApply} onClose={() => setOpen(false)} />}
+    </div>
+  );
+};
+
+/* 섹션 디자인 컨트롤(배경/레이아웃·크기/배경 장식) — 우측 패널과 레이아웃 관리 모달의 '디자인' 탭에서 공용. */
+const SectionDesignControls: React.FC<{ block: any; onUpdate: (f: string, v: any) => void }> = ({ block, onUpdate }) => (
+  <>
+    <Section title="배경">
+      <div>
+        <Label>배경 유형</Label>
+        <Seg options={[{v:'color',label:'단색'},{v:'gradient',label:'그라디언트'},{v:'image',label:'이미지'}]} value={block.bgType||'color'}
+          onChange={v => {
+            /* 그라디언트로 바꿀 때 값이 비어 있으면 흰색→검정 초기값을 함께 심어 즉시 보이게 한다. */
+            if (v === 'gradient' && !block.bgGradient) onUpdate('__merge', { bgType: 'gradient', bgGradient: { from: '#ffffff', to: '#000000', angle: 135 } });
+            else onUpdate('bgType', v);
+          }} />
+      </div>
+      {(block.bgType || 'color') === 'color' && (
+        <ColorPicker label="배경색" value={block.bgColor || ''} onChange={v => onUpdate('bgColor', v)} allowNone />
+      )}
+      {block.bgType === 'gradient' && (<>
+        <ColorPicker label="시작 색" value={block.bgGradient?.from || '#ffffff'} onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), from: v })} />
+        <ColorPicker label="끝 색" value={block.bgGradient?.to || '#000000'} onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), to: v })} />
+        <Slider label="각도" value={block.bgGradient?.angle ?? 135} min={0} max={360} unit="°" onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), angle: v })} />
+      </>)}
+      {block.bgType === 'image' && (<>
+        <ImageUploader label="배경 이미지" value={block.bgImage || ''} onChange={v => onUpdate('bgImage', v)} />
+        <Slider label="어둡게 (오버레이)" value={block.bgOverlay ?? 0} min={0} max={90} unit="%" onChange={v => onUpdate('bgOverlay', v)} />
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Label>배경 모션</Label>
+            <Tip text="배경 이미지를 천천히 확대(줌)하거나 좌우로 이동(팬)시켜 영상 같은 움직임을 줍니다." />
+          </div>
+          <Seg options={[{v:'none',label:'없음'},{v:'zoom',label:'줌인'},{v:'zoomout',label:'줌아웃'},{v:'panL',label:'팬←'},{v:'panR',label:'팬→'}]} value={block.bgKenBurns||'none'} onChange={v => onUpdate('bgKenBurns', v === 'none' ? undefined : v)} />
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Label>배경 패럴랙스</Label>
+            <Tip text="스크롤에 따라 배경이 천천히 따라 움직여 깊이감을 줍니다. 값이 0이면 끔. 켜면 Ken Burns 보다 우선합니다. (공개 페이지에서만 동작)" />
+          </div>
+          <Slider label="이동 강도" value={block.bgParallax ?? 0} min={0} max={40} step={2} unit="%" onChange={v => onUpdate('bgParallax', v || undefined)} />
+        </div>
+      </>)}
+    </Section>
+
+    {/* 레이아웃·크기(세로/가로 여백·행 간격)는 '레이아웃 관리' 모달로 이동 — 여기는 디자인만. */}
+
+    {/* 배경 장식 — 기업급 섹션을 위한 배경 글씨 + 데코 도형 (공유 SectionDecor 가 렌더) */}
+    <Section title="배경 장식">
+      <div>
+        <Label>배경 글씨</Label>
+        <input type="text" value={block.bgWatermark?.text || ''}
+          onChange={e => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), text: e.target.value })}
+          placeholder="예: DESIGN (비우면 없음)"
+          className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+      </div>
+      {(block.bgWatermark?.text ?? '').trim() !== '' && (<>
+        <Slider label="배경 글씨 크기" value={block.bgWatermark?.fontSize ?? 200} min={60} max={400} step={10} onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), fontSize: v })} />
+        <Slider label="배경 글씨 투명도" value={block.bgWatermark?.opacity ?? 6} min={0} max={30} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), opacity: v })} />
+        <Slider label="X축 위치" value={block.bgWatermark?.x ?? 50} min={0} max={100} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), x: v })} />
+        <Slider label="Y축 위치" value={block.bgWatermark?.y ?? 50} min={0} max={100} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), y: v })} />
+        <ColorPicker label="배경 글씨 색" value={block.bgWatermark?.color || '#111827'} onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), color: v })} />
+      </>)}
+
+      <div>
+        <Label>장식 도형</Label>
+        <Seg options={[{v:'none',label:'없음'},{v:'circle',label:'원'},{v:'triangle',label:'삼각형'},{v:'square',label:'사각'}]} value={block.bgShape?.type || 'none'} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), type: v })} />
+      </div>
+      {block.bgShape?.type && block.bgShape.type !== 'none' && (<>
+        <Slider label="도형 크기" value={block.bgShape?.size ?? 360} min={100} max={1200} step={20} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), size: v })} />
+        <ColorPicker label="도형 색" value={block.bgShape?.color || '#f97316'} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), color: v })} />
+        <Slider label="X축 위치" value={block.bgShape?.x ?? 80} min={0} max={100} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), x: v })} />
+        <Slider label="Y축 위치" value={block.bgShape?.y ?? 20} min={0} max={100} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), y: v })} />
+        <Slider label="도형 투명도" value={block.bgShape?.opacity ?? 12} min={0} max={60} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), opacity: v })} />
+      </>)}
+    </Section>
+  </>
+);
+
+/* 섹션 컬럼에 추가 가능한 위젯 (Workspace 의 SECTION_EXCLUDED_WIDGETS 와 동일 정책) */
+const SECTION_ADD_WIDGETS: { type: string; label: string }[] = [
+  { type: 'text', label: '텍스트' }, { type: 'button', label: '버튼' }, { type: 'image', label: '이미지' },
+  { type: 'heroSlider', label: '슬라이드' }, { type: 'divider', label: '구분 요소' }, { type: 'spacer', label: '여백' },
+];
+
+/* 섹션 레이아웃 모달 — 레이아웃 전용(디자인은 우측 패널). 섹션 여백/행간격 + 행·열·위젯을
+   '매트릭스'(실제 비율 그대로)로 한눈에 보여주고 편집한다. 구조 변경은 onOp 로 Workspace 위임. */
+const colTemplate = (row: any): string => {
+  const cols = row.cols || 1;
+  return Array.isArray(row.colRatios) && row.colRatios.length === cols
+    ? row.colRatios.map((x: number) => `${x}fr`).join(' ')
+    : `repeat(${cols}, minmax(0,1fr))`;
+};
+const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdate: (f: string, v: any) => void; onClose: () => void }> =
+  ({ block, onOp, onUpdate, onClose }) => {
+    const [pickFor, setPickFor] = useState<{ rowId: string; colId: string } | null>(null);
+    const rows: any[] = block.rows || [];
+    return createPortal(
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+        <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white z-10">
+            <h3 className="font-black text-base">섹션 레이아웃</h3>
+            <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* 섹션 여백 — 레이아웃 관련 설정은 모두 여기서 */}
+          <div className="px-5 py-4 border-b border-gray-100 grid grid-cols-3 gap-5">
+            <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
+            <Slider label="가로 여백" value={block.paddingX ?? 32} min={0} max={120} step={4} onChange={v => onUpdate('paddingX', v)} />
+            <Slider label="행 간격" value={block.gap ?? 32} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
+          </div>
+
+          {/* 매트릭스 — 한 프레임 안에 행을 얇은 구분선으로 쌓고, 각 행 컬럼은 실제 비율대로 표시 */}
+          <div className="p-5">
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              {rows.length === 0 && <div className="text-center text-gray-400 font-bold text-[13px] py-10">행이 없습니다. 아래에서 행을 추가하세요.</div>}
+              {rows.map((row: any, ri: number) => {
+                const cols = row.cols || 1;
+                return (
+                  <div key={row.id} className="border-b border-gray-200 last:border-0">
+                    {/* 행 툴바 (열 수 · 비율 · 이동/삭제) */}
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5 px-2.5 py-1.5 bg-gray-50 border-b border-gray-100">
+                      <span className="text-[11px] font-black text-gray-400 shrink-0">행 {ri + 1}</span>
+                      <div className="inline-flex border border-gray-200 rounded overflow-hidden shrink-0">
+                        {[1, 2, 3, 4].map(n => (
+                          <button key={n} onClick={() => onOp({ op: 'setCols', rowId: row.id, n })}
+                            className={`px-2 py-0.5 text-[11px] font-black ${cols === n ? 'bg-black text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>{n}</button>
+                        ))}
+                      </div>
+                      {cols >= 2 && (
+                        <div className="flex flex-wrap gap-1">
+                          {(RATIO_PRESETS[cols] || []).map(p => {
+                            const active = JSON.stringify(row.colRatios ?? null) === JSON.stringify(p.ratios);
+                            return (
+                              <button key={p.label} onClick={() => onOp({ op: 'setRatio', rowId: row.id, ratios: p.ratios })}
+                                className={`px-1.5 py-0.5 text-[10px] font-black border rounded transition-colors ${active ? 'bg-black text-white border-black' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>{p.label}</button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'up' })} disabled={ri === 0} title="위로" className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'down' })} disabled={ri === rows.length - 1} title="아래로" className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                        <button onClick={() => onOp({ op: 'delNode', id: row.id })} title="행 삭제" className="p-1 rounded text-red-400 hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                    {/* 컬럼 — 실제 비율(colRatios)대로 폭 분배 → 레이아웃 그대로 보임 */}
+                    <div className="grid" style={{ gridTemplateColumns: colTemplate(row) }}>
+                      {(row.columns || []).map((col: any) => {
+                        const ws: any[] = col.widgets || [];
+                        return (
+                          <div key={col.id} className="border-r border-gray-100 last:border-0 p-1.5 flex flex-col gap-1 min-h-[76px]">
+                            {ws.map((w: any, wi: number) => (
+                              <div key={w.id} className="flex items-center gap-1 bg-white border border-gray-200 rounded px-1.5 py-1">
+                                <span className="text-[11px] font-bold text-gray-700 flex-1 min-w-0 truncate">{WIDGET_LABELS[w.type] ?? w.type}</span>
+                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'up' })} disabled={wi === 0} title="위로" className="text-gray-300 hover:text-black disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
+                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'down' })} disabled={wi === ws.length - 1} title="아래로" className="text-gray-300 hover:text-black disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
+                                <button onClick={() => onOp({ op: 'delNode', id: w.id })} title="삭제" className="text-red-300 hover:text-red-600"><X className="w-3 h-3" /></button>
+                              </div>
+                            ))}
+                            <button onClick={() => setPickFor({ rowId: row.id, colId: col.id })}
+                              className="mt-auto flex items-center justify-center gap-1 py-1 border border-dashed border-gray-200 rounded text-gray-300 hover:border-black hover:text-black text-[11px] font-bold transition-colors">
+                              <Plus className="w-3 h-3" /> 위젯
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={() => onOp({ op: 'addRow', cols: 1 })}
+              className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-black hover:text-black text-[12px] font-black flex items-center justify-center gap-1 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> 행 추가
+            </button>
+          </div>
+        </div>
+
+        {pickFor && (
+          <div className="fixed inset-0 z-[130] bg-black/40 flex items-center justify-center" onClick={e => { e.stopPropagation(); setPickFor(null); }}>
+            <div className="bg-white border-2 border-black rounded-lg p-4 w-[320px] shadow-[6px_6px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
+              <div className="text-[12px] font-black mb-3">추가할 위젯</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {SECTION_ADD_WIDGETS.map(w => (
+                  <button key={w.type} onClick={() => { onOp({ op: 'addWidget', rowId: pickFor.rowId, colId: pickFor.colId, type: w.type }); setPickFor(null); }}
+                    className="p-2.5 border border-gray-200 rounded hover:border-black hover:bg-rose-50 text-[12px] font-bold text-gray-600 transition-colors">{w.label}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>,
+      document.body
+    );
+  };
+
 export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDeselect, onDelete, themeHex, activeTheme, kind }) => {
   const [propSlideIdx, setPropSlideIdx] = useState(0);
   const [activeCellIdx, setActiveCellIdx] = useState(0);
   const [btnTplOpen, setBtnTplOpen] = useState(false);
   const [faqTplOpen, setFaqTplOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const tabbed = kind === 'widget' && TABBED_WIDGETS.has(block.type);
   const [panelTab, setPanelTab] = useState<'content' | 'design' | 'motion'>('design');
-  useEffect(() => { setPanelTab('design'); }, [block.id]);
+  /* 위젯 선택/탭 전환 시 패널 내용이 '딸깍' 바뀌지 않도록 가벼운 페이드+슬라이드로 교체.
+     reduced-motion 이면 즉시 전환. */
+  const reduceMotion = useReducedMotion();
+  const contentFade = reduceMotion
+    ? {}
+    : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, ease: 'easeOut' as const } };
+  useEffect(() => { setPanelTab('design'); setLayoutOpen(false); }, [block.id]);
 
   const slides: any[] = block.slides || [];
   const slide = slides[Math.min(propSlideIdx, slides.length - 1)];
@@ -399,7 +674,13 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
       </div>
 
       <PanelTabCtx.Provider value={tabbed ? panelTab : '__all__'}>
-      <div key={block.id} className="p-4 flex flex-col gap-0 flex-1">
+      <motion.div key={`${block.id}:${tabbed ? panelTab : ''}`} {...contentFade} className="p-4 flex flex-col gap-0 flex-1">
+
+        {/* ──────── 디자인 프리셋 (최상단 · 프리셋 보유 위젯만) ──────── */}
+        {WIDGET_PRESETS[block.type] && (
+          <WidgetPresetRow presets={WIDGET_PRESETS[block.type]} accent={primary}
+            onApply={p => onUpdate('__merge', p.patch(primary))} />
+        )}
 
         {/* ──────── ROW (행) ──────── */}
         {kind === 'row' && (<>
@@ -422,8 +703,12 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 </div>
               </div>
             )}
-            <Slider label="컬럼 간격 (가로)" value={block.gap ?? 24} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
-            <Slider label="위젯 간격 (세로)" value={block.rowGap ?? block.gap ?? 24} min={0} max={80} step={4} onChange={v => onUpdate('rowGap', v)} />
+            {/* 컬럼이 2개 이상일 때만 가로 간격이 의미 있음(1개면 옆에 둘 컬럼이 없음) */}
+            {(block.cols || 1) >= 2 && (
+              <Slider label="컬럼 간격 (가로)" value={block.gap ?? 24} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
+            )}
+            {/* 세로(위젯) 간격은 가로 간격과 독립 — 한쪽을 움직여도 다른 쪽이 따라 움직이지 않음 */}
+            <Slider label="위젯 간격 (세로)" value={block.rowGap ?? 24} min={0} max={80} step={4} onChange={v => onUpdate('rowGap', v)} />
           </Section>
 
           {/* 컬럼 카드화 — 각 컬럼을 카드(배경/보더/라운드)로. 'Frontend/Backend/Product' 같은 카드 그리드를 섹션으로 만든다. */}
@@ -433,7 +718,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <Slider label="카드 안쪽 여백" value={block.cardPadding ?? 28} min={0} max={64} step={2} onChange={v => onUpdate('cardPadding', v)} />
               <Slider label="모서리 둥글기" value={block.cardRadius ?? 12} min={0} max={32} onChange={v => onUpdate('cardRadius', v)} />
               {block.cardStyle !== 'minimal' && (
-                <ColorPicker label="카드 배경" value={block.cardBg||'#ffffff'} onChange={v => onUpdate('cardBg', v)} />
+                <ColorPicker label="카드 배경" value={block.cardBg||'#ffffff'} onChange={v => onUpdate('cardBg', v)} allowNone />
               )}
               {(block.cardStyle === 'plain' || block.cardStyle === 'accentTop') && (
                 <ColorPicker label="보더 색" value={block.cardBorderColor||'#e5e7eb'} onChange={v => onUpdate('cardBorderColor', v)} />
@@ -451,70 +736,14 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
 
         {/* ──────── SECTION (섹션) ──────── */}
         {block.type === 'section' && (<>
-          <Section title="배경">
-            <div>
-              <Label>배경 유형</Label>
-              <Seg options={[{v:'color',label:'단색'},{v:'gradient',label:'그라디언트'},{v:'image',label:'이미지'}]} value={block.bgType||'color'} onChange={v => onUpdate('bgType', v)} />
-            </div>
-            {(block.bgType || 'color') === 'color' && (
-              <ColorPicker label="배경색" value={block.bgColor || '#f9fafb'} onChange={v => onUpdate('bgColor', v)} />
-            )}
-            {block.bgType === 'gradient' && (<>
-              <ColorPicker label="시작 색" value={block.bgGradient?.from || '#111827'} onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), from: v })} />
-              <ColorPicker label="끝 색" value={block.bgGradient?.to || '#1f2937'} onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), to: v })} />
-              <Slider label="각도" value={block.bgGradient?.angle ?? 135} min={0} max={360} unit="°" onChange={v => onUpdate('bgGradient', { ...(block.bgGradient||{}), angle: v })} />
-            </>)}
-            {block.bgType === 'image' && (<>
-              <ImageUploader label="배경 이미지" value={block.bgImage || ''} onChange={v => onUpdate('bgImage', v)} />
-              <Slider label="어둡게 (오버레이)" value={block.bgOverlay ?? 0} min={0} max={90} unit="%" onChange={v => onUpdate('bgOverlay', v)} />
-              <div>
-                <Label>Ken Burns (배경 모션)</Label>
-                <Seg options={[{v:'none',label:'없음'},{v:'zoom',label:'줌인'},{v:'zoomout',label:'줌아웃'},{v:'panL',label:'팬←'},{v:'panR',label:'팬→'}]} value={block.bgKenBurns||'none'} onChange={v => onUpdate('bgKenBurns', v === 'none' ? undefined : v)} />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!block.bgGradOverlay} onChange={e => onUpdate('bgGradOverlay', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
-                <span className="text-[14px] font-bold">하단 그라데이션 (히어로 가독)</span>
-              </label>
-            </>)}
+          {/* 레이아웃 관리 — 모션 설정처럼 모달에서 행/열/위젯 배치를 다이어그램으로 편집 */}
+          <Section title="레이아웃 관리" tip="행·열·위젯 배치를 다이어그램으로 한눈에 보고 편집합니다.">
+            <button onClick={() => setLayoutOpen(true)} className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
+              <span className="text-[13px] font-bold text-gray-600">행·열·위젯 배치</span>
+              <span className="text-[12px] font-black text-orange-500">관리 열기 →</span>
+            </button>
           </Section>
-
-          <Section title="레이아웃·크기">
-            {/* 섹션 콘텐츠는 컨테이너(페이지) 폭을 꽉 채운다. 좌우 inset 은 '가로 여백'으로만 제어 →
-                가로 여백 0 = 끝까지 꽉 참. (별도 너비 제한·전체 토글 없음) */}
-            <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
-            <Slider label="가로 여백" value={block.paddingX ?? 32} min={0} max={120} step={4} onChange={v => onUpdate('paddingX', v)} />
-            <Slider label="행 간격" value={block.gap ?? 32} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
-          </Section>
-
-          {/* 배경 장식 — 기업급 섹션을 위한 워터마크 고스트 텍스트 + 데코 도형 (공유 SectionDecor 가 렌더) */}
-          <Section title="배경 장식">
-            <div>
-              <Label>워터마크 텍스트</Label>
-              <input type="text" value={block.bgWatermark?.text || ''}
-                onChange={e => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), text: e.target.value })}
-                placeholder="예: DESIGN (비우면 없음)"
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
-            </div>
-            {(block.bgWatermark?.text ?? '').trim() !== '' && (<>
-              <Slider label="워터마크 크기" value={block.bgWatermark?.fontSize ?? 200} min={60} max={400} step={10} onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), fontSize: v })} />
-              <Slider label="워터마크 투명도" value={block.bgWatermark?.opacity ?? 6} min={0} max={30} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), opacity: v })} />
-              <Slider label="X축 위치" value={block.bgWatermark?.x ?? 50} min={0} max={100} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), x: v })} />
-              <Slider label="Y축 위치" value={block.bgWatermark?.y ?? 50} min={0} max={100} unit="%" onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), y: v })} />
-              <ColorPicker label="워터마크 색" value={block.bgWatermark?.color || '#111827'} onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), color: v })} />
-            </>)}
-
-            <div>
-              <Label>장식 도형</Label>
-              <Seg options={[{v:'none',label:'없음'},{v:'circle',label:'원'},{v:'blob',label:'블롭'},{v:'square',label:'사각'}]} value={block.bgShape?.type || 'none'} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), type: v })} />
-            </div>
-            {block.bgShape?.type && block.bgShape.type !== 'none' && (<>
-              <Slider label="도형 크기" value={block.bgShape?.size ?? 360} min={100} max={1200} step={20} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), size: v })} />
-              <ColorPicker label="도형 색" value={block.bgShape?.color || '#f97316'} onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), color: v })} />
-              <Slider label="X축 위치" value={block.bgShape?.x ?? 80} min={0} max={100} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), x: v })} />
-              <Slider label="Y축 위치" value={block.bgShape?.y ?? 20} min={0} max={100} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), y: v })} />
-              <Slider label="도형 투명도" value={block.bgShape?.opacity ?? 12} min={0} max={60} unit="%" onChange={v => onUpdate('bgShape', { ...(block.bgShape || {}), opacity: v })} />
-            </>)}
-          </Section>
+          <SectionDesignControls block={block} onUpdate={onUpdate} />
         </>)}
 
         {/* ──────── TEXT ──────── */}
@@ -558,7 +787,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           </Section>
 
           <Section title="배경">
-            <ColorPicker label="배경색" value={block.bgColor || '#ffffff'} onChange={v => onUpdate('bgColor', v === '#ffffff' ? '' : v)} />
+            <ColorPicker label="배경색" value={block.bgColor || ''} onChange={v => onUpdate('bgColor', v)} allowNone />
             <div className="text-[12px] text-gray-400 font-bold">정렬은 텍스트를 드래그한 뒤 상단 툴바에서 문단 단위로 조정합니다.</div>
           </Section>
 
@@ -694,7 +923,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <Slider label="세로 여백" value={block.paddingY ?? 40} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
             <Slider label="가로 여백" value={block.paddingX ?? 32} min={0} max={120} step={4} onChange={v => onUpdate('paddingX', v)} />
             <NumInput label="행 높이 (선택, 벤토용)" value={block.rowHeight || 0} onChange={v => onUpdate('rowHeight', v || undefined)} unit="px" min={0} max={600} />
-            <ColorPicker label="배경색" value={block.bgColor||'transparent'} onChange={v => onUpdate('bgColor', v)} />
+            <ColorPicker label="배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} allowNone />
           </Section>
 
           <Section title="카드 스타일" tip="번호: 대형 인덱스 / 상단바: 강조 보더 / 미니멀: 보더 없이 강조 라인">
@@ -874,7 +1103,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           </Section>
 
           <Section title="색상">
-            <ColorPicker label="버튼 색상" value={block.btnBg === 'transparent' ? '' : (block.btnBg || primary)} onChange={v => onUpdate('__merge', { btnBg: v, btnGradient: undefined })} />
+            <ColorPicker label="버튼 색상" value={block.btnBg === 'transparent' ? '' : (block.btnBg || primary)} onChange={v => onUpdate('__merge', { btnBg: v === '' ? 'transparent' : v, btnGradient: undefined })} allowNone />
             <ColorPicker label="텍스트 색상" value={block.btnTextColor||'#ffffff'} onChange={v => onUpdate('btnTextColor', v)} />
           </Section>
 
@@ -891,7 +1120,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           </Section>
 
           <Section title="배경">
-            <ColorPicker label="배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} />
+            <ColorPicker label="배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} allowNone />
           </Section>
 
           <Section title="모션" tab="motion" tip="모달 미리보기에 마우스를 올려 호버 효과까지 확인합니다.">
@@ -1020,7 +1249,10 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <ImageUploader
               label="이미지"
               value={block.src || ''}
-              onChange={v => onUpdate('src', v)}
+              /* 직접 URL 입력·삭제 시엔 반응형 변형이 없으므로 srcSet/치수를 비운다(잘못된 srcset 방지) */
+              onChange={v => onUpdate('__merge', { src: v, srcSet: undefined, natW: undefined, natH: undefined })}
+              /* 업로드 시 반응형 다중 해상도(srcset) 생성·저장 */
+              onMeta={m => onUpdate('__merge', { src: m.src, srcSet: m.srcSet || undefined, natW: m.w, natH: m.h })}
             />
             <div>
               <Label>Alt 텍스트 (접근성)</Label>
@@ -1068,7 +1300,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             )}
           </Section>
           <Section title="배경">
-            <ColorPicker label="섹션 배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} />
+            <ColorPicker label="배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} allowNone />
           </Section>
         </>)}
 
@@ -1221,8 +1453,11 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <Trash2 className="w-3.5 h-3.5" /> 위젯 삭제
           </button>
         </div>
-      </div>
+      </motion.div>
       </PanelTabCtx.Provider>
+      {layoutOpen && kind === 'section' && (
+        <SectionLayoutModal block={block} onOp={p => onUpdate('__layoutOp', p)} onUpdate={onUpdate} onClose={() => setLayoutOpen(false)} />
+      )}
       {motionOpen && (
         <MotionModal block={block} onUpdate={onUpdate} primary={resolveThemeHex(activeTheme)} activeTheme={activeTheme} onClose={() => setMotionOpen(false)} />
       )}

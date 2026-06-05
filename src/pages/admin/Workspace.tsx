@@ -4,8 +4,9 @@ import {
   Loader, Check, Globe, ChevronDown, ChevronUp, Clock,
   MessageSquare, Layers, MousePointer, GripVertical, Image as ImageIcon,
   Minus, Columns, RotateCcw, RotateCw, Monitor, Tablet, Smartphone,
-  Copy, BarChart2, LayoutGrid, Timer, Trash2, X,
+  Copy, BarChart2, LayoutGrid, Timer, Trash2, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { WorkspaceProperties } from '../../components/admin/WorkspaceProperties';
 import { BlockPropertiesPanel } from '../../components/admin/BlockPropertiesPanel';
@@ -150,6 +151,15 @@ export default function Workspace() {
 
   /* viewport preview */
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+
+  /* 우측 속성 패널 접기/펼치기 — 접으면 캔버스가 풀폭이 된다(상태는 localStorage 기억). */
+  const [panelOpen, setPanelOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('wb-panel-open') !== '0'; } catch { return true; }
+  });
+  const togglePanel = () => setPanelOpen(o => { const next = !o; try { localStorage.setItem('wb-panel-open', next ? '1' : '0'); } catch {} return next; });
+  /* prefers-reduced-motion 준수 — 켜져 있으면 패널 전환 애니메이션을 즉시(0s)로 처리한다. */
+  const reduceMotion = useReducedMotion();
+  const panelTransition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
 
   /* inline text editing mode */
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -590,8 +600,10 @@ export default function Workspace() {
     );
   };
 
-  /* 컬럼에 넣을 수 있는 위젯(섹션 중첩 금지) */
-  const COLUMN_WIDGETS = PALETTE.filter(p => !p.disabled && p.type !== 'section');
+  /* 컬럼에 넣을 수 있는 위젯 — 섹션 중첩 금지 + 자체로 폭/레이아웃을 크게 차지하는 위젯은 제외
+     (FAQ·프로세스 다이어그램·통계 카운터·탭/캐러셀·카운트다운은 섹션 컬럼 안에 넣지 않는다) */
+  const SECTION_EXCLUDED_WIDGETS = new Set(['section', 'faq', 'timeline', 'stats', 'layoutContainer', 'countdown']);
+  const COLUMN_WIDGETS = PALETTE.filter(p => !p.disabled && !SECTION_EXCLUDED_WIDGETS.has(p.type));
 
   /* 위젯 미니 툴바 + 시각(BlockBody). top-level·컬럼 내부 공용. */
   const renderWidgetShell = (
@@ -618,9 +630,10 @@ export default function Workspace() {
       >
         {/* 선택 외곽선 — 위젯 콘텐츠(배경 포함) 위에 그려 항상 보이게 */}
         {isSel && <div className="pointer-events-none absolute inset-0 z-[25] border-[3px] border-orange-500" />}
-        {/* 드래그 핸들 — 위젯 좌측 중앙 '바깥'(콘텐츠와 안 겹침). hover/선택 시 노출 */}
+        {/* 드래그 핸들 — 위젯 좌측 중앙. 섹션 내부(nested)는 컬럼 바깥(-left-6)에, top-level 은
+           프레임이 overflowX:clip 이라 바깥이 잘리므로 안쪽(left-0)에 둬서 항상 보이게 한다. */}
         <div draggable onDragStart={e => onDragStartNode(e, block.id)} onClick={e => e.stopPropagation()}
-          className={`absolute -left-6 top-1/2 -translate-y-1/2 cursor-grab z-30 bg-orange-500 text-white p-1 rounded-l transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
+          className={`absolute ${nested ? '-left-6 rounded-l' : 'left-0 rounded-r'} top-1/2 -translate-y-1/2 cursor-grab z-30 bg-orange-500 text-white p-1 transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
           title="드래그하여 이동">
           <GripVertical className="w-3.5 h-3.5" />
         </div>
@@ -643,7 +656,11 @@ export default function Workspace() {
         </div>
 
         {/* 텍스트 서식은 멀티라인 필드의 리치 에디터(RichEditable) 자체 툴바가 담당 — 드래그 선택 글자에 적용 */}
-        <BlockBody block={block} ctx={{ activeTheme, themeColor: resolveThemeHex(activeTheme), edit: true, upd: (field: string, value: any) => upd(block.id, field, value) }} />
+        {/* 기본 글꼴(globalFont)은 위젯 콘텐츠에만 적용 — 빌더 chrome(툴바·+버튼·라벨)은 고정 UI 글꼴 유지.
+           공개 렌더의 .wb-root 가 콘텐츠만 감싸는 것과 동일 원리. */}
+        <div style={{ fontFamily: globalFont || undefined }}>
+          <BlockBody block={block} ctx={{ activeTheme, themeColor: resolveThemeHex(activeTheme), edit: true, upd: (field: string, value: any) => upd(block.id, field, value) }} />
+        </div>
       </div>
     );
   };
@@ -651,7 +668,14 @@ export default function Workspace() {
   /* 섹션 에디터 — chrome(툴바·DnD) + 행/컬럼. 위젯 시각은 renderWidgetShell 재사용. */
   const renderSection = (section: any, topIndex: number) => {
     const isSel = selectedBlockId === section.id;
-    const hasOverlay = section.bgType === 'image' && (section.bgOverlay ?? 0) > 0;
+    const hasImage = section.bgType === 'image' && section.bgImage;
+    const hasOverlay = hasImage && (section.bgOverlay ?? 0) > 0;
+    /* 배경 패럴랙스(Track B)는 공개 페이지에서만 스크롤로 움직인다. 에디터에는 스크롤 컨텍스트가 없으므로
+       '정적 미리보기'로 배경 이미지를 그대로 보여준다(패럴랙스 ON 시 resolveSectionBg 는 검정 반환 → 안 그리면 까맣게 보임). */
+    const parallaxPreview = hasImage && (section.bgParallax ?? 0) > 0 ? section.bgImage : null;
+    /* 배경 모션(Ken Burns)이 켜지면 배경 이미지는 별도 애니메이션 레이어가 그린다(공개 SectionBlock 과 동일).
+       이 레이어가 없으면 resolveSectionBg 가 검정을 반환해 에디터에서 배경이 까맣게 보인다. 패럴랙스가 켜지면 그쪽이 우선. */
+    const kenBurns = !parallaxPreview && hasImage && section.bgKenBurns && section.bgKenBurns !== 'none' ? section.bgKenBurns : null;
     return (
       <div key={section.id}
         ref={el => { if (el) blockElRefs.current[section.id] = el as HTMLDivElement; }}
@@ -690,6 +714,19 @@ export default function Workspace() {
         {/* 에디터에선 overflow:visible — 행 툴바(-top-6)·+위젯(-bottom-3) 등 음수 오프셋 chrome 이
             섹션 경계 밖으로 나가도 보이게 한다. 공개 SectionBlock 은 overflow:hidden 유지(장식 클리핑). */}
         <div className="wb-section" style={{ position: 'relative', overflow: 'visible', ...resolveSectionBg(section) }}>
+          {parallaxPreview && (
+            /* 패럴랙스 정적 미리보기 — 섹션 경계로 클리핑(공개와 동일 시각). 실제 움직임은 공개 페이지에서만. */
+            <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${parallaxPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            </div>
+          )}
+          {kenBurns && (
+            /* 에디터 섹션은 overflow:visible 이라 scale 애니메이션 레이어가 섹션 밖으로 새어나간다.
+               → 자체 overflow:hidden 래퍼로 감싸 섹션 경계로 클리핑(공개 SectionBlock 의 overflow:hidden 과 동일 효과). */
+            <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+              <div className={`wb-kenburns wb-ken-${kenBurns}`} style={{ backgroundImage: `url(${section.bgImage})` }} />
+            </div>
+          )}
           {/* 배경 장식(워터마크·셰이프) — 공개 SectionBlock 과 동일한 공유 컴포넌트. 자체 overflow:hidden 으로 섹션 경계 클리핑 → 에디터/공개 동일 시각 */}
           <SectionDecor block={section} />
           {hasOverlay && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(section.bgOverlay || 0) / 100})`, zIndex: 1 }} />}
@@ -734,7 +771,7 @@ export default function Workspace() {
                         onDragOver={e => { if (dragId) { e.preventDefault(); setDragOverId(col.id); } }}
                         onDrop={e => { e.preventDefault(); onDropInColumn(section.id, row.id, col.id, null); }}
                         className={`wbe-col relative group/col rounded transition-colors ${isColOver ? 'outline outline-2 outline-green-500 bg-green-50/40' : ''}`}
-                        style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? row.gap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined, ...(rowCard || {}) }}>
+                        style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined, ...(rowCard || {}) }}>
                         {rowCard && <RowCardHeader row={row} idx={ci} accent={resolveThemeHex(activeTheme)} />}
                         {(col.widgets || []).map((w: any) => renderWidgetShell(w, { nested: true, colInfo }))}
                         {/* 빈 칸 — 점선 테두리 + 작은 + 아이콘만(문구 제거로 노이즈 감소). 칸 hover/섹션 선택 시 */}
@@ -745,7 +782,7 @@ export default function Workspace() {
                         )}
                         {/* + 위젯 — 컬럼 하단 오버레이. 해당 칸 hover 또는 섹션 선택 시에만(맥락형) */}
                         <button onClick={e => { e.stopPropagation(); setColPicker(colInfo); }} title="이 칸에 위젯 추가"
-                          className={`absolute left-1/2 -translate-x-1/2 -bottom-3 z-30 inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-orange-300 bg-white text-orange-600 text-[12px] font-bold rounded shadow-sm transition-opacity ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                          className={`absolute left-1/2 -translate-x-1/2 -bottom-3 z-30 inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-orange-300 bg-white text-orange-600 hover:bg-orange-50 text-[12px] font-bold rounded shadow-sm transition-all ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
                           <Plus className="w-3 h-3" /> 위젯
                         </button>
                       </div>
@@ -875,7 +912,6 @@ export default function Workspace() {
               style={{
                 maxWidth: viewportMode === 'mobile' ? '390px' : viewportMode === 'tablet' ? '768px' : '100%',
                 backgroundColor: pageBgColor || '#ffffff',
-                fontFamily: globalFont || undefined,
                 overflowX: 'clip',
                 overflowY: 'visible',
               }}
@@ -939,7 +975,31 @@ export default function Workspace() {
           )}
         </main>
 
-        {/* ── Right Panel ── */}
+        {/* ── Right Panel (접기/펼치기 + 부드러운 전환) ──
+            얇은 핸들 바는 항상 노출 → 접힌 상태에서도 다시 펼칠 수 있다.
+            패널 본문은 width+opacity 슬라이드로 등장/이탈(motion, reduced-motion 시 즉시). */}
+        <div className="flex shrink-0 min-h-0">
+          {/* 토글 레일 — 좌측 레일(w-14)과 동일한 두께·스타일로 맞춰 항상 또렷하게 보이도록 */}
+          <div className="w-14 shrink-0 border-l border-black bg-white flex flex-col items-center pt-4 gap-1.5">
+            <button
+              onClick={togglePanel}
+              title={panelOpen ? '속성 패널 접기' : '속성 패널 펼치기'}
+              className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-white hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none"
+            >
+              {panelOpen ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+            <span className="text-[10px] font-black text-gray-400 tracking-wide">{panelOpen ? '접기' : '속성'}</span>
+          </div>
+          <AnimatePresence initial={false}>
+            {panelOpen && (
+              <motion.div
+                key="prop-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 288, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={panelTransition}
+                className="overflow-hidden flex min-h-0"
+              >
         {selectedBlock ? (
           <BlockPropertiesPanel
             block={selectedBlock}
@@ -947,6 +1007,17 @@ export default function Workspace() {
             onUpdate={(field, value) => {
               if (field === '__setCols') handleSetRowCols(selectedBlock.id, value);
               else if (field === '__merge') commit(patchNode(blocks, selectedBlock.id, value), false, `${selectedBlock.id}:merge`);
+              else if (field === '__layoutOp') {
+                /* 섹션 레이아웃 관리 모달의 구조 변경 — 섹션 선택을 유지(위젯으로 선택이 옮겨가면 모달이 깨짐) */
+                const v = value;
+                if (v.op === 'addRow') addRowToSection(selectedBlock.id, v.cols ?? 1);
+                else if (v.op === 'setCols') handleSetRowCols(v.rowId, v.n);
+                else if (v.op === 'setRatio') commit(patchNode(blocks, v.rowId, { colRatios: v.ratios }), false, `${v.rowId}:ratio`);
+                else if (v.op === 'addWidget') commit(insertInColumn(blocks, makeWidget(v.type), selectedBlock.id, v.rowId, v.colId), true);
+                else if (v.op === 'delNode') commit(deleteNode(blocks, v.id), true);
+                else if (v.op === 'moveRow') handleMoveRow(selectedBlock.id, v.rowId, v.dir);
+                else if (v.op === 'moveWidget') handleMoveBlock(v.id, v.dir);
+              }
               else upd(selectedBlock.id, field, value);
             }}
             onDeselect={() => setSelectedBlockId(null)}
@@ -964,6 +1035,10 @@ export default function Workspace() {
             globalFont={globalFont} setGlobalFont={mkConfigSetter(setGlobalFont, 'globalFont')}
           />
         )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {toast && (

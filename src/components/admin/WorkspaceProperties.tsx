@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Palette, AlertCircle } from 'lucide-react';
 import { WB_FONTS } from '../blockKit';
 
@@ -40,6 +41,9 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
 }) => {
   const customColorRef = useRef<HTMLInputElement>(null);
   const isCustomTheme = !PRESET_THEMES.some(t => t.key === activeTheme);
+  /* 블록 선택 해제 시 전역 패널로 '딸깍' 바뀌지 않도록 가벼운 페이드(블록 패널과 동일 규칙). */
+  const reduceMotion = useReducedMotion();
+  const fade = reduceMotion ? {} : { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.18, ease: 'easeOut' as const } };
 
   const handleCustomColor = (hex: string) => {
     setActiveTheme(`custom:${hex}`);
@@ -53,11 +57,11 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
         </h2>
       </div>
 
-      <div className="p-4 flex flex-col gap-5">
+      <motion.div {...fade} className="p-4 flex flex-col gap-5">
 
         {/* Theme Settings */}
         <div className="flex flex-col gap-3">
-          <label className="font-black text-sm flex items-center gap-2">대표 브랜드 컬러 <Tooltip text="버튼, 강조 텍스트 등에 공통으로 사용됩니다."/></label>
+          <label className="font-black text-sm flex items-center gap-2">기본 브랜드 색상 <Tooltip text="버튼·텍스트 등 위젯의 기본 색상으로 사용됩니다."/></label>
           <div className="flex gap-2 flex-wrap">
             {PRESET_THEMES.map(({ key, bg }) => (
               <button
@@ -152,8 +156,8 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
         {/* Smooth Scroll (A1) — 관성 스크롤. 기본 OFF, 켜면 공개 페이지에서만 Lenis 동적 로드 */}
         <div className="flex items-center justify-between border border-black p-4 bg-gray-50">
           <div className="flex flex-col">
-            <span className="font-black text-sm">관성 스무스 스크롤</span>
-            <span className="text-xs font-bold text-gray-500">에이전시급 부드러운 스크롤감 (공개 페이지)</span>
+            <span className="font-black text-sm">부드러운 스크롤</span>
+            <span className="text-xs font-bold text-gray-500">부드러운 스크롤 감도를 제공합니다</span>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" checked={smoothScroll} onChange={()=>setSmoothScroll(!smoothScroll)} className="sr-only peer" />
@@ -165,7 +169,7 @@ export const WorkspaceProperties: React.FC<WorkspacePropertiesProps> = ({
           모든 블록 컴포넌트는 모바일 환경(가로 640px 이하)에서 자동으로 세로 1단(Auto-Stack)으로 변환되어 렌더링됩니다.
         </div>
 
-      </div>
+      </motion.div>
     </aside>
   );
 };
