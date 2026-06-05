@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
+import * as Sentry from '@sentry/react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
@@ -7,20 +8,58 @@ import { CorpProvider, useCorp } from './contexts/CorpContext';
 const PROFILE_SETUP_PATH = '/profile-setup';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import {
-  Home, Clubs, B2BLounge, InfoPage, Stories, StoryDetail,
-  ClubDetail, ClubApply, ClubRecruit, ClubStories, Onboarding, ProfileSetup, ClubSetup, ClubJoin, ClubRegister,
-  ClubDemoPage
-} from './pages/public';
-import { MyPage } from './pages/user';
-import {
-  Workspace, RecruitAdmin, FormBuilder, AttendanceCreate, AttendanceList, AttendanceDetail, MembersAdmin,
-  DashboardAdmin, B2BAdmin, B2BProposalAdmin, FeedbackAdmin, PostsAdmin, SettingsAdmin,
-  RecruitmentsList, RecruitmentDetail, RecruitPageBuilder, RecruitDashboard, RecruitAnalytics
-} from './pages/admin';
-import { CorpDashboard, CorpScouts } from './pages/corp';
-import { Overview, ClubsAdmin, Registrations, JoinRequests } from './pages/master';
 import { INFO_PAGES } from './data/infoPages';
+
+// 라우트 단위 코드 스플리팅: 페이지별 개별 모듈을 지연 로딩(배럴이 아닌 파일 직접 import 해야 청크가 쪼개짐).
+// 레이아웃(Header/Footer)·컨텍스트는 항상 필요하므로 eager 유지.
+// public
+const Home = lazy(() => import('./pages/public/Home'));
+const Clubs = lazy(() => import('./pages/public/Clubs'));
+const ClubDetail = lazy(() => import('./pages/public/ClubDetail'));
+const ClubRecruit = lazy(() => import('./pages/public/ClubRecruit'));
+const ClubApply = lazy(() => import('./pages/public/ClubApply'));
+const B2BLounge = lazy(() => import('./pages/public/B2BLounge'));
+const Stories = lazy(() => import('./pages/public/Stories'));
+const StoryDetail = lazy(() => import('./pages/public/StoryDetail'));
+const InfoPage = lazy(() => import('./pages/public/InfoPage'));
+const ClubStories = lazy(() => import('./pages/public/ClubStories'));
+const Onboarding = lazy(() => import('./pages/public/Onboarding'));
+const ProfileSetup = lazy(() => import('./pages/public/ProfileSetup'));
+const ClubSetup = lazy(() => import('./pages/public/ClubSetup'));
+const ClubJoin = lazy(() => import('./pages/public/ClubJoin'));
+const ClubRegister = lazy(() => import('./pages/public/ClubRegister'));
+const ClubDemoPage = lazy(() => import('./pages/public/ClubDemoPage'));
+// user
+const MyPage = lazy(() => import('./pages/user/MyPage'));
+// admin
+const Workspace = lazy(() => import('./pages/admin/Workspace'));
+const RecruitAdmin = lazy(() => import('./pages/admin/RecruitAdmin'));
+const FormBuilder = lazy(() => import('./pages/admin/FormBuilder'));
+const AttendanceCreate = lazy(() => import('./pages/admin/AttendanceCreate'));
+const AttendanceList = lazy(() => import('./pages/admin/AttendanceList'));
+const AttendanceDetail = lazy(() => import('./pages/admin/AttendanceDetail'));
+const AttendanceExcuses = lazy(() => import('./pages/admin/AttendanceExcuses'));
+const MembersAdmin = lazy(() => import('./pages/admin/MembersAdmin'));
+const MembersAnalytics = lazy(() => import('./pages/admin/MembersAnalytics'));
+const DashboardAdmin = lazy(() => import('./pages/admin/DashboardAdmin'));
+const B2BAdmin = lazy(() => import('./pages/admin/B2BAdmin'));
+const B2BProposalAdmin = lazy(() => import('./pages/admin/B2BProposalAdmin'));
+const FeedbackAdmin = lazy(() => import('./pages/admin/FeedbackAdmin'));
+const PostsAdmin = lazy(() => import('./pages/admin/PostsAdmin'));
+const SettingsAdmin = lazy(() => import('./pages/admin/SettingsAdmin'));
+const RecruitmentsList = lazy(() => import('./pages/admin/RecruitmentsList'));
+const RecruitmentDetail = lazy(() => import('./pages/admin/RecruitmentDetail'));
+const RecruitPageBuilder = lazy(() => import('./pages/admin/RecruitPageBuilder'));
+const RecruitDashboard = lazy(() => import('./pages/admin/RecruitDashboard'));
+const RecruitAnalytics = lazy(() => import('./pages/admin/RecruitAnalytics'));
+// corp
+const CorpDashboard = lazy(() => import('./pages/corp/CorpDashboard'));
+const CorpScouts = lazy(() => import('./pages/corp/CorpScouts'));
+// master
+const Overview = lazy(() => import('./pages/master/Overview'));
+const ClubsAdmin = lazy(() => import('./pages/master/ClubsAdmin'));
+const Registrations = lazy(() => import('./pages/master/Registrations'));
+const JoinRequests = lazy(() => import('./pages/master/JoinRequests'));
 
 // 미로그인 시 로그인 페이지로 보내되, 원래 가려던 위치를 기억
 function RedirectToLogin() {
@@ -109,6 +148,7 @@ function AppRoutes() {
         </div>
       )}
       <div className="flex-1 flex flex-col">
+        <Suspense fallback={<div className="flex-1" />}>
         <Routes>
           {/* 공개 */}
           <Route path="/"               element={<Home />} />
@@ -148,9 +188,11 @@ function AppRoutes() {
           <Route path="/admin/sessions/new"   element={<AdminRoute><AttendanceCreate /></AdminRoute>} />
           <Route path="/admin/sessions"       element={<AdminRoute><AttendanceList /></AdminRoute>} />
           <Route path="/admin/sessions/:id"   element={<AdminRoute><AttendanceDetail /></AdminRoute>} />
+          <Route path="/admin/attendance-excuses" element={<AdminRoute><AttendanceExcuses /></AdminRoute>} />
           {/* 구버전 라우트 호환 */}
           <Route path="/admin/attendance"     element={<Navigate to="/admin/sessions/new" replace />} />
           <Route path="/admin/members"        element={<AdminRoute><MembersAdmin /></AdminRoute>} />
+          <Route path="/admin/members-analytics" element={<AdminRoute><MembersAnalytics /></AdminRoute>} />
           <Route path="/admin/b2b"            element={<AdminRoute><B2BAdmin /></AdminRoute>} />
           <Route path="/admin/b2b/proposal"   element={<AdminRoute><B2BProposalAdmin /></AdminRoute>} />
           <Route path="/admin/feedback"       element={<AdminRoute><FeedbackAdmin /></AdminRoute>} />
@@ -184,20 +226,39 @@ function AppRoutes() {
             />
           ))}
         </Routes>
+        </Suspense>
       </div>
       {!isDashboardLayout && <Footer />}
     </div>
   );
 }
 
+// 렌더 크래시가 앱 전체 화이트스크린이 되지 않도록 격리 + Sentry 리포트.
+function AppErrorFallback() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-6 text-center">
+      <p className="font-black text-2xl mb-2">문제가 발생했습니다</p>
+      <p className="text-sm text-gray-500 mb-6">일시적인 오류일 수 있어요. 페이지를 새로고침해 주세요.</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-5 py-2.5 bg-orange-500 text-white font-black hover:bg-orange-600 transition-colors"
+      >
+        새로고침
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AdminProvider>
-        <CorpProvider>
-          <AppRoutes />
-        </CorpProvider>
-      </AdminProvider>
-    </AuthProvider>
+    <Sentry.ErrorBoundary fallback={<AppErrorFallback />}>
+      <AuthProvider>
+        <AdminProvider>
+          <CorpProvider>
+            <AppRoutes />
+          </CorpProvider>
+        </AdminProvider>
+      </AuthProvider>
+    </Sentry.ErrorBoundary>
   );
 }

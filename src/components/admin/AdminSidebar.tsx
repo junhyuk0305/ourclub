@@ -56,8 +56,10 @@ export function AdminSidebar() {
       icon: Users,
       items: [
         { name: '부원 명단 관리', path: '/admin/members' },
+        { name: '명단 분석', path: '/admin/members-analytics' },
         { name: '세션 출석기록 생성', path: '/admin/sessions/new' },
         { name: '전체 세션 관리', path: '/admin/sessions' },
+        { name: '출석 인정 관리', path: '/admin/attendance-excuses' },
       ]
     },
     {
