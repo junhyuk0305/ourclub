@@ -16,6 +16,8 @@ export function KanbanCard({ applicant, isDragging, onDragStart, onDragEnd, onCl
       onDragStart={e => onDragStart(e, applicant.id)}
       onDragEnd={onDragEnd}
       onClick={onClick}
+      // 화면 밖 카드의 레이아웃/페인트를 건너뛰어 큰 칸반에서도 가볍게(미지원 브라우저는 무시)
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' }}
       className={`bg-white border-2 border-black p-3.5 cursor-grab active:cursor-grabbing select-none transition-all ${
         isDragging ? 'opacity-40 rotate-1 shadow-none' : 'shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5'
       }`}

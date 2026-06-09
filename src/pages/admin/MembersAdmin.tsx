@@ -6,6 +6,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
+import { useIncremental } from '../../lib/useIncremental';
 import { formatDate } from '../../lib/format';
 import { downloadExcel } from '../../lib/excel';
 import { attendanceRate } from '../../lib/attendanceRate';
@@ -556,6 +557,12 @@ export default function MembersAdmin() {
   );
   const isFiltering = search.trim() !== '' || Object.keys(colFilters).length > 0;
 
+  // 점진 렌더: 큰 명단(controlled input × 커스텀필드)을 한꺼번에 마운트하지 않는다.
+  // 필터/검색/탭/재로딩이 바뀌면 처음부터. 소규모 클럽은 전부 렌더(동작 동일).
+  const listKey = `${activeTab}|${viewGen}|${search}|${members.length}|` +
+    Object.entries(colFilters).map(([k, v]) => `${k}:${Array.from(v).join('~')}`).join('|');
+  const { count: shownCount, sentinelRef } = useIncremental<HTMLTableRowElement>(filtered.length, listKey);
+
   const uniqueValues = (col: keyof Member): string[] => {
     const pool = genPool;
     const set = new Set<string>();
@@ -1010,7 +1017,7 @@ export default function MembersAdmin() {
                   <tbody className="divide-y divide-gray-200">
                     {filtered.length === 0 ? (
                       <tr><td colSpan={6 + visibleCustomFields.length} className="p-8 text-center text-gray-500 font-bold">표시할 부원이 없습니다.</td></tr>
-                    ) : filtered.map(m => {
+                    ) : filtered.slice(0, shownCount).map(m => {
                       const isDirty = hasDraft(m.id);
                       const isSelected = selectedIds.has(m.id);
                       return (
@@ -1077,6 +1084,14 @@ export default function MembersAdmin() {
                         </tr>
                       );
                     })}
+                    {shownCount < filtered.length && (
+                      <tr ref={sentinelRef}>
+                        <td colSpan={6 + visibleCustomFields.length} className="p-4 text-center text-gray-400 font-bold text-sm">
+                          <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
+                          {filtered.length - shownCount}명 더 불러오는 중…
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               )}

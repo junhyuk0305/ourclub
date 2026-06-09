@@ -7,6 +7,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll } from '../../lib/fetchAll';
+import { useIncremental } from '../../lib/useIncremental';
 import { formatDate } from '../../lib/format';
 
 interface Post {
@@ -28,6 +29,8 @@ export default function PostsAdmin() {
   const { adminClubId } = useAdmin();
   const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
+  // 점진 렌더: 게시물이 많아도 한꺼번에 마운트하지 않는다(적으면 전부 렌더 = 동작 동일).
+  const { count: shownCount, sentinelRef } = useIncremental<HTMLTableRowElement>(posts.length, posts.length);
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
@@ -385,7 +388,7 @@ export default function PostsAdmin() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {posts.map(post => (
+                        {posts.slice(0, shownCount).map(post => (
                           <tr key={post.id} className="hover:bg-orange-50 group">
                             <td
                               className="p-4 font-black text-base cursor-pointer group-hover:text-orange-600 transition-colors max-w-xs truncate"
@@ -450,6 +453,14 @@ export default function PostsAdmin() {
                             </td>
                           </tr>
                         ))}
+                        {shownCount < posts.length && (
+                          <tr ref={sentinelRef}>
+                            <td colSpan={7} className="text-center py-4 text-gray-400 font-bold text-sm">
+                              <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
+                              {posts.length - shownCount}개 더 불러오는 중…
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

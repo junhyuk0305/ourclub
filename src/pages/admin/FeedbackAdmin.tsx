@@ -220,7 +220,7 @@ export default function FeedbackAdmin() {
                                 <div className="flex flex-col gap-4">
                                   <h4 className="font-black text-lg">모든 피드백</h4>
                                   {detail.responses.map(response => (
-                                    <div key={response.id} className="bg-white border border-gray-200 p-4">
+                                    <div key={response.id} className="bg-white border border-gray-200 p-4" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' }}>
                                       <div className="flex justify-between items-center mb-2">
                                         <div className="flex items-center gap-1">
                                           {stars(response.score)}

@@ -10,6 +10,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAllIn } from '../../lib/fetchAll';
+import { useIncremental } from '../../lib/useIncremental';
 import { formatDate } from '../../lib/format';
 import { SortTh } from './recruit-admin/SortTh';
 import { KanbanCard } from './recruit-admin/KanbanCard';
@@ -269,6 +270,17 @@ export default function RecruitAdmin() {
     return 0;
   }), [filtered, sortKey, sortDir, selectedRecruitmentId]);
 
+  // 칸반: 컬럼마다 filtered 를 다시 훑지 않도록 단계별로 한 번에 그룹화(결과 동일).
+  const byStage = useMemo(() => {
+    const m: Record<string, Applicant[]> = {};
+    filtered.forEach(a => (m[a.status] ??= []).push(a));
+    return m;
+  }, [filtered]);
+
+  // 리스트뷰 점진 렌더: 큰 지원자 목록을 한꺼번에 마운트하지 않는다(소규모는 전부 렌더).
+  const listKey = `${selectedRecruitmentId}|${search}|${sortKey}|${sortDir}|${applicants.length}`;
+  const { count: shownCount, sentinelRef } = useIncremental<HTMLTableRowElement>(sorted.length, listKey);
+
   const allSelected = sorted.length > 0 && sorted.every(a => selectedIds.has(a.id));
   const toggleAll = () => {
     if (allSelected) setSelectedIds(new Set());
@@ -390,7 +402,7 @@ export default function RecruitAdmin() {
             <div className="flex-1 overflow-x-auto overflow-y-hidden">
               <div className="flex h-full" style={{ minWidth: `${stages.length * 280}px` }}>
                 {stages.map((stage, idx) => {
-                  const stageCards = filtered.filter(a => a.status === stage);
+                  const stageCards = byStage[stage] ?? [];
                   const isLast = idx === stages.length - 1;
                   const isDropTarget = dragOverStage === stage;
 
@@ -501,7 +513,7 @@ export default function RecruitAdmin() {
                       </td>
                     </tr>
                   )}
-                  {sorted.map((app, i) => {
+                  {sorted.slice(0, shownCount).map((app, i) => {
                     const isSelected = selectedIds.has(app.id);
                     const isLast = app.status === stages[stages.length - 1];
                     return (
@@ -558,6 +570,14 @@ export default function RecruitAdmin() {
                       </tr>
                     );
                   })}
+                  {shownCount < sorted.length && (
+                    <tr ref={sentinelRef}>
+                      <td colSpan={7} className="text-center py-4 text-gray-400 font-bold text-sm">
+                        <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
+                        {sorted.length - shownCount}명 더 불러오는 중…
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
