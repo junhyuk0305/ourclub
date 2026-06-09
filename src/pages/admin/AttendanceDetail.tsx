@@ -126,27 +126,24 @@ export default function AttendanceDetail() {
   const saveAll = async () => {
     setBulkSaving(true);
 
-    const ops = Object.entries(drafts).map(async ([memberId, status]) => {
-      const row = rows.find(r => r.memberId === memberId);
-      if (!row) return { error: null };
-      if (row.attendanceId) {
-        return supabase.from('attendances').update({ status }).eq('id', row.attendanceId);
-      }
-      return supabase.from('attendances').insert({
-        session_id: id,
-        member_id: memberId,
-        status,
-      });
-    });
+    // 멤버 수만큼 개별 insert/update 를 동시 발사하던 것을 단일 upsert 로.
+    // (session_id, member_id) 유일 제약 기반이라 신규/기존을 한 번에 처리하고,
+    // load↔save 사이 셀프체크인/타 운영진 저장으로 행이 생겨도 충돌 없이 갱신된다.
+    const upsertRows = Object.entries(drafts).map(([memberId, status]) => ({
+      session_id: id,
+      member_id: memberId,
+      status,
+    }));
 
-    const results = await Promise.all(ops);
-    const failed = results.filter(r => r && 'error' in r && r.error).length;
+    const { error } = await supabase
+      .from('attendances')
+      .upsert(upsertRows, { onConflict: 'session_id,member_id' });
 
     setBulkSaving(false);
     setShowSaveModal(false);
 
-    if (failed > 0) {
-      showToastMsg(`${failed}건 저장 실패. 다시 시도해주세요.`);
+    if (error) {
+      showToastMsg(`저장 실패. 다시 시도해주세요.`);
       return;
     }
     showToastMsg(`${Object.keys(drafts).length}건의 출석 상태가 저장되었습니다.`);

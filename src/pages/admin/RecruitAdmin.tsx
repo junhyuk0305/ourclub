@@ -138,13 +138,14 @@ export default function RecruitAdmin() {
   };
 
   const addMemo = async (id: string, content: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const author = user?.email?.split('@')[0] ?? '운영진';
-    const applicant = applicants.find(a => a.id === id);
-    if (!applicant) return;
-    const entry = { author, content, created_at: new Date().toISOString() };
-    const updated = [...(applicant.memos ?? []), entry];
-    await supabase.from('recruitment_applications').update({ memos: updated }).eq('id', id);
+    // 배열 전체 읽기-수정-쓰기(lost update) 대신 서버측 jsonb append RPC.
+    // 두 면접관이 동시에 추가해도 메모가 덮여 사라지지 않는다(동작은 동일).
+    const { data: memos, error } = await supabase.rpc('add_application_memo', {
+      p_application_id: id,
+      p_content: content,
+    });
+    if (error) { showToast('메모 추가에 실패했습니다.'); return; }
+    const updated = (memos as Applicant['memos']) ?? [];
     setApplicants(prev => prev.map(a => a.id === id ? { ...a, memos: updated } : a));
     if (selectedApplicant?.id === id) setSelectedApplicant(prev => prev ? { ...prev, memos: updated } : null);
   };

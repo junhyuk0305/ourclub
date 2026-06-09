@@ -95,25 +95,20 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
     if (selectedApplicant?.id === id) setSelectedApplicant(prev => prev ? { ...prev, ...patch } : null);
   };
 
-  const changeStatus = async (id: string, newStage: string) => {
-    await supabase.from('recruitment_applications').update({ status: newStage }).eq('id', id);
-    updateLocal(id, { status: newStage });
-  };
-
   const saveNote = async (id: string, score: number | null, note: string) => {
     await supabase.from('recruitment_applications').update({ score, interviewer_note: note }).eq('id', id);
     updateLocal(id, { score, interviewer_note: note });
   };
 
   const addMemo = async (id: string, content: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const author = user?.email?.split('@')[0] ?? '운영진';
-    const applicant = applicants.find(a => a.id === id);
-    if (!applicant) return;
-    const entry = { author, content, created_at: new Date().toISOString() };
-    const updated = [...(applicant.memos ?? []), entry];
-    await supabase.from('recruitment_applications').update({ memos: updated }).eq('id', id);
-    updateLocal(id, { memos: updated });
+    // 배열 전체 읽기-수정-쓰기(lost update) 대신 서버측 jsonb append RPC.
+    // 두 면접관이 동시에 추가해도 메모가 덮여 사라지지 않는다.
+    const { data: memos, error } = await supabase.rpc('add_application_memo', {
+      p_application_id: id,
+      p_content: content,
+    });
+    if (error) { showToast('메모 추가에 실패했습니다.'); return; }
+    updateLocal(id, { memos: (memos as Applicant['memos']) ?? [] });
   };
 
   const saveInterviewQuestions = async (id: string, questions: string[]) => {
@@ -171,18 +166,17 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
 
   const confirmStageMove = async (sendEmail: boolean) => {
     if (!emailModal) return;
-    await changeStatus(emailModal.applicant.id, emailModal.toStage);
-    // 이동 로그
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from('application_stage_log').insert({
-      application_id: emailModal.applicant.id,
-      from_stage: emailModal.fromStage,
-      to_stage: emailModal.toStage,
-      email_sent: sendEmail,
-      email_subject: sendEmail ? emailModal.subject : null,
-      email_body: sendEmail ? emailModal.body : null,
-      moved_by: user?.id ?? null,
+    // 상태변경 + 이동로그(→알림 트리거)를 한 트랜잭션(RPC)으로 → 부분쓰기 제거.
+    const { error } = await supabase.rpc('move_application_stage', {
+      p_application_id: emailModal.applicant.id,
+      p_to_stage: emailModal.toStage,
+      p_from_stage: emailModal.fromStage,
+      p_email_sent: sendEmail,
+      p_email_subject: sendEmail ? emailModal.subject : null,
+      p_email_body: sendEmail ? emailModal.body : null,
     });
+    if (error) { showToast('단계 이동에 실패했습니다.'); return; }
+    updateLocal(emailModal.applicant.id, { status: emailModal.toStage });
     showToast(
       sendEmail
         ? `${emailModal.applicant.profiles?.name ?? ''} → '${emailModal.toStage}' 이동 및 알림 전송`
@@ -208,25 +202,14 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
   const bulkChangeStatus = async () => {
     if (!bulkStage || selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
-    // 실제로 단계가 바뀌는 지원자만(현재 단계 != 목표 단계) 로그 대상
-    const moved = applicants.filter(a => selectedIds.has(a.id) && a.status !== bulkStage);
-    await supabase.from('recruitment_applications').update({ status: bulkStage }).in('id', ids);
-    // 단건 이동(confirmStageMove)과 동일하게 단계 로그를 남겨 지원자 인앱 알림 트리거를 발화한다.
-    // 일괄 이동은 모달이 없으므로 기본 알림(email_sent=true, 제목/본문 트리거 기본값)으로 통지.
-    if (moved.length > 0) {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('application_stage_log').insert(
-        moved.map(a => ({
-          application_id: a.id,
-          from_stage: a.status,
-          to_stage: bulkStage,
-          email_sent: true,
-          email_subject: null,
-          email_body: null,
-          moved_by: user?.id ?? null,
-        }))
-      );
-    }
+    // 상태 일괄변경 + (실제 바뀐 건만) 이동로그를 한 트랜잭션(RPC)으로.
+    // RPC 내부에서 현재 단계 != 목표인 지원자만 로그→알림을 남긴다(기존 동작 동일).
+    const { error } = await supabase.rpc('move_applications_stage_bulk', {
+      p_ids: ids,
+      p_to_stage: bulkStage,
+      p_email_sent: true,
+    });
+    if (error) { showToast('일괄 이동에 실패했습니다.'); return; }
     setApplicants(prev => prev.map(a => selectedIds.has(a.id) ? { ...a, status: bulkStage } : a));
     showToast(`${ids.length}명 → '${bulkStage}' 이동 완료`);
     setSelectedIds(new Set());

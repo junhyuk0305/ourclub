@@ -290,22 +290,15 @@ export default function MembersAdmin() {
     if (!adminClubId) return;
     setJoinProcessing(prev => ({ ...prev, [req.id]: true }));
 
-    if (decision === '승인') {
-      await supabase.from('club_members').insert({
-        user_id: req.user_id,
-        club_id: adminClubId,
-        role: '운영진',
-        status: '활동중',
-        position: req.role_title ?? null,
-      });
-    }
-
-    await supabase
-      .from('club_join_requests')
-      .update({ status: decision, reviewed_at: new Date().toISOString() })
-      .eq('id', req.id);
+    // 멤버 생성 + 신청 상태 갱신을 한 트랜잭션(RPC)으로. 중간 실패 시 부분쓰기·
+    // 두 운영진 동시 승인 시 중복 멤버를 차단(서버에서 멱등 처리).
+    const { error } = await supabase.rpc('decide_club_join_request', {
+      p_request_id: req.id,
+      p_decision: decision,
+    });
 
     setJoinProcessing(prev => ({ ...prev, [req.id]: false }));
+    if (error) { showToast('처리에 실패했습니다. 다시 시도해주세요.'); return; }
     showToast(decision === '승인' ? `${req.profiles?.name}님이 운영진으로 추가됐습니다.` : '거절 처리됐습니다.');
     loadJoinRequests(adminClubId);
     if (decision === '승인') loadMembers(adminClubId);
@@ -380,28 +373,47 @@ export default function MembersAdmin() {
     if (memberIds.length === 0 && customRowIds.length === 0) return;
     setBulkSaving(true);
 
-    const memberOps = memberIds.map(id =>
-      supabase.from('club_members').update(drafts[id]).eq('id', id)
+    // 멤버 업데이트: 동일한 변경내용끼리 묶어 .in() 한 번으로 처리한다.
+    // (같은 컬럼을 여러 명에게 일괄 변경하는 흔한 경우 N개 요청 → 1개로 축소.
+    //  .update 는 전달한 컬럼만 갱신하므로 다른 컬럼이 null 로 덮이지 않는다.)
+    const byPatch = new Map<string, string[]>();
+    memberIds.forEach(id => {
+      const key = JSON.stringify(drafts[id]);
+      const arr = byPatch.get(key);
+      if (arr) arr.push(id);
+      else byPatch.set(key, [id]);
+    });
+    const memberOps = Array.from(byPatch.entries()).map(([key, ids]) =>
+      supabase.from('club_members').update(JSON.parse(key) as MemberDraft).in('id', ids)
     );
 
-    const customOps: Promise<{ error: unknown }>[] = [];
+    // 커스텀 값: 셀 단위 N개 요청 → 비어있지 않은 값은 단일 upsert(배열),
+    // 비운 값은 단일 delete(복합조건 or 필터)로 묶는다.
+    const customUpserts: { member_id: string; field_id: string; value: string }[] = [];
+    const customDeletes: { member_id: string; field_id: string }[] = [];
     customRowIds.forEach(memberId => {
       Object.entries(customDrafts[memberId]).forEach(([fieldId, value]) => {
-        if (value === '') {
-          customOps.push(
-            supabase.from('club_member_custom_values')
-              .delete()
-              .eq('member_id', memberId)
-              .eq('field_id', fieldId) as unknown as Promise<{ error: unknown }>
-          );
-        } else {
-          customOps.push(
-            supabase.from('club_member_custom_values')
-              .upsert({ member_id: memberId, field_id: fieldId, value }, { onConflict: 'member_id,field_id' }) as unknown as Promise<{ error: unknown }>
-          );
-        }
+        if (value === '') customDeletes.push({ member_id: memberId, field_id: fieldId });
+        else customUpserts.push({ member_id: memberId, field_id: fieldId, value });
       });
     });
+    const customOps: Promise<{ error: unknown }>[] = [];
+    if (customUpserts.length > 0) {
+      customOps.push(
+        supabase.from('club_member_custom_values')
+          .upsert(customUpserts, { onConflict: 'member_id,field_id' }) as unknown as Promise<{ error: unknown }>
+      );
+    }
+    if (customDeletes.length > 0) {
+      const orFilter = customDeletes
+        .map(d => `and(member_id.eq.${d.member_id},field_id.eq.${d.field_id})`)
+        .join(',');
+      customOps.push(
+        supabase.from('club_member_custom_values')
+          .delete()
+          .or(orFilter) as unknown as Promise<{ error: unknown }>
+      );
+    }
 
     const results = await Promise.all([...memberOps, ...customOps]);
     const failed = results.filter(r => (r as { error?: unknown }).error).length;

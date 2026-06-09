@@ -105,14 +105,15 @@ export function PullApplicantsModal({
     setSaving(true); setError('');
     const gen = generation.trim() || null;
     const chosen = applicants.filter(a => selected.has(a.userId));
-    const results = await Promise.all(chosen.map(a =>
-      a.alreadyMember
-        ? supabase.from('club_members').update({ status: '활동중', generation: gen }).eq('club_id', clubId).eq('user_id', a.userId)
-        : supabase.from('club_members').insert({ club_id: clubId, user_id: a.userId, role: '부원', status: '활동중', generation: gen })
-    ));
+    // 개별 insert/update N개 → 단일 RPC(트랜잭션). 기존 멤버는 활동중/기수 갱신,
+    // 신규는 부원 추가를 원자적으로 처리하고, 동시 끌어오기에도 중복 멤버가 없다.
+    const { error } = await supabase.rpc('pull_applicants_to_members', {
+      p_club_id: clubId,
+      p_user_ids: chosen.map(a => a.userId),
+      p_generation: gen,
+    });
     setSaving(false);
-    const failed = results.filter(r => (r as { error?: unknown }).error).length;
-    if (failed > 0) { setError(`${failed}명 추가에 실패했습니다. 다시 시도해주세요.`); return; }
+    if (error) { setError('명단 추가에 실패했습니다. 다시 시도해주세요.'); return; }
     onSuccess(chosen.length);
   };
 
