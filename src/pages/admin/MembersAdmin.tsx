@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList } from 'recharts';
 import { Users, Search, Award, Loader, UserPlus, Check, Save, Info, Bell, CheckCircle, XCircle, AlertTriangle, Settings, Download, GraduationCap, ChevronDown, Archive } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
@@ -6,7 +7,6 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
-import { useIncremental } from '../../lib/useIncremental';
 import { formatDate } from '../../lib/format';
 import { downloadExcel } from '../../lib/excel';
 import { attendanceRate } from '../../lib/attendanceRate';
@@ -557,11 +557,25 @@ export default function MembersAdmin() {
   );
   const isFiltering = search.trim() !== '' || Object.keys(colFilters).length > 0;
 
-  // 점진 렌더: 큰 명단(controlled input × 커스텀필드)을 한꺼번에 마운트하지 않는다.
-  // 필터/검색/탭/재로딩이 바뀌면 처음부터. 소규모 클럽은 전부 렌더(동작 동일).
-  const listKey = `${activeTab}|${viewGen}|${search}|${members.length}|` +
-    Object.entries(colFilters).map(([k, v]) => `${k}:${Array.from(v).join('~')}`).join('|');
-  const { count: shownCount, sentinelRef } = useIncremental<HTMLTableRowElement>(filtered.length, listKey);
+  // 윈도잉: 큰 명단(controlled input × 커스텀필드)을 "화면에 보이는 행만" DOM 에 둔다.
+  // 1000명+ 에서도 항상 ~15행만 렌더 → 프리즈 없음. (소규모면 전부 보이므로 동일)
+  const scrollRef = useRef<HTMLElement | null>(null);   // 스크롤 컨테이너(<main>)
+  const listRef = useRef<HTMLDivElement | null>(null);  // 행이 절대배치되는 relative 컨테이너
+  const [scrollMargin, setScrollMargin] = useState(0);
+  // 표 시작 위치(스크롤 컨테이너 기준 오프셋)를 측정. 위쪽 툴바/배너 높이가 바뀌면 갱신.
+  useLayoutEffect(() => {
+    const sc = scrollRef.current, li = listRef.current;
+    if (!sc || !li) return;
+    const m = Math.round(li.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop);
+    setScrollMargin(prev => (prev === m ? prev : m));
+  });
+  const rowV = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 68,
+    overscan: 8,
+    scrollMargin,
+  });
 
   const uniqueValues = (col: keyof Member): string[] => {
     const pool = genPool;
@@ -599,6 +613,9 @@ export default function MembersAdmin() {
   ]);
   const draftCount = draftMemberIds.size;
   const visibleCustomFields = customFields.filter(f => !hiddenCustomCols.has(f.id));
+  // 헤더와 모든 행이 공유하는 컬럼 정의 → 정렬 흔들림(jitter) 없음
+  const gridCols = `48px minmax(160px,1.6fr) minmax(140px,1.2fr) 120px 150px 130px ` +
+    visibleCustomFields.map(() => 'minmax(140px,1fr)').join(' ');
 
   const chartData = useMemo(() => {
     const byGen = new Map<string, number[]>();
@@ -658,7 +675,7 @@ export default function MembersAdmin() {
           <AdminSidebar />
         </aside>
 
-        <main className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+        <main ref={scrollRef} className="flex-1 bg-gray-100 p-8 overflow-y-auto">
           <div className={`max-w-5xl flex flex-col gap-6 ${draftCount > 0 && activeTab === 'members' ? 'pb-32' : ''}`}>
             <div className="flex justify-between items-end border-b border-black pb-6">
               <div>
@@ -992,108 +1009,110 @@ export default function MembersAdmin() {
                   </button>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 border-b border-black text-sm">
-                      <th className="p-4 font-black w-10">
-                        <input
-                          type="checkbox"
-                          checked={allVisibleChecked}
-                          onChange={toggleSelectAll}
-                          className="w-4 h-4 accent-orange-500 cursor-pointer"
-                          aria-label="전체 선택"
-                        />
-                      </th>
-                      <th className="p-4 font-black">이름</th>
-                      <th className="p-4 font-black">학교</th>
-                      <ColumnHeaderFilter label="기수" col="generation" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
-                      <th className="p-4 font-black">출석률</th>
-                      <ColumnHeaderFilter label="상태" col="status" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
-                      {visibleCustomFields.map(f => (
-                        <th key={f.id} className="p-4 font-black">{f.name}{f.required && <span className="text-red-500 ml-0.5">*</span>}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filtered.length === 0 ? (
-                      <tr><td colSpan={6 + visibleCustomFields.length} className="p-8 text-center text-gray-500 font-bold">표시할 부원이 없습니다.</td></tr>
-                    ) : filtered.slice(0, shownCount).map(m => {
-                      const isDirty = hasDraft(m.id);
-                      const isSelected = selectedIds.has(m.id);
-                      return (
-                        <tr key={m.id} className={`transition-colors ${isSelected ? 'bg-orange-100' : isDirty ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
-                          <td className="p-4">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelect(m.id)}
-                              className="w-4 h-4 accent-orange-500 cursor-pointer"
-                              aria-label={`${memberName(m)} 선택`}
-                            />
-                          </td>
-                          <td className="p-4 font-black text-lg">
-                            {memberName(m)}
-                            {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
-                            {!m.profiles && (
-                              <span className="ml-2 px-1.5 py-0.5 bg-gray-100 border border-gray-300 font-bold text-[10px] align-middle text-gray-500">
-                                계정 미연결
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-4 font-bold text-sm">
-                            {memberUniversity(m) || <span className="text-gray-300 font-bold">—</span>}
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={getVal(m, 'generation')}
-                              onChange={e => setDraft(m.id, { generation: e.target.value || null })}
-                              className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
-                            >
-                              <option value="">—</option>
-                              {generations.map(g => <option key={g} value={g}>{g}</option>)}
-                              {/* 목록에 없는 기존 값도 표시 */}
-                              {getVal(m, 'generation') && !generations.includes(getVal(m, 'generation')) && (
-                                <option value={getVal(m, 'generation')}>{getVal(m, 'generation')} (목록 외)</option>
+                <div className="text-left">
+                  {/* 헤더 — 모든 행과 동일한 gridCols 공유 → 컬럼 정렬 보장 */}
+                  <div className="grid bg-gray-100 border-b border-black text-sm font-black" style={{ gridTemplateColumns: gridCols }}>
+                    <div className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleChecked}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 accent-orange-500 cursor-pointer"
+                        aria-label="전체 선택"
+                      />
+                    </div>
+                    <div className="p-4">이름</div>
+                    <div className="p-4">학교</div>
+                    <ColumnHeaderFilter label="기수" col="generation" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
+                    <div className="p-4">출석률</div>
+                    <ColumnHeaderFilter label="상태" col="status" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
+                    {visibleCustomFields.map(f => (
+                      <div key={f.id} className="p-4">{f.name}{f.required && <span className="text-red-500 ml-0.5">*</span>}</div>
+                    ))}
+                  </div>
+
+                  {/* 바디 — 윈도잉: 보이는 행만 DOM 에 둔다(절대배치) */}
+                  {filtered.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 font-bold">표시할 부원이 없습니다.</div>
+                  ) : (
+                    <div ref={listRef} style={{ position: 'relative', height: rowV.getTotalSize() }}>
+                      {rowV.getVirtualItems().map(item => {
+                        const m = filtered[item.index];
+                        const isDirty = hasDraft(m.id);
+                        const isSelected = selectedIds.has(m.id);
+                        return (
+                          <div
+                            key={item.key}
+                            data-index={item.index}
+                            ref={rowV.measureElement}
+                            className={`grid border-b border-gray-200 transition-colors ${isSelected ? 'bg-orange-100' : isDirty ? 'bg-orange-50' : 'bg-white hover:bg-gray-50'}`}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start - scrollMargin}px)`, gridTemplateColumns: gridCols }}
+                          >
+                            <div className="p-4">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelect(m.id)}
+                                className="w-4 h-4 accent-orange-500 cursor-pointer"
+                                aria-label={`${memberName(m)} 선택`}
+                              />
+                            </div>
+                            <div className="p-4 font-black text-lg">
+                              {memberName(m)}
+                              {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
+                              {!m.profiles && (
+                                <span className="ml-2 px-1.5 py-0.5 bg-gray-100 border border-gray-300 font-bold text-[10px] align-middle text-gray-500">
+                                  계정 미연결
+                                </span>
                               )}
-                            </select>
-                          </td>
-                          <td className="p-4">
-                            {m.attendanceRate != null ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
-                                  <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
+                            </div>
+                            <div className="p-4 font-bold text-sm">
+                              {memberUniversity(m) || <span className="text-gray-300 font-bold">—</span>}
+                            </div>
+                            <div className="p-4">
+                              <select
+                                value={getVal(m, 'generation')}
+                                onChange={e => setDraft(m.id, { generation: e.target.value || null })}
+                                className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
+                              >
+                                <option value="">—</option>
+                                {generations.map(g => <option key={g} value={g}>{g}</option>)}
+                                {/* 목록에 없는 기존 값도 표시 */}
+                                {getVal(m, 'generation') && !generations.includes(getVal(m, 'generation')) && (
+                                  <option value={getVal(m, 'generation')}>{getVal(m, 'generation')} (목록 외)</option>
+                                )}
+                              </select>
+                            </div>
+                            <div className="p-4">
+                              {m.attendanceRate != null ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
+                                    <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
+                                  </div>
+                                  <span className="font-black text-sm">{m.attendanceRate}%</span>
                                 </div>
-                                <span className="font-black text-sm">{m.attendanceRate}%</span>
+                              ) : <span className="text-gray-400 text-sm font-bold">—</span>}
+                            </div>
+                            <div className="p-4">
+                              <select
+                                value={(drafts[m.id]?.status ?? m.status) as string}
+                                onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
+                                className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
+                              >
+                                {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            {visibleCustomFields.map(f => (
+                              <div key={f.id} className="p-4">
+                                {renderCustomInput(f, m)}
                               </div>
-                            ) : <span className="text-gray-400 text-sm font-bold">—</span>}
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={(drafts[m.id]?.status ?? m.status) as string}
-                              onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
-                              className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
-                            >
-                              {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
-                            </select>
-                          </td>
-                          {visibleCustomFields.map(f => (
-                            <td key={f.id} className="p-4">
-                              {renderCustomInput(f, m)}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                    {shownCount < filtered.length && (
-                      <tr ref={sentinelRef}>
-                        <td colSpan={6 + visibleCustomFields.length} className="p-4 text-center text-gray-400 font-bold text-sm">
-                          <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
-                          {filtered.length - shownCount}명 더 불러오는 중…
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

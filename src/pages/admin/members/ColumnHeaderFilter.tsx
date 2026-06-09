@@ -20,7 +20,7 @@ export function ColumnHeaderFilter({
   const isActive = active && active.size > 0;
   const isOpen = openFilterCol === col;
   return (
-    <th className="p-4 font-black relative">
+    <div className="p-4 font-black relative">
       <div className="flex items-center gap-1">
         {label}
         <button
@@ -67,6 +67,6 @@ export function ColumnHeaderFilter({
           })()}
         </div>
       )}
-    </th>
+    </div>
   );
 }
