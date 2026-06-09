@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 
 type AttStatus = '출석' | '지각' | '결석' | '공결';
@@ -61,14 +62,16 @@ export default function AttendanceDetail() {
         .select('id, title, session_date, created_at, target_generations')
         .eq('id', sessionId)
         .single(),
-      supabase
+      fetchAll((from, to) => supabase
         .from('session_targets')
         .select('member_id, club_members(id, generation, position, profiles(name))')
-        .eq('session_id', sessionId),
-      supabase
+        .eq('session_id', sessionId)
+        .range(from, to)),
+      fetchAll((from, to) => supabase
         .from('attendances')
         .select('id, member_id, status')
-        .eq('session_id', sessionId),
+        .eq('session_id', sessionId)
+        .range(from, to)),
     ]);
 
     if (sRes.data) setSession(sRes.data as SessionInfo);

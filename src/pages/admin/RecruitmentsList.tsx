@@ -7,6 +7,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAllIn } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 import { defaultFormSchema } from '../../types/recruitment';
 
@@ -75,7 +76,8 @@ export default function RecruitmentsList() {
         .order('created_at', { ascending: false });
       const recs = (raw as Omit<Recruitment, 'applicant_count' | 'passed_count'>[] | null) ?? [];
       const { data: apps } = recs.length > 0
-        ? await supabase.from('recruitment_applications').select('recruitment_id').in('recruitment_id', recs.map(r => r.id))
+        ? await fetchAllIn<{ recruitment_id: string }>(recs.map(r => r.id), (chunk, from, to) =>
+            supabase.from('recruitment_applications').select('recruitment_id').in('recruitment_id', chunk).range(from, to))
         : { data: [] };
       const tally: Record<string, number> = {};
       ((apps as { recruitment_id: string }[] | null) ?? []).forEach(a => {

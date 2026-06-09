@@ -3,8 +3,9 @@
 > 목적: **기능은 그대로 유지**하면서 불필요한 코드를 제거하고, 거대 파일·중복·데이터 접근 분산을 정리해 유지보수 비용을 낮춘다.
 > 측정 기준일: 2026-06-04 · 대상: `src/` (81파일 / 26,712줄)
 > 검증 수단: `npm run lint` (tsc --noEmit). **자동 테스트 없음** → 작게 쪼개고 매 단계 검증.
-> 주의: 현재 `npm run build`는 `0xC0000409`(STATUS_STACK_BUFFER_OVERRUN)로 실패. 검증은 `lint`만 사용.
-> **[근본원인 — 정밀 규명 완료]** rollup의 `generate()` 단계(=`buildEnd` 직후, `renderStart` 직전)에서 발생하는 **네이티브 스택오버런**. 모듈 그래프 실행순서 분석(`analyzeModuleExecution`, 재귀)이 이 앱 규모(2773 모듈)에서 깊게 재귀 → Node v24의 C++ 스택에서 하드 크래시(catch 불가, RangeError 대신 `0xC0000409`). **배제된 가설(전부 시도, 무효)**: wasm↔네이티브 rollup, rollup 4.60.2↔4.61.1, minify off, treeshake off, 코드스플리팅, preserveModules, tailwind off, `--stack-size` 증가. **확인**: 최소 vite 프로젝트는 정상 빌드됨 → 툴체인 자체는 정상, 이 앱 그래프 규모+Node24 조합 문제. **결론**: 소스/버전 수정으로 못 고침. **실효 수정안**: ① Node LTS(20/22)로 빌드(가장 유력) ② 또는 vite/rollup 메이저 업그레이드(그래프 분석 iterative화 버전). 둘 다 환경 변경이라 repo 편집 범위 밖 → **미적용**(시도했던 의존성 변경은 효과 없어 원복함). **검증 대안**: `npm run dev`(esbuild, 정상)로 런타임 스모크 가능 — prod build 없이 Phase 4/5 동작 확인 가능(실제로 MyPage/RecruitAdmin 분해를 이 방식으로 검증함).
+> ✅ **[해결됨 — 2026-06-09]** `npm run build`(`0xC0000409` STATUS_STACK_BUFFER_OVERRUN) 크래시는 **Node 20/22 LTS로 빌드하면 사라진다**(검증 완료: Node 22.21.1에서 40초 만에 전체 청크 정상 생성). 원인은 **Node 24 + 이 앱의 대형 모듈 그래프(~3,196 모듈) 조합** 자체이며, 소스/rollup 버전과 무관하다(아래 검증 로그 참고). 프로젝트에 `.nvmrc`(=22)·`package.json engines`(20.x||22.x)로 못 박음. **빌드는 반드시 Node 20/22에서 수행할 것**(Node 24는 dev/lint만).
+>
+> **[근본원인 — 정밀 규명 완료]** rollup의 `generate()` 단계(=`buildEnd` 직후, `renderStart` 직전)에서 발생하는 **네이티브 스택오버런**. 모듈 그래프 실행순서 분석(재귀)이 이 앱 규모에서 깊게 재귀 → Node v24의 스택에서 하드 크래시(catch 불가, RangeError 대신 `0xC0000409`). **배제된 가설(전부 시도, 무효)**: wasm↔네이티브 rollup(2026-06-09 네이티브 4.61.1로 재전환해도 동일 지점 크래시), rollup 4.60.2↔4.61.1, minify off, treeshake off, 코드스플리팅, preserveModules, tailwind off, `--stack-size` 증가(=400/800에서도 RangeError 없이 하드 크래시 → V8 스택가드 우회 = 네이티브 오버런 확정), worker thread `stackSizeMb`(=V8 한도만 키우고 OS 스레드 스택은 불변이라 무효). **확인**: 최소 vite 프로젝트는 정상 빌드됨 → 툴체인 자체는 정상, 이 앱 그래프 규모+Node24 조합 문제. **유일하게 효과 있던 수정**: **Node 22 LTS로 빌드**(검증 완료). 부수적으로 rollup을 wasm-node 별칭에서 **네이티브 바이너리**(`@rollup/rollup-win32-x64-msvc`)로 되돌림(npm 11에서 정상 설치, lock 재생성). **검증 대안**: `npm run dev`(esbuild, 정상)로 런타임 스모크 가능.
 
 ---
 

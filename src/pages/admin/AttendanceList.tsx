@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 import { downloadExcel } from '../../lib/excel';
 import { formatDate } from '../../lib/format';
 
@@ -43,11 +44,12 @@ export default function AttendanceList() {
 
   const loadSessions = async (clubId: string) => {
     setFetching(true);
-    const { data } = await supabase
+    const { data } = await fetchAll<SessionWithCounts>((from, to) => supabase
       .from('sessions_with_counts')
       .select('id, title, attendance_code, session_date, expires_at, created_at, target_generations, target_count, attended_count')
       .eq('club_id', clubId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to));
     const rows = (data ?? []) as SessionWithCounts[];
     setSessions(rows);
     // unique generations across sessions

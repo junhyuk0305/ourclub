@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList } from 'recharts';
 import { Users, Search, Award, Loader, UserPlus, Check, Save, Info, Bell, CheckCircle, XCircle, AlertTriangle, Settings, Download, GraduationCap, ChevronDown, Archive } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 import { downloadExcel } from '../../lib/excel';
 import { attendanceRate } from '../../lib/attendanceRate';
@@ -75,6 +76,9 @@ export default function MembersAdmin() {
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [joinFetching, setJoinFetching] = useState(false);
   const [joinProcessing, setJoinProcessing] = useState<Record<string, boolean>>({});
+
+  // 멤버 로드 경쟁 가드: 클럽을 빠르게 전환하면 이전 응답이 새 응답을 덮어쓰는 것 방지
+  const loadSeq = useRef(0);
 
   useEffect(() => {
     if (!adminClubId) return;
@@ -160,10 +164,14 @@ export default function MembersAdmin() {
     setCustomFields(list);
 
     if (list.length > 0) {
-      const { data: values } = await supabase
-        .from('club_member_custom_values')
-        .select('member_id, field_id, value')
-        .in('field_id', list.map(f => f.id));
+      const { data: values } = await fetchAllIn<{ member_id: string; field_id: string; value: string | null }>(
+        list.map(f => f.id),
+        (chunk, from, to) => supabase
+          .from('club_member_custom_values')
+          .select('member_id, field_id, value')
+          .in('field_id', chunk)
+          .range(from, to),
+      );
       const map: Record<string, Record<string, string>> = {};
       (values ?? []).forEach((v: { member_id: string; field_id: string; value: string | null }) => {
         if (!map[v.member_id]) map[v.member_id] = {};
@@ -216,12 +224,14 @@ export default function MembersAdmin() {
   }, [generations]);
 
   const loadMembers = async (clubId: string) => {
+    const seq = ++loadSeq.current;
     setFetching(true);
-    const { data } = await supabase
+    const { data } = await fetchAll((from, to) => supabase
       .from('club_members')
       .select('id, role, generation, position, role_function, status, joined_at, display_name, display_university, profiles(name, email, major, university, academic_status)')
       .eq('club_id', clubId)
-      .order('joined_at', { ascending: true });
+      .order('joined_at', { ascending: true })
+      .range(from, to));
 
     const members = (data as unknown as Member[]) ?? [];
 
@@ -229,16 +239,19 @@ export default function MembersAdmin() {
     // 분자 = 그 중 status='출석'(공결·결석 제외 = D5). 멤버별 자기 대상 세션만 보므로
     // 활동중=현 기수 실시간 / 수료=과거 기수 누적이 자동으로 스코프됨.
     const rateMap: Record<string, number | null> = {};
-    const { data: sessRows } = await supabase
+    const { data: sessRows } = await fetchAll((from, to) => supabase
       .from('sessions')
       .select('id')
-      .eq('club_id', clubId);
+      .eq('club_id', clubId)
+      .range(from, to));
     const sessionIds = (sessRows ?? []).map(s => s.id as string);
 
     if (sessionIds.length > 0) {
       const [{ data: tgtRows }, { data: attRows }] = await Promise.all([
-        supabase.from('session_targets').select('member_id, session_id').in('session_id', sessionIds),
-        supabase.from('attendances').select('member_id, session_id').in('session_id', sessionIds).eq('status', '출석'),
+        fetchAllIn<{ member_id: string; session_id: string }>(sessionIds, (chunk, from, to) =>
+          supabase.from('session_targets').select('member_id, session_id').in('session_id', chunk).range(from, to)),
+        fetchAllIn<{ member_id: string; session_id: string }>(sessionIds, (chunk, from, to) =>
+          supabase.from('attendances').select('member_id, session_id').in('session_id', chunk).eq('status', '출석').range(from, to)),
       ]);
       const denom: Record<string, Set<string>> = {};
       (tgtRows ?? []).forEach((t: { member_id: string; session_id: string }) => {
@@ -252,6 +265,8 @@ export default function MembersAdmin() {
         rateMap[m.id] = attendanceRate(denom[m.id] ?? new Set(), attended[m.id] ?? []);
       });
     }
+
+    if (seq !== loadSeq.current) return; // 더 최신 로드가 진행 중 → 이 응답은 폐기
 
     const withRates = members.map(m => ({ ...m, attendanceRate: rateMap[m.id] ?? null }));
     setMembers(withRates);
@@ -521,8 +536,12 @@ export default function MembersAdmin() {
     }
     return true;
   };
-  const genPool = members.filter(matchesGen);
-  const filtered = genPool.filter(m => matchesSearch(m) && matchesColFilters(m));
+  // 큰 명단에서 매 렌더(키 입력)마다 전체를 재계산하지 않도록 캐싱. 값은 기존과 동일.
+  const genPool = useMemo(() => members.filter(matchesGen), [members, viewGen]);
+  const filtered = useMemo(
+    () => genPool.filter(m => matchesSearch(m) && matchesColFilters(m)),
+    [genPool, search, colFilters],
+  );
   const isFiltering = search.trim() !== '' || Object.keys(colFilters).length > 0;
 
   const uniqueValues = (col: keyof Member): string[] => {

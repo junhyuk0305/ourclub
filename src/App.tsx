@@ -1,5 +1,4 @@
 import React, { Suspense, lazy } from 'react';
-import * as Sentry from '@sentry/react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
@@ -249,9 +248,26 @@ function AppErrorFallback() {
   );
 }
 
+// @sentry/react를 엔트리에 정적 포함하지 않기 위한 경량 ErrorBoundary.
+// 렌더 크래시를 격리하고, 로드된 경우 Sentry로 리포트(미로드 시 무시).
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    // Sentry를 엔트리에 끌어들이지 않도록 리포트 시점에만 동적 로드.
+    import('./lib/sentry').then((m) => m.captureException(error)).catch(() => {});
+  }
+  render() {
+    if (this.state.hasError) return <AppErrorFallback />;
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <Sentry.ErrorBoundary fallback={<AppErrorFallback />}>
+    <ErrorBoundary>
       <AuthProvider>
         <AdminProvider>
           <CorpProvider>
@@ -259,6 +275,6 @@ export default function App() {
           </CorpProvider>
         </AdminProvider>
       </AuthProvider>
-    </Sentry.ErrorBoundary>
+    </ErrorBoundary>
   );
 }

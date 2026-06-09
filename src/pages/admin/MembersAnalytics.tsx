@@ -8,6 +8,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
 
 interface MemberRow {
   id: string;
@@ -51,8 +52,8 @@ export default function MembersAnalytics() {
   const load = async (clubId: string) => {
     setLoading(true);
     const [{ data: mem }, { data: sess }] = await Promise.all([
-      supabase.from('club_members').select('id, generation, status, display_name, profiles(name)').eq('club_id', clubId),
-      supabase.from('sessions').select('id, title, session_date, created_at').eq('club_id', clubId),
+      fetchAll((from, to) => supabase.from('club_members').select('id, generation, status, display_name, profiles(name)').eq('club_id', clubId).range(from, to)),
+      fetchAll((from, to) => supabase.from('sessions').select('id, title, session_date, created_at').eq('club_id', clubId).range(from, to)),
     ]);
     const memberList = (mem ?? []) as unknown as MemberRow[];
     const sessionList = (sess ?? []) as SessionRow[];
@@ -62,8 +63,10 @@ export default function MembersAnalytics() {
     const sessionIds = sessionList.map(s => s.id);
     if (sessionIds.length > 0) {
       const [{ data: t }, { data: a }] = await Promise.all([
-        supabase.from('session_targets').select('member_id, session_id').in('session_id', sessionIds),
-        supabase.from('attendances').select('member_id, session_id').in('session_id', sessionIds).eq('status', '출석'),
+        fetchAllIn<Pair>(sessionIds, (chunk, from, to) =>
+          supabase.from('session_targets').select('member_id, session_id').in('session_id', chunk).range(from, to)),
+        fetchAllIn<Pair>(sessionIds, (chunk, from, to) =>
+          supabase.from('attendances').select('member_id, session_id').in('session_id', chunk).eq('status', '출석').range(from, to)),
       ]);
       setTargets((t ?? []) as Pair[]);
       setAtts((a ?? []) as Pair[]);

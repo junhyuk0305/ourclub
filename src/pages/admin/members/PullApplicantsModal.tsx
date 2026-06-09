@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X, Loader, UserCheck, Download } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import { fetchAll, fetchAllIn } from '../../../lib/fetchAll';
 
 interface PassedApplicant {
   userId: string;
@@ -32,7 +33,8 @@ export function PullApplicantsModal({
     setLoading(true);
     const [{ data: recs }, { data: existing }] = await Promise.all([
       supabase.from('recruitments').select('id, title, pipeline_stages').eq('club_id', clubId),
-      supabase.from('club_members').select('user_id').eq('club_id', clubId),
+      fetchAll<{ user_id: string | null }>((from, to) =>
+        supabase.from('club_members').select('user_id').eq('club_id', clubId).range(from, to)),
     ]);
     const recList = (recs ?? []) as { id: string; title: string; pipeline_stages: string[] | null }[];
     const memberUserIds = new Set(
@@ -48,10 +50,14 @@ export function PullApplicantsModal({
       titleOf[r.id] = r.title;
     });
 
-    const { data: apps } = await supabase
-      .from('recruitment_applications')
-      .select('id, user_id, recruitment_id, status, submitted_at, profiles(name, email)')
-      .in('recruitment_id', recList.map(r => r.id));
+    const { data: apps } = await fetchAllIn(
+      recList.map(r => r.id),
+      (chunk, from, to) => supabase
+        .from('recruitment_applications')
+        .select('id, user_id, recruitment_id, status, submitted_at, profiles(name, email)')
+        .in('recruitment_id', chunk)
+        .range(from, to),
+    );
 
     const passed = ((apps ?? []) as unknown as {
       user_id: string | null; recruitment_id: string; status: string | null;

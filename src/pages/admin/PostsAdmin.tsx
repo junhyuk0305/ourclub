@@ -6,6 +6,7 @@ import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 
 interface Post {
@@ -53,11 +54,12 @@ export default function PostsAdmin() {
   const loadPosts = async (clubId: string) => {
     setFetching(true);
     setFetchError(false);
-    const { data, error } = await supabase
+    const { data, error } = await fetchAll<any>((from, to) => supabase
       .from('posts')
       .select('id, title, content, author, images, is_published, view_count, created_at')
       .eq('club_id', clubId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to));
 
     if (error) {
       setFetchError(true);

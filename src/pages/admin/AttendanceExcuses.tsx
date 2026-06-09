@@ -5,6 +5,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 
 const REASONS = ['개인 일정', '병가', '교내 일정', '자격증 시험', '가족 행사', '기타'];
@@ -66,11 +67,12 @@ export default function AttendanceExcuses() {
 
   const load = async () => {
     setFetching(true);
-    const { data } = await supabase
+    const { data } = await fetchAll<any>((from, to) => supabase
       .from('attendance_excuse_requests')
       .select('id, member_id, session_id, excuse_date, reason_category, detail, file_url, status, reviewer_note, created_at, club_members ( generation, profiles ( name ) ), sessions ( title )')
       .eq('club_id', adminClubId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to));
 
     const list: ExcuseReq[] = ((data ?? []) as any[]).map(r => ({
       id: r.id,

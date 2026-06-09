@@ -3,6 +3,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAllIn } from '../../lib/fetchAll';
 import {
   BarChart3, Loader, Users, TrendingUp, Compass, Activity, AlertCircle, PieChart,
 } from 'lucide-react';
@@ -56,11 +57,15 @@ export default function RecruitAnalytics() {
     setRecruitments(recList);
 
     if (recList.length > 0) {
-      const { data: applications } = await supabase
-        .from('recruitment_applications')
-        .select('id, recruitment_id, status, submitted_at, answers')
-        .in('recruitment_id', recList.map(r => r.id));
-      setApps((applications as ApplicationRow[] | null) ?? []);
+      const { data: applications } = await fetchAllIn<ApplicationRow>(
+        recList.map(r => r.id),
+        (chunk, from, to) => supabase
+          .from('recruitment_applications')
+          .select('id, recruitment_id, status, submitted_at, answers')
+          .in('recruitment_id', chunk)
+          .range(from, to),
+      );
+      setApps(applications);
     }
     setLoading(false);
   };

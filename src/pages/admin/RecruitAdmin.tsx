@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search, Mail, UserCheck, X, Edit2, Loader,
   MessageSquare, ChevronDown, Users, Download,
@@ -9,6 +9,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAllIn } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 import { SortTh } from './recruit-admin/SortTh';
 import { KanbanCard } from './recruit-admin/KanbanCard';
@@ -63,6 +64,9 @@ export default function RecruitAdmin() {
 
   const [toast, setToast] = useState('');
 
+  // 지원자 로드 경쟁 가드: 공고/클럽을 빠르게 전환하면 이전 응답이 새 응답을 덮어쓰는 것 방지
+  const loadSeq = useRef(0);
+
   useEffect(() => {
     if (!adminClubId) return;
     loadRecruitments(adminClubId);
@@ -90,12 +94,16 @@ export default function RecruitAdmin() {
   };
 
   const loadApplicants = async (rIds: string[]) => {
+    const seq = ++loadSeq.current;
     setFetching(true);
-    const { data } = await supabase
+    const { data } = await fetchAllIn(rIds, (chunk, from, to) => supabase
       .from('recruitment_applications')
       .select('id, recruitment_id, status, score, interviewer_note, interview_at, submitted_at, answers, interview_questions, memos, profiles(name, email, phone, major, university, portfolio_url)')
-      .in('recruitment_id', rIds)
-      .order('submitted_at', { ascending: false });
+      .in('recruitment_id', chunk)
+      .order('submitted_at', { ascending: false })
+      .range(from, to));
+
+    if (seq !== loadSeq.current) return; // 더 최신 로드가 진행 중 → 이 응답은 폐기
 
     setApplicants((data as unknown as Applicant[]) ?? []);
     setSelectedIds(new Set());
@@ -240,14 +248,15 @@ export default function RecruitAdmin() {
   };
 
   const stages = selectedRecruitment?.pipeline_stages ?? [];
-  const filtered = applicants.filter(a =>
+  // 드래그/렌더마다 전체 지원자를 다시 필터·정렬하지 않도록 캐싱. 결과는 기존과 동일.
+  const filtered = useMemo(() => applicants.filter(a =>
     !search ||
     (a.profiles?.name ?? '').includes(search) ||
     (a.profiles?.major ?? '').includes(search)
-  );
+  ), [applicants, search]);
 
   // 정렬된 리스트
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     let av: string | number = '';
     let bv: string | number = '';
     if (sortKey === 'name') { av = a.profiles?.name ?? ''; bv = b.profiles?.name ?? ''; }
@@ -257,7 +266,7 @@ export default function RecruitAdmin() {
     if (av < bv) return sortDir === 'asc' ? -1 : 1;
     if (av > bv) return sortDir === 'asc' ? 1 : -1;
     return 0;
-  });
+  }), [filtered, sortKey, sortDir, selectedRecruitmentId]);
 
   const allSelected = sorted.length > 0 && sorted.every(a => selectedIds.has(a.id));
   const toggleAll = () => {

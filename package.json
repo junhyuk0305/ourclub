@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x || 22.x"
+  },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "node scripts/build.mjs",
+    "build:vite": "vite build",
     "preview": "vite preview",
     "clean": "rd /s /q dist",
     "lint": "tsc --noEmit"

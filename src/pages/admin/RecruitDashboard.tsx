@@ -4,6 +4,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAllIn } from '../../lib/fetchAll';
 import {
   LayoutDashboard, Loader, Users, CheckCircle2, XCircle, Clock, ChevronRight,
   TrendingDown, Briefcase, AlertCircle,
@@ -63,11 +64,15 @@ export default function RecruitDashboard() {
     setRecruitments(recList);
 
     if (recList.length > 0) {
-      const { data: applications } = await supabase
-        .from('recruitment_applications')
-        .select('id, recruitment_id, status, submitted_at')
-        .in('recruitment_id', recList.map(r => r.id));
-      setApps((applications as ApplicationRow[] | null) ?? []);
+      const { data: applications } = await fetchAllIn<ApplicationRow>(
+        recList.map(r => r.id),
+        (chunk, from, to) => supabase
+          .from('recruitment_applications')
+          .select('id, recruitment_id, status, submitted_at')
+          .in('recruitment_id', chunk)
+          .range(from, to),
+      );
+      setApps(applications);
     }
     setLoading(false);
   };

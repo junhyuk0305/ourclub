@@ -4,6 +4,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 
 interface SessionRow {
   id: string;
@@ -105,11 +106,12 @@ export default function AttendanceCreate() {
   const loadMembers = async (clubId: string) => {
     const [{ data: club }, { data }] = await Promise.all([
       supabase.from('clubs').select('current_generation').eq('id', clubId).maybeSingle(),
-      supabase
+      fetchAll((from, to) => supabase
         .from('club_members')
         .select('id, generation, display_name, profiles(name)')
         .eq('club_id', clubId)
-        .eq('status', '활동중'),
+        .eq('status', '활동중')
+        .range(from, to)),
     ]);
     const members = (data ?? []) as unknown as MemberRow[];
     setAllMembers(members);

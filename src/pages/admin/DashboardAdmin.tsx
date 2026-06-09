@@ -5,6 +5,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAllIn } from '../../lib/fetchAll';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 
 interface Stats {
@@ -73,10 +74,14 @@ export default function DashboardAdmin() {
       .eq('club_id', clubId);
     if (surveys && surveys.length > 0) {
       const surveyIds = surveys.map(s => s.id);
-      const { data: responses } = await supabase
-        .from('pulse_responses')
-        .select('score')
-        .in('survey_id', surveyIds);
+      const { data: responses } = await fetchAllIn<{ score: number | null }>(
+        surveyIds,
+        (chunk, from, to) => supabase
+          .from('pulse_responses')
+          .select('score')
+          .in('survey_id', chunk)
+          .range(from, to),
+      );
       if (responses && responses.length > 0) {
         const total = responses.reduce((sum, r) => sum + (r.score ?? 0), 0);
         pulseAvg = Math.round((total / responses.length) * 10) / 10;

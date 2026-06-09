@@ -5,6 +5,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 
 export default function SettingsAdmin() {
   const { adminClub, adminClubId, refreshClub } = useAdmin();
@@ -240,12 +241,13 @@ function HandoverModal({ clubId, clubName, onClose }: { clubId: string; clubName
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data } = await fetchAll<any>((from, to) => supabase
         .from('club_members')
         .select('user_id, role, display_name, profiles(name)')
         .eq('club_id', clubId)
         .eq('status', '활동중')
-        .not('user_id', 'is', null);
+        .not('user_id', 'is', null)
+        .range(from, to));
       const rows = ((data as unknown as HandoverCandidate[]) ?? []).filter(m => m.user_id !== user?.id);
       setCandidates(rows);
       setLoading(false);

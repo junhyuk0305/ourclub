@@ -4,6 +4,7 @@ import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
 
 interface PulseSurvey {
@@ -69,11 +70,12 @@ export default function FeedbackAdmin() {
 
   const loadDetail = async (survey: PulseSurvey) => {
     if (details[survey.id]) return;
-    const { data } = await supabase
+    const { data } = await fetchAll<any>((from, to) => supabase
       .from('pulse_responses')
       .select('id, score, comment, created_at, user_id, profiles(display_name)')
       .eq('survey_id', survey.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to));
     const responses = (data as unknown as PulseResponse[]) ?? [];
     const avg = responses.length > 0
       ? Math.round(responses.reduce((s, r) => s + r.score, 0) / responses.length * 10) / 10

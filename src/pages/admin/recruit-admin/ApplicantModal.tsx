@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, MessageSquare, Users, Plus, HelpCircle, Inbox } from 'lucide-react';
 import type { Applicant } from './types';
 
@@ -23,6 +23,9 @@ export function ApplicantModal({
   const [localQuestions, setLocalQuestions] = useState<string[]>(applicant.interview_questions ?? []);
   const [newMemo, setNewMemo] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 언마운트 시 디바운스 타이머 정리 → 모달을 800ms 내 닫으면 발생하던 늦은 저장·언마운트 setState 경고 방지
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const handleNoteChange = (val: string) => {
     setNote(val);
