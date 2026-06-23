@@ -46,7 +46,7 @@
 >
 > **⚠️ 운영 주의:** 원격 마이그레이션 이력이 비어 있어 `supabase db push` 시 전체 재적용을 시도 → **금지**. 향후 CLI 적용 전 `supabase migration repair --status applied <version>...` 로 이력을 먼저 정합화할 것.
 >
-> **남은 작업:** ① ✅ 인증 사용자 회귀 — **정적 코드 검증 완료(2026-06-23)**: 사용자 화면(AttendanceSection 학생 체크인, AttendanceHistorySection, AdminContext 멤버십 판정)의 읽기가 모두 `user_id=auth.uid()`/`app_is_club_member`/`app_owns_member` 경로로 정책 통과. 비회원만 차단(의도). 런타임 브라우저 QA는 선택. ② ✅ `pulse_responses`는 데이터 없음(현재 안전). ③ `applications/events/projects` 레거시 — **src 전역 사용처 0건 확인**(라이브 지원은 `recruitment_applications` 사용). DROP 대기(파괴적·원격 수동적용 필요).
+> **남은 작업:** ① ✅ 인증 사용자 회귀 — **정적 코드 검증 완료(2026-06-23)**: 사용자 화면(AttendanceSection 학생 체크인, AttendanceHistorySection, AdminContext 멤버십 판정)의 읽기가 모두 `user_id=auth.uid()`/`app_is_club_member`/`app_owns_member` 경로로 정책 통과. 비회원만 차단(의도). 런타임 브라우저 QA는 선택. ② ✅ `pulse_responses`는 데이터 없음(현재 안전). ③ ✅ `applications/events/projects` 레거시 — **src 전역 사용처 0건 확인**(라이브 지원은 `recruitment_applications` 사용). **잠금 마이그레이션 작성**: `20260623020000_lockdown_legacy_tables.sql`(RLS ON + 모든 정책 제거 → 기본 deny, 데이터 보존·되돌림 가능). DROP 대신 잠금 선택. **원격 수동 적용(대시보드 SQL 에디터) + anon 재probe 대기.**
 
 **근거(과거)**: 본래 SELECT 정책이 `USING (true)`라 로그인 없이(anon 키) 전체 조회가 가능했던 것으로 보고됨. **현재는 위 probe로 차단 확인됨.**
 

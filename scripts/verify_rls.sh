@@ -23,6 +23,10 @@ echo "== anon 노출 차단 확인 (모두 ✅ 여야 함) =="
 probe "club_members        " "club_members?select=user_id,role&limit=3"
 probe "sessions.code       " "sessions?select=id,attendance_code&limit=3"
 probe "attendances         " "attendances?select=id&limit=3"
+# 레거시 잠금 테이블(20260623020000) — 존재 시 [], 미존재 시 404 에러바디(무시 가능)
+probe "applications(legacy)" "applications?select=id&limit=3"
+probe "events(legacy)      " "events?select=id&limit=3"
+probe "projects(legacy)    " "projects?select=id&limit=3"
 
 echo
 echo "== 의도된 공개는 유지되는지 (clubs 는 데이터 있어야 정상) =="
