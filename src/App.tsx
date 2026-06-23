@@ -33,8 +33,6 @@ const ClubDemoPage = lazy(() => import('./pages/public/ClubDemoPage'));
 const MyPage = lazy(() => import('./pages/user/MyPage'));
 // admin
 const Workspace = lazy(() => import('./pages/admin/Workspace'));
-const RecruitAdmin = lazy(() => import('./pages/admin/RecruitAdmin'));
-const FormBuilder = lazy(() => import('./pages/admin/FormBuilder'));
 const AttendanceCreate = lazy(() => import('./pages/admin/AttendanceCreate'));
 const AttendanceList = lazy(() => import('./pages/admin/AttendanceList'));
 const AttendanceDetail = lazy(() => import('./pages/admin/AttendanceDetail'));
@@ -183,9 +181,6 @@ function AppRoutes() {
           {/* 구버전 라우트는 신규로 리다이렉트 (외부 링크/북마크 호환) */}
           <Route path="/admin/recruit"        element={<Navigate to="/admin/recruitments" replace />} />
           <Route path="/admin/form-builder"   element={<Navigate to="/admin/recruitments" replace />} />
-          {/* 구버전 직접 접근용 (deprecated) */}
-          <Route path="/admin/recruit-legacy"      element={<AdminRoute><RecruitAdmin /></AdminRoute>} />
-          <Route path="/admin/form-builder-legacy" element={<AdminRoute><FormBuilder /></AdminRoute>} />
           <Route path="/admin/sessions/new"   element={<AdminRoute><AttendanceCreate /></AdminRoute>} />
           <Route path="/admin/sessions"       element={<AdminRoute><AttendanceList /></AdminRoute>} />
           <Route path="/admin/sessions/:id"   element={<AdminRoute><AttendanceDetail /></AdminRoute>} />

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Users, FileText, ClipboardList, GitBranch, Loader, ChevronRight, Eye,
+  ArrowLeft, Users, FileText, ClipboardList, GitBranch, Loader, ChevronRight, Eye, Trash2,
+  CheckCircle2, AlertCircle,
 } from 'lucide-react';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useToast } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabaseClient';
 import { ApplicantsTab } from '../../components/admin/recruitment/ApplicantsTab';
 import { JobInfoTab } from '../../components/admin/recruitment/JobInfoTab';
@@ -48,6 +50,7 @@ export default function RecruitmentDetail() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { adminClubId, adminClub } = useAdmin();
+  const { toast, show: showToast } = useToast();
 
   const rawTab = params.get('tab') as Tab | null;
   const tab: Tab = (rawTab && TABS.some(t => t.key === rawTab)) ? rawTab : 'applicants';
@@ -55,6 +58,8 @@ export default function RecruitmentDetail() {
   const [recruitment, setRecruitment] = useState<Recruitment | null>(null);
   const [siblings, setSiblings] = useState<RecruitmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id || !adminClubId) return;
@@ -91,6 +96,22 @@ export default function RecruitmentDetail() {
 
   const onUpdate = (patch: Partial<Recruitment>) => {
     setRecruitment(prev => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  const handleDeleteRecruitment = async () => {
+    if (!id) return;
+    setDeleting(true);
+    const { error } = await supabase.from('recruitments').delete().eq('id', id);
+
+    if (error) {
+      setDeleting(false);
+      showToast(`삭제 실패: ${error.message}`, false);
+      return;
+    }
+
+    showToast('삭제되었습니다.');
+    setShowDeleteConfirm(false);
+    navigate('/admin/recruitments');
   };
 
   if (loading) {
@@ -156,6 +177,14 @@ export default function RecruitmentDetail() {
               {recruitment.status === '진행중' ? '라이브 프리뷰' : '임시저장 미리보기'}
             </Link>
           )}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-4 py-2 border border-black bg-white text-red-600 hover:bg-red-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none font-bold flex items-center gap-2"
+            title="공고 삭제"
+          >
+            <Trash2 className="w-4 h-4" />
+            공고 삭제
+          </button>
         </div>
       </header>
 
@@ -238,6 +267,46 @@ export default function RecruitmentDetail() {
           </div>
         </main>
       </div>
+
+      {/* 삭제 확인 */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm mx-4 p-8 flex flex-col gap-5">
+            <h2 className="text-xl font-black text-red-600">정말로 삭제하시겠어요?</h2>
+            <p className="font-bold text-gray-700">
+              이 공고와 관련된 모든 지원 데이터도 함께 삭제됩니다.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteRecruitment}
+                disabled={deleting}
+                className="flex-1 py-3 bg-red-600 text-white font-black hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? '삭제 중…' : '삭제하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 토스트 */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
+          <div className={`flex items-center gap-2 px-5 py-3 border-2 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
+            toast.ok ? 'bg-green-500 text-white border-black' : 'bg-red-500 text-white border-black'
+          }`}>
+            {toast.ok ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {toast.msg}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
