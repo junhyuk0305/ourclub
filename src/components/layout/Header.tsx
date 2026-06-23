@@ -139,7 +139,7 @@ export const Header = () => {
       <header className="h-16 border-b border-black flex items-center justify-between px-6 bg-white sticky top-0 z-50">
         {/* 로고 */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-500 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" />
+          <img src="/logo.svg" alt="" className="h-7 w-auto" />
           <span className="font-black text-2xl tracking-tighter ml-1">OURCLUB</span>
         </Link>
 
@@ -147,7 +147,8 @@ export const Header = () => {
         <nav className="hidden md:flex gap-8 text-sm font-bold">
           {NAV_LINKS.map(({ to, label }) => (
             <NavLink key={to} to={to} className={({ isActive }) =>
-              `transition-colors ${isActive ? 'text-orange-500 border-b-2 border-orange-500 pb-1' : 'hover:text-orange-500'}`
+              // 밑줄 공간(border-b-2 + pb-1)을 항상 확보하고 색만 토글 → active 전환 시 레이아웃 밀림 없음
+              `border-b-2 pb-1 transition-colors ${isActive ? 'text-orange-500 border-orange-500' : 'border-transparent hover:text-orange-500'}`
             }>{label}</NavLink>
           ))}
         </nav>
