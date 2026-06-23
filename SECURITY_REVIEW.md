@@ -40,7 +40,11 @@
 
 ## 1b. ⚠️ Medium — 정보 노출 (Information Disclosure): 익명 전체공개 테이블
 
-**근거**: SELECT 정책이 `USING (true)`라 **로그인 없이(anon 키) 전체 조회 가능**. 원격 probe로 실제 행이 반환됨을 확인.
+> ✅ **[수정 — 2026-06-23]** `club_members`·`sessions`·`attendances` SELECT 를 본인/같은 동아리 구성원/운영진/마스터로 제한하는 마이그레이션 작성:
+> `supabase/migrations/20260623000000_security_restrict_anon_reads.sql` (SECURITY DEFINER 헬퍼 `app_is_club_member`/`app_is_club_admin`/`app_is_global_admin` + club_members UPDATE WITH CHECK 보강).
+> 학생 코드 체크인·운영진 화면 모두 호환(영향 검토 완료). **남은 작업: 원격 DB 적용 + anon 재probe로 [] 확인.** `pulse_responses` 는 데이터 없음(현재 안전), `applications/events/projects` 레거시는 미처리.
+
+**근거**: SELECT 정책이 `USING (true)`라 **로그인 없이(anon 키) 전체 조회 가능**. 원격 probe로 실제 행이 반환됨을 확인 (재확인 2026-06-23: club_members·sessions.attendance_code·attendances 노출 live 재현).
 
 | 테이블 | 노출 | 비고 |
 |--------|------|------|

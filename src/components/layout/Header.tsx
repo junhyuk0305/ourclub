@@ -99,7 +99,7 @@ export const Header = () => {
 
   const activeAlerts = alerts.filter(a => {
     const recs = Array.isArray(a.clubs?.recruitments) ? a.clubs.recruitments : [];
-    return recs.some(r => ['진행중', '모집중'].includes(r.status));
+    return recs.some(r => ['진행중'].includes(r.status));
   });
   const unreadCount = notifications.filter(n => !n.is_read).length;
   const dotVisible = activeAlerts.length > 0 || unreadCount > 0;
@@ -221,7 +221,7 @@ export const Header = () => {
                       ) : activeAlerts.length > 0 ? (
                         activeAlerts.map(a => {
                           const recs = Array.isArray(a.clubs?.recruitments) ? a.clubs.recruitments : [];
-                          const activeRec = recs.find(r => ['진행중', '모집중'].includes(r.status));
+                          const activeRec = recs.find(r => ['진행중'].includes(r.status));
                           const dDay = activeRec?.deadline
                             ? Math.ceil((new Date(activeRec.deadline).getTime() - Date.now()) / 86400000)
                             : null;

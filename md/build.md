@@ -1,5 +1,12 @@
 # 웹빌더 기능 명세서 (Functional Specification)
 
+> ⚠️ **기획 문서 — 현행 구현과 대조 필요.** 실제 1-Page 웹빌더는 `/workspace`
+> (`src/pages/admin/Workspace.tsx`, `src/components/blockKit.tsx`, `src/lib/widgetPresets.ts`).
+> 구현 확인된 위젯군: **텍스트 · 통계 · 이미지 · CTA/히어로 · 버튼 · FAQ · 스페이서**(각 스타일 프리셋 + 스크롤 등장 효과 `data-fx`).
+> 저장 모델: `club_pages.blocks`(jsonb), 자동 저장(디바운스) + 발행/비공개.
+> 아래 항목 중 **Undo/Redo · 본문 폭 프리셋 · 위젯별 SEO 메타**는 미확인(아스피레이션 가능) — 실제 패널과 대조할 것.
+> (구 `web.md`("NextBuilder" 12위젯 템플릿)는 타 제품 일반 템플릿이라 폐기함.)
+
 ## 1. 공통 시스템 및 기본 규칙
 * **드래그 앤 드롭(Drag & Drop):** 위젯 간 배치 순서 변경 및 레이아웃 수정 인터랙션 지원
 * **히스토리 관리(Undo/Redo):** 편집 중 작업 단계 복구 및 재실행 기능 (단축키 및 UI 지원)

@@ -3,7 +3,7 @@
 > **문서 목적**: oc 물고기 심볼을 중심으로 한 로고 시스템·상징 체계·적용 규정 정립
 > **작성 기준일**: 2026. 06. 01
 > **상위 문서**: [OURCLUB_Brand_Identity.md](OURCLUB_Brand_Identity.md) (브랜드 철학·미션·보이스)
-> **디자인 시스템**: [md/attend.md](md/attend.md) (모던 브루탈리즘 UI 토큰)
+> **디자인 시스템**: [md/design-system.md](md/design-system.md) (모던 브루탈리즘 UI 토큰)
 
 추상적 약속("검증된 신뢰")을 하나의 살아있는 심볼로 압축한다 —
 **검증된 주황색 바다에서 헤엄치는 물고기.**
@@ -100,7 +100,7 @@
 
 ---
 
-## PART 4. 컬러 시스템 (연동: attend.md)
+## PART 4. 컬러 시스템 (연동: design-system.md)
 
 | 토큰 | HEX | Tailwind | 역할 |
 |------|-----|----------|------|
@@ -207,4 +207,4 @@ brand/
 ---
 
 *본 문서는 OURCLUB 비주얼 아이덴티티의 기준이다. 브랜드 철학·보이스는 [OURCLUB_Brand_Identity.md](OURCLUB_Brand_Identity.md),*
-*UI 토큰은 [md/attend.md](md/attend.md)를 함께 따른다.*
+*UI 토큰은 [md/design-system.md](md/design-system.md)를 함께 따른다.*

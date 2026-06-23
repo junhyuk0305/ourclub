@@ -27,6 +27,7 @@ const ProfileSetup = lazy(() => import('./pages/public/ProfileSetup'));
 const ClubSetup = lazy(() => import('./pages/public/ClubSetup'));
 const ClubJoin = lazy(() => import('./pages/public/ClubJoin'));
 const ClubRegister = lazy(() => import('./pages/public/ClubRegister'));
+const CorpRegister = lazy(() => import('./pages/public/CorpRegister'));
 const ClubDemoPage = lazy(() => import('./pages/public/ClubDemoPage'));
 // user
 const MyPage = lazy(() => import('./pages/user/MyPage'));
@@ -59,6 +60,7 @@ const Overview = lazy(() => import('./pages/master/Overview'));
 const ClubsAdmin = lazy(() => import('./pages/master/ClubsAdmin'));
 const Registrations = lazy(() => import('./pages/master/Registrations'));
 const JoinRequests = lazy(() => import('./pages/master/JoinRequests'));
+const CorpRequests = lazy(() => import('./pages/master/CorpRequests'));
 
 // 미로그인 시 로그인 페이지로 보내되, 원래 가려던 위치를 기억
 function RedirectToLogin() {
@@ -203,8 +205,10 @@ function AppRoutes() {
           <Route path="/master/clubs"         element={<MasterRoute><ClubsAdmin /></MasterRoute>} />
           <Route path="/master/registrations" element={<MasterRoute><Registrations /></MasterRoute>} />
           <Route path="/master/join-requests"  element={<MasterRoute><JoinRequests /></MasterRoute>} />
+          <Route path="/master/corp-requests"  element={<MasterRoute><CorpRequests /></MasterRoute>} />
 
           {/* 기업 */}
+          <Route path="/corp/register"  element={<RequireAuth><CorpRegister /></RequireAuth>} />
           <Route path="/corp/dashboard" element={<CorpRoute><CorpDashboard /></CorpRoute>} />
           <Route path="/corp/scouts"    element={<CorpRoute><CorpScouts /></CorpRoute>} />
           <Route path="/corp/*"         element={<Navigate to="/corp/dashboard" replace />} />

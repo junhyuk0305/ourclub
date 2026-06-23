@@ -4,6 +4,7 @@ import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRigh
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
 
 type SetupState =
   | { kind: 'loading' }
@@ -23,6 +24,7 @@ function fmt(iso: string) {
 
 export default function ClubSetup() {
   const { user } = useAuth();
+  const { refreshClub } = useAdmin();
   const navigate = useNavigate();
   const [state, setState] = useState<SetupState>({ kind: 'loading' });
 
@@ -38,7 +40,9 @@ export default function ClubSetup() {
         .eq('status', '활동중')
         .maybeSingle();
 
-      if (member) { navigate('/admin/dashboard', { replace: true }); return; }
+      // 승인 직후 운영진이 된 경우: AdminContext를 먼저 갱신해야 AdminRoute가
+      // isAdmin=true를 보고 통과시킨다. (갱신 없이 navigate하면 /club-setup로 되튕김)
+      if (member) { await refreshClub(); navigate('/admin/dashboard', { replace: true }); return; }
 
       // 2. 등록 신청 대기 중?
       const { data: reg } = await supabase
@@ -75,7 +79,7 @@ export default function ClubSetup() {
 
       setState({ kind: 'select' });
     }
-  }, [user, navigate]);
+  }, [user, navigate, refreshClub]);
 
   // 최초 진입 시 1회 확인
   useEffect(() => { check(); }, [check]);
@@ -233,7 +237,7 @@ export default function ClubSetup() {
           <div className="flex-1">
             <h2 className="text-2xl font-black mb-2">동아리에 가입하고 싶어요</h2>
             <p className="font-bold text-gray-500 leading-relaxed">
-              모집 중인 동아리를 둘러보고 지원하세요. 합격하면 자동으로 부원이 됩니다.
+              모집 중인 동아리를 둘러보고 지원하세요. 합격하면 운영진이 부원으로 등록해 드려요.
             </p>
           </div>
           <div className="flex items-center justify-center gap-2 py-4 px-6 bg-yellow-400 text-black font-black border-2 border-black group-hover:bg-black group-hover:text-yellow-400 transition-colors whitespace-nowrap">

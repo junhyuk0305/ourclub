@@ -1,3 +1,9 @@
+# 디자인 시스템 — 모던 브루탈리즘 UI 토큰
+
+> OURCLUB 전 화면에 적용되는 시각 언어·타이포·컬러·여백·인터랙션 토큰 정의.
+> (구 파일명 `attend.md` → `design-system.md`로 변경. 출처: Header/Footer/Modal 등 공통 컴포넌트 실측)
+> UI/UX 진단은 [ux-audit-report.md](ux-audit-report.md) 참고.
+
 핵심 디자인 언어:
 - **모던 브루탈리즘 (Modern Brutalism):** `border-[3px] border-black`, `shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]` (Modal), `shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]` (Header 로고, 로그인/가입 버튼) 등 두껍고 명확한 경계선과 입체적인 그림자 효과를 통해 강렬하고 견고한 느낌을 줍니다. 이는 모던 브루탈리즘 디자인의 핵심 시각적 특징으로 보입니다.
 - **1px 실선 활용:** `h-16 border-b border-black` (Header), `border-t border-black` (Footer), `divide-y md:divide-y-0 md:divide-x divide-black` (Footer 섹션 구분) 등 얇은 실선을 사용하여 UI 요소 간의 구분을 명확히 하고 깔끔한 시각적 계층을 형성합니다.

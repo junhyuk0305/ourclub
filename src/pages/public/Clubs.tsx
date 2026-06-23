@@ -30,7 +30,7 @@ interface ClubDisplay {
 }
 
 function toDisplay(row: ClubRow): ClubDisplay {
-  const active = row.recruitments.filter(r => ['진행중', '모집중'].includes(r.status));
+  const active = row.recruitments.filter(r => ['진행중'].includes(r.status));
   const nearest = active
     .filter(r => r.deadline)
     .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];

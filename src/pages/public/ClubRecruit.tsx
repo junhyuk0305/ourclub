@@ -60,7 +60,7 @@ interface Review {
   profiles?: { name: string | null } | null;
 }
 
-const ACTIVE_STATUSES = ['진행중', '모집중'];
+const ACTIVE_STATUSES = ['진행중'];
 const dDay = (deadline: string | null): number | null =>
   deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : null;
 

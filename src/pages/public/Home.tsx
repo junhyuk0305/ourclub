@@ -289,7 +289,7 @@ const ClubCarousel = () => {
             logo_url: string | null; one_line_desc: string | null; is_certified: boolean;
             recruitments: { id: string; status: string; deadline: string | null }[];
           }[]).map(row => {
-            const active = (row.recruitments ?? []).filter(r => ['진행중', '모집중'].includes(r.status));
+            const active = (row.recruitments ?? []).filter(r => ['진행중'].includes(r.status));
             const nearest = active
               .filter(r => r.deadline)
               .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];

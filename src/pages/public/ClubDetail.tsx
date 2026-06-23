@@ -83,7 +83,7 @@ export default function ClubDetail() {
           .from('recruitments')
           .select('id, title, generation, deadline, status')
           .eq('club_id', clubData.id)
-          .in('status', ['진행중', '모집중'])
+          .in('status', ['진행중'])
           .order('created_at', { ascending: false })
           .limit(1),
         supabase

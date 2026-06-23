@@ -1,5 +1,15 @@
 # Supabase RLS Policy 현황 및 수정 내역
 
+> ⚠️ **시점 스냅샷.** 아래 정책 표는 특정 시점 덤프이며 현행 코드와 일부 어긋난다.
+> - **표에 없으나 코드가 쓰는 테이블:** `club_registration_requests`, `club_join_requests`,
+>   `attendance_excuse_requests`, `session_targets`, `notifications`, `club_alerts`,
+>   `club_custom_fields`, `club_member_custom_values`, 뷰 `sessions_with_counts`.
+> - **표에 있으나 현행 앱이 쓰지 않는 레거시 추정 테이블:** `applications`, `events`,
+>   `event_registrations`, `projects`, `users`(현행 인증은 `profiles` 사용). → 정리 검토 대상.
+> - 사용 RPC: `approve_club_registration`, `pull_applicants_to_members`, `add_application_memo`,
+>   `approve_excuse_request`, `delete_own_account`, `is_master()`.
+> 최신 정책은 Supabase 대시보드 또는 `supabase/migrations/`를 정본으로 본다.
+
 ## 적용 방법
 
 ```bash

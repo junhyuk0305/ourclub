@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, ClipboardList, Users, LogOut, LayoutDashboard, Building2 } from 'lucide-react';
+import { Shield, ClipboardList, Users, LogOut, LayoutDashboard, Building2, Briefcase } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const NAV = [
@@ -8,6 +8,7 @@ const NAV = [
   { path: '/master/clubs',         label: '동아리 관리',     icon: Building2 },
   { path: '/master/registrations', label: '동아리 등록 심사', icon: ClipboardList },
   { path: '/master/join-requests', label: '합류 신청 심사',   icon: Users },
+  { path: '/master/corp-requests', label: '기업 가입 심사',   icon: Briefcase },
 ];
 
 export function MasterLayout({ children }: { children: React.ReactNode }) {

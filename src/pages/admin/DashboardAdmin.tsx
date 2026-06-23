@@ -48,7 +48,7 @@ export default function DashboardAdmin() {
       .from('recruitments')
       .select('id')
       .eq('club_id', clubId)
-      .eq('status', '모집중');
+      .eq('status', '진행중');
 
     let applicantCount = 0;
     if (recruitIds && recruitIds.length > 0) {

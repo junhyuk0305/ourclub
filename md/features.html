@@ -36,6 +36,7 @@
   .badge-user    { background: #dcfce7; color: #15803d; }
   .badge-admin   { background: #fff7ed; color: #c2410c; }
   .badge-corp    { background: #f3e8ff; color: #7e22ce; }
+  .badge-master  { background: #f1f5f9; color: #475569; }
   .role-header h2 { font-size: 15px; font-weight: 700; }
   .role-header .desc { font-size: 12px; color: #666; margin-left: auto; }
 
@@ -76,7 +77,7 @@
   /* Summary bar */
   .summary {
     display: flex; gap: 12px; flex-wrap: wrap;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
   .summary-item {
     background: #fff; border: 1px solid #e8e8e8; border-radius: 8px;
@@ -92,6 +93,14 @@
     padding: 2px 8px; border-radius: 4px; font-family: monospace;
   }
 
+  /* Note box */
+  .note {
+    background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+    padding: 12px 16px; font-size: 12px; color: #92400e; margin-bottom: 28px;
+    line-height: 1.7;
+  }
+  .note b { color: #78350f; }
+
   footer {
     text-align: center; font-size: 11px; color: #bbb;
     padding: 20px 0 40px;
@@ -103,26 +112,33 @@
 <header>
   <div>
     <h1>Our<span>Club</span> &nbsp;구현 기능 현황</h1>
-    <p>동아리-기업 B2B 매칭 플랫폼 · 역할별 페이지 및 기능 목록</p>
+    <p>동아리 운영 + 동아리-기업 B2B 매칭 플랫폼 · 역할별 페이지 및 기능 목록</p>
   </div>
-  <div class="date">기준일: 2026-04-30</div>
+  <div class="date">기준일: 2026-06-09 · 코드 기준 동기화</div>
 </header>
 
 <main>
 
   <!-- Summary -->
   <div class="summary">
-    <div class="summary-item"><div class="num">25</div><div class="label">구현된 페이지</div></div>
-    <div class="summary-item"><div class="num">4</div><div class="label">사용자 역할</div></div>
-    <div class="summary-item"><div class="num">10</div><div class="label">Admin 기능 모듈</div></div>
+    <div class="summary-item"><div class="num">5</div><div class="label">사용자 역할</div></div>
+    <div class="summary-item"><div class="num">15</div><div class="label">Admin 기능 모듈</div></div>
+    <div class="summary-item"><div class="num">5</div><div class="label">Master 운영 모듈</div></div>
     <div class="summary-item"><div class="num">3</div><div class="label">글로벌 컨텍스트</div></div>
     <div class="summary-item">
       <div class="stack">
         <span>React</span><span>TypeScript</span><span>Supabase</span>
-        <span>Tailwind</span><span>React Router</span>
+        <span>Tailwind</span><span>React Router</span><span>Vite</span>
       </div>
       <div class="label" style="margin-top:8px">Tech Stack</div>
     </div>
+  </div>
+
+  <div class="note">
+    <b>역할 모델 메모.</b> 역할은 단일 컬럼이 아니라 <b>독립 판정</b>으로 결정됩니다 —
+    학생(로그인) / 운영진(<code>club_members.role='운영진'</code>, AdminContext) /
+    기업(<code>corp_members</code>, CorpContext) / 마스터(<code>global_admins</code>, AuthContext).
+    한 계정이 여러 역할을 동시에 가질 수 있습니다. 컨텍스트 3종 = AuthContext · AdminContext · CorpContext.
   </div>
 
   <!-- PUBLIC -->
@@ -138,10 +154,10 @@
         <div class="page-name"><span class="icon">🏠</span> 홈</div>
         <div class="route">/</div>
         <ul>
-          <li>검증 동아리 큐레이션 (필터 4종)</li>
+          <li>검증 동아리 큐레이션 (카테고리 필터)</li>
           <li>마퀴 공지 배너</li>
           <li>스토리 아카이브 캐러셀</li>
-          <li>통계 카드 (동아리 수, B2B 완료 건)</li>
+          <li>통계 카드 (인증 동아리 수 등)</li>
           <li>지원하기 / 다음 모집 알림 설정 CTA</li>
         </ul>
       </div>
@@ -153,8 +169,8 @@
           <li>키워드 검색</li>
           <li>카테고리 필터 (IT·마케팅·창업·문화 등)</li>
           <li>모집중 동아리만 보기 토글</li>
-          <li>스크랩(북마크) 기능</li>
-          <li>인증 배지 · 투명성 리포트 링크</li>
+          <li>스크랩(북마크) — 대상은 동아리(CLUB)만</li>
+          <li>인증 배지 표시</li>
         </ul>
       </div>
 
@@ -162,11 +178,11 @@
         <div class="page-name"><span class="icon">📋</span> 동아리 상세</div>
         <div class="route">/clubs/:id</div>
         <ul>
-          <li>풀스크린 히어로 커버</li>
-          <li>스티키 상단바 (D-Day + 지원 CTA)</li>
-          <li>3-단 핵심 통계 (프로젝트·인원·투명회비)</li>
-          <li>수주 프로젝트 포트폴리오 캐러셀</li>
-          <li>동아리 소개 블록 (빌더 기반)</li>
+          <li>웹빌더 블록 기반 소개 페이지 렌더링</li>
+          <li>호버 시 노출되는 상단 내비</li>
+          <li>활성 모집 시 D-Day + '지원서 작성하기' CTA</li>
+          <li>모집 없을 시 '모집 마감' 비활성 표시</li>
+          <li>대표 스토리 · 스토리 그리드</li>
         </ul>
       </div>
 
@@ -175,19 +191,21 @@
         <div class="route">/clubs/:id/recruit</div>
         <ul>
           <li>진행중 공고 목록 (D-N 카운트다운)</li>
-          <li>파이프라인 단계 미리보기</li>
           <li>JD 상세 모달 (마크다운 렌더링)</li>
-          <li>마감 공고 비활성화 처리</li>
+          <li>모달 내 '지원폼 작성하기' → apply?rid= 이동</li>
+          <li>파이프라인 단계 미리보기</li>
+          <li>마감 공고 별도 구분 노출</li>
         </ul>
       </div>
 
       <div class="feature-card highlight">
         <div class="page-name"><span class="icon">✍️</span> 지원서 작성 · 제출</div>
-        <div class="route">/clubs/:id/apply</div>
+        <div class="route">/clubs/:id/apply?rid=</div>
         <ul>
-          <li>비로그인 / 마감 / 중복지원 안내 분기</li>
-          <li>기본 정보 자동완성 (프로필 연동)</li>
-          <li>동적 질문 폼 (단답·장문)</li>
+          <li>상태 분기: 비로그인 / 임시저장 / 모집전 / 마감 / 중복지원</li>
+          <li>기본 정보 자동완성 (프로필 연동, 재입력 가능)</li>
+          <li>동적 질문 폼 (단답·장문·선택·다중·파일·동의 등)</li>
+          <li>발행본(deployed_form_schema) 우선 렌더</li>
           <li>지원 완료 상태 화면</li>
         </ul>
       </div>
@@ -200,29 +218,85 @@
           <li>검색 · 페이지네이션</li>
           <li>매칭 성공 사례 캐러셀</li>
           <li>수주 제안 모달 (운영진 전용)</li>
-          <li>기업 프로젝트 등록 안내</li>
         </ul>
       </div>
 
       <div class="feature-card">
         <div class="page-name"><span class="icon">📰</span> 커뮤니티 스토리</div>
-        <div class="route">/stories</div>
+        <div class="route">/stories · /stories/:id · /clubs/:id/stories</div>
         <ul>
-          <li>키워드 검색</li>
-          <li>이번 주 하이라이트 슬라이더</li>
+          <li>키워드 검색 · 하이라이트 슬라이더</li>
           <li>메이슨리 그리드 피드</li>
-          <li>좋아요·댓글·공유·북마크 액션</li>
+          <li>스토리 상세 (조회수)</li>
+          <li>동아리별 스토리 목록</li>
         </ul>
       </div>
 
       <div class="feature-card">
         <div class="page-name"><span class="icon">🔐</span> 온보딩 / 로그인</div>
-        <div class="route">/login</div>
+        <div class="route">/login · /profile-setup</div>
         <ul>
-          <li>역할 선택 (학생·운영진·기업)</li>
-          <li>이메일 회원가입 / 로그인</li>
-          <li>비밀번호 표시 토글</li>
-          <li>에러 메시지 표시</li>
+          <li>이메일 회원가입 / 로그인 / 비밀번호 찾기</li>
+          <li>Google OAuth</li>
+          <li>프로필 작성 (대학·전공·학적·연락처·생년월일 필수)</li>
+          <li>로그인·가입 후 기본 도착지 /mypage (역할 무관)</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">📄</span> 도움말 · 약관 · 데모</div>
+        <div class="route">/getting-started … /privacy · /terms · /demo</div>
+        <ul>
+          <li>정적 안내 페이지 12종 (data/infoPages.ts)</li>
+          <li>가입·합류·등록·모집·지원자관리·기업가입·약관 등</li>
+          <li>동아리 페이지 데모 (/demo)</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ONBOARDING / CLUB LIFECYCLE (로그인 공통) -->
+  <div class="role-section">
+    <div class="role-header">
+      <span class="role-badge badge-user">Auth</span>
+      <h2>운영 시작 · 동아리 라이프사이클 (로그인 공통)</h2>
+      <span class="desc">로그인 필요 · 역할 진입 분기</span>
+    </div>
+    <div class="feature-grid">
+
+      <div class="feature-card highlight">
+        <div class="page-name"><span class="icon">🚪</span> 운영 시작 분기</div>
+        <div class="route">/club-setup</div>
+        <ul>
+          <li>부원 가입(→/clubs) / 기존 동아리 합류 / 새 동아리 등록 분기</li>
+          <li>등록 심사 대기 상태 표시 (검토대기·검토중·보완요청)</li>
+          <li>합류 승인 대기 상태 표시 (대기중)</li>
+          <li>대기 중 12초 폴링 → 승인 시 대시보드로</li>
+          <li>이미 운영진이면 /admin/dashboard 자동 이동</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">➕</span> 새 동아리 등록</div>
+        <div class="route">/club-register</div>
+        <ul>
+          <li>3-step: 기본정보 / 안전 서류 4종 / 안전 설문</li>
+          <li>서류 업로드 (storage: certification-docs)</li>
+          <li>club_registration_requests 제출</li>
+          <li>보완요청 시 수정 후 재제출</li>
+          <li>심사 약 2~3주 → 마스터 승인 시 동아리·운영진 생성</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">👥</span> 기존 동아리 합류</div>
+        <div class="route">/club-join</div>
+        <ul>
+          <li>등록된 동아리 검색·선택</li>
+          <li>희망 직책 + 한 줄 소개 입력</li>
+          <li>club_join_requests 제출</li>
+          <li>해당 동아리 기존 운영진/마스터 승인 필요</li>
         </ul>
       </div>
 
@@ -242,13 +316,13 @@
         <div class="page-name"><span class="icon">👤</span> 마이페이지</div>
         <div class="route">/mypage</div>
         <ul>
-          <li>지원 내역 조회 (상태 배지)</li>
-          <li>출석 체크 코드 입력 (4자리)</li>
+          <li>탭 4종: 지원 내역 · 활동 및 출결 · 스크랩한 동아리 · 알림</li>
+          <li>출석 체크 코드 입력 (4자리, 만료·자격 검증)</li>
           <li>활동 이력 · 출석률 조회</li>
-          <li>스크랩한 동아리 목록 · 해제</li>
-          <li>Pulse 만족도 설문 응답 (1~5점 + 코멘트)</li>
-          <li>프로필 수정 (이름·연락처·학교·전공·스킬)</li>
-          <li>알림 설정 탭 (준비중)</li>
+          <li>알림 탭 = 알림 히스토리(notifications) — '설정 탭' 아님</li>
+          <li>Pulse 만족도 응답 배너 (활동중 부원 + 진행중 설문 시)</li>
+          <li>역할 전환 배너 (운영/기업/등록·합류 유도)</li>
+          <li>프로필 수정 모달 · 로그아웃 · 회원 탈퇴</li>
         </ul>
       </div>
 
@@ -260,7 +334,7 @@
     <div class="role-header">
       <span class="role-badge badge-admin">Admin</span>
       <h2>동아리 운영진</h2>
-      <span class="desc">로그인 필요 · /admin/*</span>
+      <span class="desc">로그인 + 프로필 완성 + 운영진 멤버십 · /admin/* · /workspace</span>
     </div>
     <div class="feature-grid">
 
@@ -268,9 +342,10 @@
         <div class="page-name"><span class="icon">📊</span> 대시보드</div>
         <div class="route">/admin/dashboard</div>
         <ul>
-          <li>핵심 지표 카드 4종 (부원·지원자·B2B·Pulse)</li>
-          <li>최근 지원자 테이블 (5명)</li>
+          <li>핵심 지표 카드 (부원·지원자·B2B·Pulse)</li>
+          <li>최근 지원자 테이블</li>
           <li>퀵 내비게이션 링크</li>
+          <li>다중 동아리 운영 시 활성 동아리 전환</li>
         </ul>
       </div>
 
@@ -278,79 +353,91 @@
         <div class="page-name"><span class="icon">🖥️</span> 1-Page 웹빌더</div>
         <div class="route">/workspace</div>
         <ul>
-          <li>드래그앤드롭 블록 편집기</li>
-          <li>위젯 8종 (인트로·텍스트·통계·CTA·이미지·D-Day·갤러리·스페이서)</li>
-          <li>히어로 · 커버 · 해시태그 편집</li>
-          <li>테마 컬러 선택</li>
-          <li>5초 디바운스 자동 저장</li>
-          <li>발행 / 비공개 전환</li>
-          <li>라이브 프리뷰 링크</li>
+          <li>드래그앤드롭 블록 편집기 (블록킷)</li>
+          <li>위젯군: 텍스트·통계·이미지·CTA/히어로·버튼·FAQ·스페이서</li>
+          <li>위젯별 스타일 프리셋 + 스크롤 등장 효과(data-fx)</li>
+          <li>테마 컬러 · 커버 · 해시태그</li>
+          <li>자동 저장(디바운스) · 발행/비공개</li>
+          <li>club_pages.blocks(jsonb)로 저장</li>
         </ul>
       </div>
 
       <div class="feature-card highlight">
-        <div class="page-name"><span class="icon">🗂️</span> 리크루팅 파이프라인</div>
-        <div class="route">/admin/recruit</div>
+        <div class="page-name"><span class="icon">🗂️</span> 모집·지원 통합 관리</div>
+        <div class="route">/admin/recruitments · /admin/recruitments/:id</div>
         <ul>
-          <li>칸반 뷰 (드래그로 단계 이동)</li>
-          <li>리스트 뷰 (정렬·체크박스 멀티 선택)</li>
-          <li>지원자 상세 모달 (지원서·평가·면접 탭)</li>
-          <li>단계 이동 시 이메일 발송 (템플릿 편집)</li>
-          <li>점수 입력·메모·팀 메모 스레드</li>
-          <li>CSV 내보내기 (전체·선택)</li>
-          <li>이름·전공 검색</li>
-          <li>모집 공고 전환 드롭다운</li>
+          <li>공고 목록 (생성·복제·상태 관리)</li>
+          <li>공고 상세 4탭: 지원자 / 공고수정 / 지원서수정 / 채용프로세스</li>
+          <li>지원자: 칸반(드래그) + 리스트(정렬·체크박스) 뷰</li>
+          <li>단계 이동 시 인앱 알림 발송 (실이메일은 추후)</li>
+          <li>점수·메모(스레드)·면접질문·태그 · CSV 내보내기</li>
+          <li>구버전 /admin/recruit · /admin/form-builder → 리다이렉트</li>
         </ul>
       </div>
 
-      <div class="feature-card highlight">
-        <div class="page-name"><span class="icon">📝</span> 지원서 폼 빌더</div>
-        <div class="route">/admin/form-builder</div>
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">📝</span> 지원서 폼 빌더 (공고 상세 내)</div>
+        <div class="route">/admin/recruitments/:id (form 탭)</div>
         <ul>
-          <li>모집 공고 생성·수정·삭제</li>
-          <li>공고 상태 관리 (임시저장·모집중·마감)</li>
-          <li>파이프라인 단계 커스텀 (추가·삭제·순서변경)</li>
-          <li>질문 추가 (단답·장문형)</li>
-          <li>질문 드래그 재정렬</li>
-          <li>필수 여부 설정</li>
-          <li>발행·재발행 버전 관리</li>
-          <li>마크다운 모집 요강 작성</li>
+          <li>질문 추가·재정렬·필수 설정 (form_schema)</li>
+          <li>마크다운 모집 요강</li>
+          <li>발행 시 deployed_form_schema 스냅샷 + form_version=1</li>
+          <li>재발행 시 버전 증가 + 변경 경고 모달</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">📈</span> 리크루팅 대시보드 · 애널리틱스</div>
+        <div class="route">/admin/recruit-dashboard · /admin/recruit-analytics · /admin/recruit-page</div>
+        <ul>
+          <li>단계별 지원자·합격률 요약</li>
+          <li>주간 유입·유입경로·문항 응답 분포</li>
+          <li>모집 랜딩(채용 포털) 카피 빌더</li>
         </ul>
       </div>
 
       <div class="feature-card">
         <div class="page-name"><span class="icon">✅</span> 출석 관리</div>
-        <div class="route">/admin/attendance</div>
+        <div class="route">/admin/sessions/new · /admin/sessions · /admin/sessions/:id</div>
         <ul>
-          <li>세션 생성 (4자리 코드 + 10분 타이머)</li>
-          <li>라이브 세션 화면 (대형 코드 표시)</li>
-          <li>실시간 출석 인원 카운트</li>
-          <li>출석 마감</li>
-          <li>과거 세션 출결 현황 조회</li>
-          <li>개별 출결 수동 수정 (출석·지각·결석)</li>
+          <li>세션 생성: 4자리 코드 + 만료(기본 10분, 1~180분)</li>
+          <li>대상 부원 지정(session_targets)</li>
+          <li>라이브 코드 화면 + 카운트다운</li>
+          <li>세션 목록·상세, 출결 수동 수정</li>
+          <li>상태: 출석 · 지각 · 결석 · 공결</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">📨</span> 결석 사유 관리</div>
+        <div class="route">/admin/attendance-excuses</div>
+        <ul>
+          <li>부원 결석/공결 사유 신청 검토</li>
+          <li>리스트 + 캘린더 뷰</li>
+          <li>승인(공결 처리) / 반려(사유 메모)</li>
+          <li>상태: 대기 · 승인 · 반려 · 취소</li>
         </ul>
       </div>
 
       <div class="feature-card">
         <div class="page-name"><span class="icon">👥</span> 부원 관리</div>
-        <div class="route">/admin/members</div>
+        <div class="route">/admin/members · /admin/members-analytics</div>
         <ul>
-          <li>부원 목록 테이블 (검색·필터)</li>
-          <li>기수·직책·역할 인라인 편집</li>
-          <li>상태 변경 (활동중·수료·탈퇴·활동정지)</li>
-          <li>출석률 프로그레스 바</li>
-          <li>이메일로 부원 초대</li>
+          <li>부원 테이블 (검색·필터·인라인 편집)</li>
+          <li>기수·직책·역할·상태(활동중·수료·탈퇴 등)</li>
+          <li>이메일 초대 / 계정 없이 추가</li>
+          <li>합격자 끌어오기 (최종합격 지원자 → 부원, 수동)</li>
+          <li>커스텀 필드 · 부원 통계</li>
         </ul>
       </div>
 
       <div class="feature-card">
         <div class="page-name"><span class="icon">💼</span> B2B 프로젝트 지원</div>
-        <div class="route">/admin/b2b</div>
+        <div class="route">/admin/b2b · /admin/b2b/proposal</div>
         <ul>
-          <li>내 지원 현황 탭 (상태별 배지)</li>
-          <li>공개 프로젝트 탐색 탭</li>
-          <li>제안서 작성 (프로젝트 선택·본문 입력)</li>
-          <li>중복 지원 방지 (지원완료 배지)</li>
+          <li>공개 프로젝트 탐색 / 내 지원 현황</li>
+          <li>제안서 작성 (프로젝트 선택·본문)</li>
+          <li>중복 지원 방지</li>
         </ul>
       </div>
 
@@ -359,9 +446,8 @@
         <div class="route">/admin/feedback</div>
         <ul>
           <li>설문 생성·활성화·종료·재활성화</li>
-          <li>응답률·평균 점수·점수 분포 차트</li>
-          <li>개별 응답 목록 (익명)</li>
-          <li>자유 코멘트 수집</li>
+          <li>응답률·평균 점수·분포 차트</li>
+          <li>익명 개별 응답 · 자유 코멘트</li>
         </ul>
       </div>
 
@@ -370,8 +456,8 @@
         <div class="route">/admin/posts</div>
         <ul>
           <li>포스트 작성·수정·삭제</li>
-          <li>발행 / 임시저장 상태 토글</li>
-          <li>조회수 확인</li>
+          <li>발행 / 임시저장 토글 · 이미지</li>
+          <li>조회수</li>
         </ul>
       </div>
 
@@ -379,10 +465,72 @@
         <div class="page-name"><span class="icon">⚙️</span> 동아리 설정</div>
         <div class="route">/admin/settings</div>
         <ul>
-          <li>동아리 URL 슬러그 설정</li>
-          <li>기본 정보 (이름·유형·소개·활동장소·회비)</li>
+          <li>URL 슬러그 · 기본 정보 · 회비</li>
           <li>SNS 링크 (인스타·노션·카카오)</li>
-          <li>Super Admin 권한 양도</li>
+          <li>운영진 권한 관리</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MASTER -->
+  <div class="role-section">
+    <div class="role-header">
+      <span class="role-badge badge-master">Master</span>
+      <h2>플랫폼 운영자 (마스터)</h2>
+      <span class="desc">global_admins 등록 계정 · /master/*</span>
+    </div>
+    <div class="feature-grid">
+
+      <div class="feature-card highlight">
+        <div class="page-name"><span class="icon">🛡️</span> 운영 대시보드</div>
+        <div class="route">/master</div>
+        <ul>
+          <li>등록 심사 대기 · SLA 초과(>21일) 건수</li>
+          <li>합류 신청 대기 건수</li>
+          <li>전체 동아리 · 인증 동아리 수</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">🏷️</span> 동아리 관리</div>
+        <div class="route">/master/clubs</div>
+        <ul>
+          <li>전체 동아리 목록 (검색·필터)</li>
+          <li>인증 배지(is_certified) 토글</li>
+        </ul>
+      </div>
+
+      <div class="feature-card highlight">
+        <div class="page-name"><span class="icon">📋</span> 동아리 등록 심사</div>
+        <div class="route">/master/registrations</div>
+        <ul>
+          <li>club_registration_requests 검토</li>
+          <li>상태: 검토대기·검토중·보완요청·승인·거절</li>
+          <li>제출 서류·안전 설문 확인</li>
+          <li>승인 시 동아리 생성 + 신청자 운영진 등록 + 인증</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="page-name"><span class="icon">🤝</span> 합류 신청 심사</div>
+        <div class="route">/master/join-requests</div>
+        <ul>
+          <li>club_join_requests 검토</li>
+          <li>상태: 대기중·승인·거절</li>
+          <li>승인 시 운영진(club_members) 등록</li>
+        </ul>
+      </div>
+
+      <div class="feature-card highlight">
+        <div class="page-name"><span class="icon">💼</span> 기업 가입 심사</div>
+        <div class="route">/master/corp-requests</div>
+        <ul>
+          <li>corp_registration_requests 검토</li>
+          <li>상태: 검토대기·검토중·보완요청·승인·거절</li>
+          <li>사업자번호·담당자·사업자등록증 확인</li>
+          <li>승인 시 기업 생성 + 신청자 담당자 등록 (RPC)</li>
         </ul>
       </div>
 
@@ -394,7 +542,7 @@
     <div class="role-header">
       <span class="role-badge badge-corp">Corp</span>
       <h2>기업 담당자</h2>
-      <span class="desc">로그인 필요 · /corp/*</span>
+      <span class="desc">corp_members 소속 계정 · /corp/*</span>
     </div>
     <div class="feature-grid">
 
@@ -403,10 +551,21 @@
         <div class="route">/corp/dashboard</div>
         <ul>
           <li>발주 프로젝트 목록 · 선택</li>
-          <li>지원 동아리 칸반 보드 (미열람·검토중·미팅요청·매칭완료)</li>
-          <li>동아리 제안서 카드 (역량 태그·피치 문구)</li>
+          <li>지원 동아리 칸반 (미열람·검토중·미팅요청·매칭완료)</li>
+          <li>동아리 제안서 카드 (역량 태그·피치)</li>
           <li>채팅 요청 버튼 (미팅요청 단계)</li>
           <li>새 프로젝트 의뢰 CTA</li>
+        </ul>
+      </div>
+
+      <div class="feature-card highlight">
+        <div class="page-name"><span class="icon">📝</span> 기업 회원가입</div>
+        <div class="route">/corp/register</div>
+        <ul>
+          <li>기업명·사업자번호·담당자·(선택)사업자등록증 제출</li>
+          <li>corp_registration_requests 제출 (로그인 필요)</li>
+          <li>보완요청 시 수정 후 재제출 · 심사 상태 표시</li>
+          <li>마스터 승인 시 기업 계정 생성 → 비즈니스 센터 개방</li>
         </ul>
       </div>
 
@@ -416,17 +575,22 @@
         <ul>
           <li>동아리 풀 탐색 (이름·스킬 검색)</li>
           <li>별점·완료 B2B 건수 표시</li>
-          <li>프라이빗 프로젝트 제안 버튼</li>
+          <li>프라이빗 프로젝트 제안</li>
         </ul>
       </div>
 
+    </div>
+    <div class="note" style="margin-top:16px;margin-bottom:0;">
+      <b>기업 온보딩.</b> 마스터 승인 모델(동아리 등록과 동일) — <code>/corp/register</code> 제출 →
+      <code>/master/corp-requests</code> 심사 → 승인 RPC가 <code>corporations</code> + <code>corp_members(담당자)</code> 생성.
+      로그인 화면 '기업 회원가입' 링크가 진입점.
     </div>
   </div>
 
 </main>
 
 <footer>
-  OurClub Internal · 구현 기능 현황 · 2026-04-30
+  OurClub Internal · 구현 기능 현황 · 2026-06-09 (코드 동기화)
 </footer>
 
 </body>

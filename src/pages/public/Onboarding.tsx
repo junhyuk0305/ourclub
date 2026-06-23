@@ -232,8 +232,8 @@ export default function Onboarding() {
           {/* 기업 담당자 보조 진입 */}
           <p className="text-center font-bold text-xs text-gray-400 mt-3">
             기업 담당자이신가요?{' '}
-            <Link to="/corp/dashboard" className="text-gray-500 hover:text-purple-600 underline">
-              기업 센터 바로가기
+            <Link to="/corp/register" className="text-gray-500 hover:text-purple-600 underline">
+              기업 회원가입
             </Link>
           </p>
         </div>
