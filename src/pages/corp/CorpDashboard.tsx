@@ -402,7 +402,8 @@ export default function CorpDashboard() {
   };
 
   const updateStatus = async (appId: string, status: AppStatus) => {
-    await supabase.from('b2b_applications').update({ status }).eq('id', appId);
+    const { error } = await supabase.from('b2b_applications').update({ status }).eq('id', appId);
+    if (error) return; // 쓰기 실패 시 낙관적 반영 생략 — DB가 안 바뀌었으므로 기존 로컬값이 진실(거짓 성공 방지)
     setApplications(prev => prev.map(a => a.id === appId ? { ...a, status } : a));
     setSelectedApp(prev => (prev?.id === appId ? { ...prev, status } : prev));
   };
