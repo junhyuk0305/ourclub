@@ -12,7 +12,7 @@ import { ApplicantsTab } from '../../components/admin/recruitment/ApplicantsTab'
 import { JobInfoTab } from '../../components/admin/recruitment/JobInfoTab';
 import { FormTab } from '../../components/admin/recruitment/FormTab';
 import { PipelineTab } from '../../components/admin/recruitment/PipelineTab';
-import type { RecruitmentRow } from '../../types/recruitment';
+import { deriveRecruitStatus, type RecruitmentRow } from '../../types/recruitment';
 
 type RecruitmentSummary =
   Pick<RecruitmentRow, 'id' | 'title' | 'generation'>
@@ -126,9 +126,10 @@ export default function RecruitmentDetail() {
     );
   }
 
-  const statusStyle = recruitment.status === '진행중'
+  const derivedStatus = deriveRecruitStatus(recruitment);
+  const statusStyle = derivedStatus === '진행중'
     ? 'bg-green-500 text-white'
-    : recruitment.status === '마감'
+    : derivedStatus === '마감'
       ? 'bg-gray-400 text-white'
       : 'bg-yellow-400 text-black';
 
@@ -150,7 +151,7 @@ export default function RecruitmentDetail() {
               {recruitment.generation && <span className="text-gray-500 ml-2 text-sm">{recruitment.generation}</span>}
             </h1>
             <span className={`shrink-0 px-2 py-0.5 text-xs font-black ${statusStyle}`}>
-              {recruitment.status}
+              {derivedStatus}
             </span>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { AdminHeader } from '../../components/admin/AdminHeader';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAllIn } from '../../lib/fetchAll';
+import { deriveRecruitStatus } from '../../types/recruitment';
 import {
   LayoutDashboard, Loader, Users, CheckCircle2, XCircle, Clock, ChevronRight,
   TrendingDown, Briefcase, AlertCircle,
@@ -14,6 +15,7 @@ interface Recruitment {
   id: string;
   title: string;
   status: string;
+  deadline: string | null;
   pipeline_stages: string[] | null;
   generation: string | null;
 }
@@ -57,7 +59,7 @@ export default function RecruitDashboard() {
     setLoading(true);
     const { data: recs } = await supabase
       .from('recruitments')
-      .select('id, title, status, pipeline_stages, generation')
+      .select('id, title, status, deadline, pipeline_stages, generation')
       .eq('club_id', adminClubId)
       .order('created_at', { ascending: false });
     const recList = (recs as Recruitment[] | null) ?? [];
@@ -195,6 +197,7 @@ export default function RecruitDashboard() {
                     <tbody>
                       {stats.map(s => {
                         const rate = s.total > 0 ? (s.passed / s.total) * 100 : 0;
+                        const derivedStatus = deriveRecruitStatus(s.recruitment);
                         return (
                           <tr key={s.recruitment.id} className="border-b border-gray-100 hover:bg-orange-50 transition-colors">
                             <td className="px-4 py-3">
@@ -203,11 +206,11 @@ export default function RecruitDashboard() {
                             </td>
                             <td className="px-4 py-3">
                               <span className={`text-xs font-black px-2 py-1 border ${
-                                s.recruitment.status === '진행중' ? 'bg-green-100 border-green-400 text-green-700' :
-                                s.recruitment.status === '마감' ? 'bg-gray-100 border-gray-300 text-gray-500' :
+                                derivedStatus === '진행중' ? 'bg-green-100 border-green-400 text-green-700' :
+                                derivedStatus === '마감' ? 'bg-gray-100 border-gray-300 text-gray-500' :
                                 'bg-yellow-100 border-yellow-400 text-yellow-700'
                               }`}>
-                                {s.recruitment.status}
+                                {derivedStatus}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right font-black text-sm">{s.total}</td>

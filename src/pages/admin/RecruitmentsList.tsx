@@ -9,7 +9,7 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAllIn } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
-import { defaultFormSchema, type RecruitmentRow } from '../../types/recruitment';
+import { defaultFormSchema, deriveRecruitStatus, type RecruitmentRow } from '../../types/recruitment';
 
 type Recruitment =
   Pick<RecruitmentRow,
@@ -124,14 +124,14 @@ export default function RecruitmentsList() {
   };
 
   const filtered = recruitments.filter(r => {
-    if (filter !== '전체' && r.status !== filter) return false;
+    if (filter !== '전체' && deriveRecruitStatus(r) !== filter) return false;
     if (search && !r.title.includes(search) && !(r.generation ?? '').includes(search)) return false;
     return true;
   });
 
   const totalApplicants = recruitments.reduce((s, r) => s + (r.applicant_count ?? 0), 0);
-  const ongoingCount = recruitments.filter(r => r.status === '진행중').length;
-  const closedCount = recruitments.filter(r => r.status === '마감').length;
+  const ongoingCount = recruitments.filter(r => deriveRecruitStatus(r) === '진행중').length;
+  const closedCount = recruitments.filter(r => deriveRecruitStatus(r) === '마감').length;
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
@@ -332,9 +332,10 @@ function SummaryCard({ label, value, icon, accent }: { label: string; value: num
 }
 
 function RecruitmentRow({ recruitment, applicantCount }: { recruitment: Recruitment; applicantCount: number }) {
-  const statusStyle = recruitment.status === '진행중'
+  const derivedStatus = deriveRecruitStatus(recruitment);
+  const statusStyle = derivedStatus === '진행중'
     ? 'bg-green-100 border-green-400 text-green-700'
-    : recruitment.status === '마감'
+    : derivedStatus === '마감'
       ? 'bg-gray-100 border-gray-300 text-gray-700'
       : 'bg-yellow-100 border-yellow-400 text-yellow-700';
 
@@ -349,7 +350,7 @@ function RecruitmentRow({ recruitment, applicantCount }: { recruitment: Recruitm
       {/* 상태 */}
       <div className="shrink-0">
         <span className={`inline-block px-3 py-1.5 text-xs font-black border ${statusStyle}`}>
-          {recruitment.status}
+          {derivedStatus}
         </span>
       </div>
 
@@ -369,7 +370,7 @@ function RecruitmentRow({ recruitment, applicantCount }: { recruitment: Recruitm
           {deadline && (
             <span>
               마감 {formatDate(deadline, 'monthDay')}
-              {daysLeft !== null && recruitment.status === '진행중' && (
+              {daysLeft !== null && derivedStatus === '진행중' && (
                 <span className={`ml-1 ${daysLeft <= 3 ? 'text-red-500' : 'text-orange-500'}`}>
                   (D-{daysLeft >= 0 ? daysLeft : 0})
                 </span>

@@ -52,6 +52,20 @@ export interface RecruitmentRow {
   deployed_form_schema: unknown[] | null;
 }
 
+/**
+ * 공고의 표시용(파생) 상태. 마감 판정은 deadline 단일기준.
+ * - status가 '임시저장'이면 '임시저장'
+ * - deadline이 존재하고 이미 경과했으면 '마감'
+ * - 그 외('진행중'이고 deadline 미존재/미경과)는 '진행중'
+ * (화면 표시/필터/카운트 전용. DB의 status 값을 바꾸지 않는다.)
+ */
+export type DerivedRecruitStatus = '임시저장' | '진행중' | '마감';
+export function deriveRecruitStatus(r: { status: string | null; deadline: string | null }): DerivedRecruitStatus {
+  if (r.status === '임시저장') return '임시저장';
+  if (r.deadline && new Date(r.deadline) < new Date()) return '마감';
+  return '진행중';
+}
+
 export const DEFAULT_SOURCE_OPTIONS = ['SNS', '홈페이지', '에브리타임', '링커리어', '기타'];
 
 export const EMAIL_PATTERN = '^[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\\.)+[A-Za-z]{2,}$';
