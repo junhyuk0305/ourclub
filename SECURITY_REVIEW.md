@@ -8,7 +8,7 @@
 
 ## 0. 요약 (Executive Summary)
 
-**전반 등급: ✅ 양호 (권한 모델은 견고)** — 원격 점검 결과 **이전 Critical 2건(자가 승격·마스터 자가등록)은 DB에서 차단 확인**. 남은 이슈는 **정보 노출(Info Disclosure, Medium)** — 일부 테이블이 익명에게 전체 공개됨.
+**전반 등급: ✅ 양호 (권한 모델은 견고)** — 원격 점검 결과 **이전 Critical 2건(자가 승격·마스터 자가등록)은 DB에서 차단 확인**. **정보 노출(Info Disclosure, Medium)도 2026-06-23 probe로 차단 확인**(핵심 3테이블 anon=`[]`). 남은 이슈는 레거시 테이블 정리·rate limit·로깅 보강(Medium 이하).
 
 | 영역 | 상태 |
 |------|------|
@@ -17,7 +17,7 @@
 | RPC 함수 호출자 검증 | ✅ 양호 (`handover`·`approve_club_registration` 모두 권한 체크) |
 | XSS 방어 | ✅ 양호 (richtext=DOMPurify, markdown=escapeHtml 선처리) |
 | **RLS 적용** | ✅ **검증 완료** (public 34개 테이블 전부 RLS ON, 권한상승 차단 확인 → §1) |
-| **정보 노출** | ⚠️ **Medium** (`club_members`·`sessions.attendance_code` 등 익명 공개 → §1b) |
+| **정보 노출** | ✅ **차단 확인** (`club_members`·`sessions.attendance_code`·`attendances` anon=`[]` → §1b · 레거시 테이블만 잔여) |
 | Rate limit / DoS | 📋 미비 |
 | 로깅/모니터링 | 📋 부분 (Sentry 있으나 일부 누락) |
 
@@ -40,11 +40,15 @@
 
 ## 1b. ⚠️ Medium — 정보 노출 (Information Disclosure): 익명 전체공개 테이블
 
-> ✅ **[수정 — 2026-06-23]** `club_members`·`sessions`·`attendances` SELECT 를 본인/같은 동아리 구성원/운영진/마스터로 제한하는 마이그레이션 작성:
-> `supabase/migrations/20260623000000_security_restrict_anon_reads.sql` (SECURITY DEFINER 헬퍼 `app_is_club_member`/`app_is_club_admin`/`app_is_global_admin` + club_members UPDATE WITH CHECK 보강).
-> 학생 코드 체크인·운영진 화면 모두 호환(영향 검토 완료). **남은 작업: 원격 DB 적용 + anon 재probe로 [] 확인.** `pulse_responses` 는 데이터 없음(현재 안전), `applications/events/projects` 레거시는 미처리.
+> ✅ **[차단 확인 — 2026-06-23]** `scripts/verify_rls.sh`(anon 키 probe) 실행 결과 **`club_members`·`sessions.attendance_code`·`attendances` 모두 `[]` 반환(차단됨)**, `clubs`는 공개 유지. 세 테이블엔 시드 회원 데이터가 존재하므로 `[]` = **제한 SELECT 정책이 라이브로 작동 중**이라는 확정 증거(과거의 `USING(true)` 상태가 아님). 의도한 보안 목표(익명 노출 차단)는 **달성된 상태**.
+>
+> 정책 정의는 `supabase/migrations/20260623000000_security_restrict_anon_reads.sql`(SECURITY DEFINER 헬퍼 `app_is_club_member`/`app_is_club_admin`/`app_is_global_admin` + 스코프 SELECT 3종 + club_members UPDATE WITH CHECK 보강)에 문서화. 적용은 대시보드 SQL 에디터 경유로 추정(원격 `schema_migrations` 추적 테이블이 비어 있어 CLI `db push` 이력과 desync).
+>
+> **⚠️ 운영 주의:** 원격 마이그레이션 이력이 비어 있어 `supabase db push` 시 전체 재적용을 시도 → **금지**. 향후 CLI 적용 전 `supabase migration repair --status applied <version>...` 로 이력을 먼저 정합화할 것.
+>
+> **남은 작업:** ① 인증 사용자(부원/운영진)의 정상 조회·학생 코드 체크인이 회귀 없는지 1회 확인(probe는 anon만 검증). ② `pulse_responses`는 데이터 없음(현재 안전). ③ `applications/events/projects` 레거시 미사용 시 DROP — 미처리.
 
-**근거**: SELECT 정책이 `USING (true)`라 **로그인 없이(anon 키) 전체 조회 가능**. 원격 probe로 실제 행이 반환됨을 확인 (재확인 2026-06-23: club_members·sessions.attendance_code·attendances 노출 live 재현).
+**근거(과거)**: 본래 SELECT 정책이 `USING (true)`라 로그인 없이(anon 키) 전체 조회가 가능했던 것으로 보고됨. **현재는 위 probe로 차단 확인됨.**
 
 | 테이블 | 노출 | 비고 |
 |--------|------|------|
