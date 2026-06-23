@@ -3,22 +3,14 @@ import { ArrowLeft, CheckCircle, Loader, AlertCircle, LogIn, Lock, ChevronRight,
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { Question, validateAnswer } from '../../types/recruitment';
+import { Question, validateAnswer, type RecruitmentRow } from '../../types/recruitment';
 import { useToast } from '../../hooks/useToast';
 
-interface Recruitment {
-  id: string;
-  title: string;
-  status: string;
-  generation: string | null;
-  deadline: string | null;
-  recruit_start_date: string | null;
-  description: string | null;
-  category: string | null;
-  pipeline_stages: string[] | null;
-  form_schema: Question[];
-  deployed_form_schema: Question[] | null;
-}
+type Recruitment =
+  Pick<RecruitmentRow,
+    'id' | 'title' | 'generation' | 'deadline' | 'recruit_start_date'
+    | 'description' | 'category' | 'pipeline_stages'>
+  & { status: string; form_schema: Question[]; deployed_form_schema: Question[] | null };
 
 interface Club {
   id: string;

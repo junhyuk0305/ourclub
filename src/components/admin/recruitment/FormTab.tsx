@@ -7,16 +7,13 @@ import {
 import { supabase } from '../../../lib/supabaseClient';
 import {
   Question, QuestionType, QUESTION_TYPE_META, makeQuestion, DEFAULT_SOURCE_OPTIONS,
+  type RecruitmentRow,
 } from '../../../types/recruitment';
 import { useToast } from '../../../hooks/useToast';
 
-interface Recruitment {
-  id: string;
-  status: string;
-  form_schema: unknown[];
-  form_version: number;
-  deployed_form_schema: unknown[] | null;
-}
+type Recruitment =
+  Pick<RecruitmentRow, 'id' | 'form_schema' | 'form_version' | 'deployed_form_schema'>
+  & { status: string };
 
 interface Props {
   recruitment: Recruitment;

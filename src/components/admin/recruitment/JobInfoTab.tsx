@@ -3,22 +3,12 @@ import { Loader, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { MarkdownEditor } from '../../ui/MarkdownEditor';
 import { useToast } from '../../../hooks/useToast';
+import type { RecruitmentRow } from '../../../types/recruitment';
 
-interface Recruitment {
-  id: string;
-  title: string;
-  generation: string | null;
-  status: string;
-  category: string | null;
-  short_desc: string | null;
-  description: string | null;
-  deadline: string | null;
-  recruit_start_date?: string | null;
-  targets?: string | null;
-  location?: string | null;
-  regular_meeting?: string | null;
-  hashtags?: string[] | null;
-}
+type Recruitment =
+  Pick<RecruitmentRow, 'id' | 'title' | 'generation' | 'category' | 'short_desc' | 'description' | 'deadline'>
+  & { status: string }
+  & Partial<Pick<RecruitmentRow, 'recruit_start_date' | 'targets' | 'location' | 'regular_meeting' | 'hashtags'>>;
 
 interface Props {
   recruitment: Recruitment;

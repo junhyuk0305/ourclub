@@ -9,22 +9,13 @@ import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAllIn } from '../../lib/fetchAll';
 import { formatDate } from '../../lib/format';
-import { defaultFormSchema } from '../../types/recruitment';
+import { defaultFormSchema, type RecruitmentRow } from '../../types/recruitment';
 
-interface Recruitment {
-  id: string;
-  title: string;
-  generation: string | null;
-  status: string;
-  category: string | null;
-  short_desc: string | null;
-  deadline: string | null;
-  created_at: string;
-  form_version: number;
-  pipeline_stages: string[];
-  applicant_count: number;
-  passed_count: number;
-}
+type Recruitment =
+  Pick<RecruitmentRow,
+    'id' | 'title' | 'generation' | 'category' | 'short_desc' | 'deadline'
+    | 'created_at' | 'form_version' | 'applicant_count' | 'passed_count'>
+  & { status: string; pipeline_stages: string[] };
 
 type StatusFilter = '전체' | '진행중' | '마감' | '임시저장';
 

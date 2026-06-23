@@ -24,6 +24,34 @@ export interface Question {
   acceptTypes?: string;
 }
 
+/**
+ * `recruitments` DB row의 단일 진실원천(canonical) 타입.
+ * 각 화면/컴포넌트는 자기 쿼리가 select하는 컬럼만 `Pick<RecruitmentRow, ...>`로 골라 쓴다.
+ * (nullable은 보수적으로 — 어느 한 곳이라도 nullable이면 nullable로 통일)
+ */
+export interface RecruitmentRow {
+  id: string;
+  title: string;
+  generation: string | null;
+  status: string | null;
+  category: string | null;
+  short_desc: string | null;
+  description: string | null;
+  deadline: string | null;
+  recruit_start_date: string | null;
+  targets: string | null;
+  location: string | null;
+  regular_meeting: string | null;
+  hashtags: string[] | null;
+  created_at: string;
+  form_version: number;
+  pipeline_stages: string[] | null;
+  applicant_count: number;
+  passed_count: number;
+  form_schema: unknown[];
+  deployed_form_schema: unknown[] | null;
+}
+
 export const DEFAULT_SOURCE_OPTIONS = ['SNS', '홈페이지', '에브리타임', '링커리어', '기타'];
 
 export const EMAIL_PATTERN = '^[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\\.)+[A-Za-z]{2,}$';

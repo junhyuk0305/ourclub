@@ -12,29 +12,18 @@ import { ApplicantsTab } from '../../components/admin/recruitment/ApplicantsTab'
 import { JobInfoTab } from '../../components/admin/recruitment/JobInfoTab';
 import { FormTab } from '../../components/admin/recruitment/FormTab';
 import { PipelineTab } from '../../components/admin/recruitment/PipelineTab';
+import type { RecruitmentRow } from '../../types/recruitment';
 
-interface RecruitmentSummary {
-  id: string;
-  title: string;
-  generation: string | null;
-  status: string;
-}
+type RecruitmentSummary =
+  Pick<RecruitmentRow, 'id' | 'title' | 'generation'>
+  & { status: string };
 
-interface Recruitment extends RecruitmentSummary {
-  category: string | null;
-  short_desc: string | null;
-  description: string | null;
-  deadline: string | null;
-  recruit_start_date: string | null;
-  targets: string | null;
-  location: string | null;
-  regular_meeting: string | null;
-  hashtags: string[] | null;
-  pipeline_stages: string[];
-  form_schema: unknown[];
-  form_version: number;
-  deployed_form_schema: unknown[] | null;
-}
+type Recruitment = RecruitmentSummary
+  & Pick<RecruitmentRow,
+      'category' | 'short_desc' | 'description' | 'deadline' | 'recruit_start_date'
+      | 'targets' | 'location' | 'regular_meeting' | 'hashtags'
+      | 'form_schema' | 'form_version' | 'deployed_form_schema'>
+  & { pipeline_stages: string[] };
 
 type Tab = 'applicants' | 'info' | 'form' | 'pipeline';
 

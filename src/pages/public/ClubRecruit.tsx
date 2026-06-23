@@ -9,7 +9,7 @@ import { formatDate } from '../../lib/format';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { useAuth } from '../../contexts/AuthContext';
 import { useClubAlert } from '../../hooks/useClubAlert';
-import { RecruitPageSettings, mergeRecruitPage } from '../../types/recruitment';
+import { RecruitPageSettings, mergeRecruitPage, type RecruitmentRow } from '../../types/recruitment';
 
 const MONO = '#000000';
 
@@ -24,21 +24,10 @@ interface Club {
   recruit_page: unknown;
 }
 
-interface Recruitment {
-  id: string;
-  title: string;
-  category: string | null;
-  description: string | null;
-  short_desc: string | null;
-  generation: string | null;
-  status: string | null;
-  deadline: string | null;
-  targets: string | null;
-  location: string | null;
-  regular_meeting: string | null;
-  hashtags: string[] | null;
-  pipeline_stages: string[] | null;
-}
+type Recruitment = Pick<RecruitmentRow,
+  'id' | 'title' | 'category' | 'description' | 'short_desc' | 'generation'
+  | 'status' | 'deadline' | 'targets' | 'location' | 'regular_meeting'
+  | 'hashtags' | 'pipeline_stages'>;
 
 interface Post {
   id: string;
