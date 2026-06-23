@@ -97,7 +97,9 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
   };
 
   const saveNote = async (id: string, score: number | null, note: string) => {
-    await supabase.from('recruitment_applications').update({ score, interviewer_note: note }).eq('id', id);
+    // 쓰기 성공 확인 후에만 로컬 반영 — 실패 시 화면이 저장된 것처럼 보이는 거짓상태 방지.
+    const { error } = await supabase.from('recruitment_applications').update({ score, interviewer_note: note }).eq('id', id);
+    if (error) { showToast('평가 저장에 실패했습니다.'); return; }
     updateLocal(id, { score, interviewer_note: note });
   };
 
@@ -113,12 +115,14 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
   };
 
   const saveInterviewQuestions = async (id: string, questions: string[]) => {
-    await supabase.from('recruitment_applications').update({ interview_questions: questions }).eq('id', id);
+    const { error } = await supabase.from('recruitment_applications').update({ interview_questions: questions }).eq('id', id);
+    if (error) { showToast('면접 질문 저장에 실패했습니다.'); return; }
     updateLocal(id, { interview_questions: questions });
   };
 
   const saveTags = async (id: string, tags: string[]) => {
-    await supabase.from('recruitment_applications').update({ tags }).eq('id', id);
+    const { error } = await supabase.from('recruitment_applications').update({ tags }).eq('id', id);
+    if (error) { showToast('태그 저장에 실패했습니다.'); return; }
     updateLocal(id, { tags });
   };
 
@@ -188,7 +192,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
 
   const saveAsTemplate = async (name: string, asDefault: boolean) => {
     if (!emailModal || !adminClubId) return;
-    await supabase.from('club_email_templates').insert({
+    const { error } = await supabase.from('club_email_templates').insert({
       club_id: adminClubId,
       name,
       stage: asDefault ? emailModal.toStage : null,
@@ -196,6 +200,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
       body: emailModal.body,
       is_default: asDefault,
     });
+    if (error) { showToast('템플릿 저장에 실패했습니다.'); return; }
     await loadTemplates();
     showToast('템플릿이 저장되었습니다.');
   };
