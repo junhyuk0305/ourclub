@@ -473,9 +473,15 @@ export default function MembersAdmin() {
     if (idx < 0 || swap < 0 || swap >= arr.length) return;
     [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
     setCustomFields(arr.map((f, i) => ({ ...f, display_order: i }))); // 낙관적 반영
-    await Promise.all(arr.map((f, i) =>
+    // N개 update가 비원자적이라 일부만 실패하면 display_order가 깨질 수 있음 →
+    // 한 건이라도 실패하면 DB 실제값으로 재동기화(부분쓰기 포함)하고 알린다.
+    const results = await Promise.all(arr.map((f, i) =>
       supabase.from('club_custom_fields').update({ display_order: i }).eq('id', f.id)
     ));
+    if (results.some(r => r.error)) {
+      showToast('필드 순서 변경에 실패했습니다.');
+      await loadCustomFields(adminClubId);
+    }
   };
 
   const deleteCustomField = async (fieldId: string) => {
