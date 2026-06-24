@@ -186,14 +186,14 @@ export const ImageUploader: React.FC<Props> = ({
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</div>
+        <div className="text-[10px] font-black uppercase tracking-widest text-sand-400">{label}</div>
       )}
       {value ? (
         <div className="relative group/img">
-          <img src={value} alt="" className="w-full h-24 object-cover rounded border border-gray-200" />
+          <img src={value} alt="" className="w-full h-24 object-cover rounded-ctl border border-sand-200" />
           <button
             onClick={() => onChange('')}
-            className="absolute top-1 right-1 w-5 h-5 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+            className="absolute top-1 right-1 w-5 h-5 bg-ink/70 hover:bg-ink text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
           >
             <X className="w-3 h-3" />
           </button>
@@ -202,10 +202,10 @@ export const ImageUploader: React.FC<Props> = ({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="w-full h-20 border-2 border-dashed border-gray-200 hover:border-orange-400 text-gray-400 hover:text-orange-500 flex flex-col items-center justify-center gap-1 rounded transition-colors disabled:opacity-50"
+          className="w-full h-20 border border-dashed border-sand-300 hover:border-brand hover:bg-brand-tint text-sand-400 hover:text-brand flex flex-col items-center justify-center gap-1 rounded-ctl transition-colors disabled:opacity-50"
         >
           {uploading
-            ? <Loader className="w-4 h-4 animate-spin text-orange-400" />
+            ? <Loader className="w-4 h-4 animate-spin text-brand" />
             : <>
                 <Upload className="w-4 h-4" />
                 <span className="text-[10px] font-bold">클릭하여 업로드 (JPG·PNG·WebP, 최대 {maxSizeMB}MB)</span>
@@ -218,10 +218,10 @@ export const ImageUploader: React.FC<Props> = ({
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder="또는 URL 직접 입력..."
-        className="w-full border border-gray-200 rounded text-[10px] px-2 py-1.5 outline-none focus:border-orange-400 font-mono text-gray-500"
+        className="w-full border border-sand-300 rounded-ctl text-[10px] px-2 py-1.5 outline-none focus:border-brand transition-colors font-mono text-sand-500"
       />
-      {error && <div className="text-[10px] text-red-500 font-bold">{error}</div>}
-      {!error && warning && <div className="text-[10px] text-amber-600 font-bold">⚠ {warning}</div>}
+      {error && <div className="text-[10px] text-bad-fg font-bold">{error}</div>}
+      {!error && warning && <div className="text-[10px] text-warn-fg font-bold">⚠ {warning}</div>}
       <input
         ref={inputRef}
         type="file"

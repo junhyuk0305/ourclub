@@ -10,7 +10,7 @@ export interface StatusBadgeProps {
 
 export function StatusBadge({ status, label, className = '' }: StatusBadgeProps) {
   return (
-    <span className={`inline-block px-2 py-0.5 text-xs font-bold border rounded ${statusColor(status)} ${className}`}>
+    <span className={`inline-block px-2.5 py-1 text-xs font-bold rounded-ctl ${statusColor(status)} ${className}`}>
       {label ?? status}
     </span>
   );

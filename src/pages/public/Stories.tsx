@@ -41,24 +41,24 @@ function ImageCarousel({ images }: { images: string[] }) {
 
   if (validImages.length === 1) {
     return (
-      <div className="w-full border-b-2 border-black overflow-hidden">
+      <div className="w-full border-b border-sand-200 overflow-hidden">
         <img
           src={validImages[0]}
           alt="포스트 이미지"
           onError={() => handleError(images.indexOf(validImages[0]))}
-          className="w-full h-52 object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+          className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
         />
       </div>
     );
   }
 
   return (
-    <div className="relative w-full border-b-2 border-black overflow-hidden">
+    <div className="relative w-full border-b border-sand-200 overflow-hidden">
       <img
         src={validImages[safeIdx]}
         alt={`포스트 이미지 ${safeIdx + 1}`}
         onError={() => { handleError(images.indexOf(validImages[safeIdx])); setIdx(0); }}
-        className="w-full h-52 object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+        className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
       />
       <button
         onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + validImages.length) % validImages.length); }}
@@ -318,16 +318,16 @@ export default function Stories() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-20 font-sans text-black border-b border-black">
+    <div className="bg-sand-50 min-h-screen pb-20 font-sans text-ink">
       {/* Hero & Search */}
-      <section className="bg-black text-white p-8 md:p-16 lg:p-20 relative overflow-hidden flex flex-col items-center justify-center text-center">
+      <section className="bg-ink text-white p-8 md:p-16 lg:p-20 relative overflow-hidden flex flex-col items-center justify-center text-center">
         <div
           className="absolute inset-0 opacity-20 pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '16px 16px' }}
         />
         <div className="relative z-10 max-w-3xl w-full">
-          <div className="text-orange-500 font-bold tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
-            <span className="w-3 h-3 bg-orange-500 border border-white inline-block" />
+          <div className="text-brand-peach font-bold tracking-widest text-sm mb-4 flex items-center justify-center gap-2">
+            <span className="w-3 h-3 bg-brand rounded-full inline-block" />
             COMMUNITY POSTS
           </div>
           <FadeInText as="h1" className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-8 leading-snug">
@@ -335,22 +335,22 @@ export default function Stories() {
           </FadeInText>
           <form
             onSubmit={handleSearch}
-            className="w-full max-w-2xl mx-auto flex bg-white border-2 border-black focus-within:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] transition-all"
+            className="w-full max-w-2xl mx-auto flex bg-white rounded-ctl overflow-hidden shadow-soft focus-within:shadow-soft-lg transition-all"
           >
             <div className="pl-6 flex items-center justify-center bg-white">
-              <Search className="w-6 h-6 text-gray-400" />
+              <Search className="w-6 h-6 text-sand-400" strokeWidth={2.5} />
             </div>
             <input
               type="text"
               placeholder="포스트 제목, 작성자를 검색해보세요"
-              className="flex-1 px-4 py-5 outline-none font-bold placeholder:text-gray-400 text-black text-lg bg-white"
+              className="flex-1 px-4 py-5 outline-none font-bold placeholder:text-sand-400 text-ink text-lg bg-white"
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               maxLength={100}
             />
             <button
               type="submit"
-              className="bg-orange-500 px-8 font-black text-black border-l-2 border-black hover:bg-black hover:text-white transition-colors"
+              className="btn-grad px-8 font-black text-white hover:opacity-90 transition-opacity"
             >
               검색
             </button>
@@ -359,24 +359,24 @@ export default function Stories() {
       </section>
 
       {/* 포스트 피드 */}
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-16">
+      <section className="max-w-6xl mx-auto px-6 md:px-12 py-16">
 
         {/* 요청 제한 안내 */}
         {rateLimited && (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <Loader className="w-8 h-8 animate-spin text-orange-400" />
-            <p className="font-black text-gray-400 text-sm">요청이 많아 잠시 후 자동으로 다시 시도합니다.</p>
+            <Loader className="w-8 h-8 animate-spin text-brand" />
+            <p className="font-black text-sand-400 text-sm">요청이 많아 잠시 후 자동으로 다시 시도합니다.</p>
           </div>
         )}
 
         {/* 네트워크 오류 */}
         {fetchError && !rateLimited && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <AlertCircle className="w-10 h-10 text-red-400" />
-            <p className="font-black text-gray-500">포스트를 불러오지 못했습니다.</p>
+            <AlertCircle className="w-10 h-10 text-bad-fg" strokeWidth={2.5} />
+            <p className="font-black text-sand-500">포스트를 불러오지 못했습니다.</p>
             <button
               onClick={() => { setFetchError(false); fetchPosts(true, search); }}
-              className="px-6 py-2 border-2 border-black font-black text-sm hover:bg-orange-500 transition-colors"
+              className="px-6 py-2 border border-sand-300 rounded-ctl font-bold text-sm text-sand-600 hover:border-brand hover:text-brand hover:bg-brand-tint transition-colors"
             >
               다시 시도
             </button>
@@ -386,7 +386,7 @@ export default function Stories() {
         {/* 초기 로딩 */}
         {!fetchError && loading && posts.length === 0 && (
           <div className="flex justify-center py-24">
-            <Loader className="w-10 h-10 animate-spin text-orange-500" />
+            <Loader className="w-10 h-10 animate-spin text-brand" />
           </div>
         )}
 
@@ -395,21 +395,21 @@ export default function Stories() {
           <div className="flex flex-col items-center gap-4 py-24 text-center">
             {search.trim() ? (
               <>
-                <p className="text-2xl font-black text-gray-300">검색 결과가 없습니다.</p>
-                <p className="text-gray-400 font-bold text-sm">
+                <p className="text-2xl font-black text-sand-400">검색 결과가 없습니다.</p>
+                <p className="text-sand-400 font-bold text-sm">
                   &ldquo;{search}&rdquo;에 맞는 포스트를 찾지 못했습니다.
                 </p>
                 <button
                   onClick={handleClearSearch}
-                  className="mt-2 px-6 py-2 border-2 border-black font-black text-sm hover:bg-orange-500 transition-colors"
+                  className="mt-2 px-6 py-2 border border-sand-300 rounded-ctl font-bold text-sm text-sand-600 hover:border-brand hover:text-brand hover:bg-brand-tint transition-colors"
                 >
                   전체 포스트 보기
                 </button>
               </>
             ) : (
               <>
-                <p className="text-2xl font-black text-gray-300">아직 발행된 포스트가 없습니다.</p>
-                <p className="text-gray-400 font-bold text-sm">운영진이 첫 포스트를 작성하면 여기에 표시됩니다.</p>
+                <p className="text-2xl font-black text-sand-400">아직 발행된 포스트가 없습니다.</p>
+                <p className="text-sand-400 font-bold text-sm">운영진이 첫 포스트를 작성하면 여기에 표시됩니다.</p>
               </>
             )}
           </div>
@@ -422,7 +422,7 @@ export default function Stories() {
               <article
                 key={post.id}
                 onClick={() => navigate(`/stories/${post.id}`)}
-                className="break-inside-avoid border-2 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 transition-all flex flex-col cursor-pointer group"
+                className="break-inside-avoid border border-sand-200 rounded-card bg-white shadow-soft overflow-hidden hover:shadow-soft-lg hover:-translate-y-1 transition-all flex flex-col cursor-pointer group"
               >
                 {/* 이미지 캐러셀 */}
                 {post.images.length > 0 && <ImageCarousel images={post.images} />}
@@ -431,16 +431,16 @@ export default function Stories() {
                 <Link
                   to={post.clubs?.slug ? `/clubs/${post.clubs.slug}` : '#'}
                   onClick={e => e.stopPropagation()}
-                  className="p-6 pb-3 flex items-center gap-3 group/profile hover:bg-gray-50 transition-colors"
+                  className="p-6 pb-3 flex items-center gap-3 group/profile hover:bg-sand-50 transition-colors"
                 >
-                  <div className="w-10 h-10 border-2 border-black flex items-center justify-center font-black text-base bg-orange-100 text-orange-600 flex-shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="w-10 h-10 rounded-ctl flex items-center justify-center font-black text-base thumb-grad text-white flex-shrink-0">
                     {post.clubs?.name?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-black text-sm group-hover:text-orange-600 group-hover/profile:underline transition-colors">
+                    <div className="font-black text-sm text-ink group-hover:text-brand group-hover/profile:underline transition-colors">
                       {post.author || post.clubs?.name || '운영진'}
                     </div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    <div className="text-[10px] font-bold text-sand-400 uppercase tracking-wider">
                       {post.clubs?.type || '동아리'}
                     </div>
                   </div>
@@ -450,34 +450,34 @@ export default function Stories() {
                 <div className="px-6 pb-6 flex-1 flex flex-col justify-between">
                   <div>
                     {post.title && (
-                      <h3 className="font-black text-xl mb-3 leading-snug line-clamp-2 group-hover:text-orange-600 transition-colors">
+                      <h3 className="font-black text-xl text-ink mb-3 leading-snug line-clamp-2 group-hover:text-brand transition-colors">
                         {post.title}
                       </h3>
                     )}
                     {post.content && (
                       <div className="relative mb-4">
-                        <div className="text-sm text-gray-700 leading-relaxed max-h-32 overflow-hidden">
+                        <div className="text-sm text-sand-600 leading-relaxed max-h-32 overflow-hidden">
                           <MarkdownViewer content={post.content} />
                         </div>
                         <div className="absolute bottom-0 inset-x-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-gray-400 mt-auto pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest font-bold text-sand-400 mt-auto pt-3 border-t border-sand-200">
                     <div className="flex items-center gap-2">
                       <span>{formatRelativeDate(post.created_at)}</span>
                       <span>·</span>
                       <span className="flex items-center gap-1">
-                        <Eye className="w-3.5 h-3.5" /> {post.view_count ?? 0}
+                        <Eye className="w-3.5 h-3.5" strokeWidth={2.5} /> {post.view_count ?? 0}
                       </span>
                     </div>
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={(e) => handleLike(e, post)}
-                        className={`flex items-center gap-1 px-2 py-1 rounded transition-all ${
+                        className={`flex items-center gap-1 px-2 py-1 rounded-ctl transition-all ${
                           likedPostIds.has(post.id)
-                            ? 'text-red-500 bg-red-50'
-                            : 'text-gray-400 hover:text-red-400 hover:bg-red-50'
+                            ? 'text-bad-fg bg-bad-bg'
+                            : 'text-sand-400 hover:text-bad-fg hover:bg-bad-bg'
                         }`}
                         title="좋아요"
                       >
@@ -485,15 +485,16 @@ export default function Stories() {
                           className={`w-3.5 h-3.5 transition-transform ${
                             likedPostIds.has(post.id) ? 'fill-current scale-110' : ''
                           }`}
+                          strokeWidth={2.5}
                         />
                         {post.like_count > 0 && <span className="text-xs">{post.like_count}</span>}
                       </button>
                       <button
                         onClick={(e) => handleShare(e, post)}
-                        className="flex items-center gap-1 px-2 py-1 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded transition-all"
+                        className="flex items-center gap-1 px-2 py-1 text-sand-400 hover:text-brand hover:bg-brand-tint rounded-ctl transition-all"
                         title="공유"
                       >
-                        <Share2 className="w-3.5 h-3.5" />
+                        <Share2 className="w-3.5 h-3.5" strokeWidth={2.5} />
                       </button>
                     </div>
                   </div>
@@ -506,17 +507,17 @@ export default function Stories() {
         {/* 무한스크롤 센티넬 */}
         <div ref={sentinelRef} className="mt-16 flex justify-center min-h-[1px]">
           {!fetchError && loading && posts.length > 0 && (
-            <Loader className="w-8 h-8 animate-spin text-orange-500" />
+            <Loader className="w-8 h-8 animate-spin text-brand" />
           )}
           {!fetchError && !loading && !hasMore && posts.length > 0 && (
-            <p className="text-gray-400 font-bold text-sm">모든 포스트를 불러왔습니다.</p>
+            <p className="text-sand-400 font-bold text-sm">모든 포스트를 불러왔습니다.</p>
           )}
         </div>
       </section>
 
       {/* 토스트 알림 */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-8 right-8 z-50 bg-ink text-white px-6 py-3 rounded-ctl font-bold text-sm shadow-soft-lg animate-in fade-in slide-in-from-bottom-4">
           {toast}
         </div>
       )}

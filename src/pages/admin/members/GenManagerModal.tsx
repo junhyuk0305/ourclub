@@ -53,26 +53,26 @@ export function GenManagerModal({ generations, currentGeneration, onUpdate, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-7 flex flex-col gap-5 max-h-[85vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-7 flex flex-col gap-5 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-black flex items-center gap-2">
-              <GraduationCap className="w-5 h-5" /> 기수 목록 관리
+            <h2 className="text-2xl font-black text-ink flex items-center gap-2">
+              <GraduationCap className="w-5 h-5" strokeWidth={2.5} /> 기수 목록 관리
             </h2>
-            <p className="text-xs font-bold text-gray-500 mt-1">동아리에서 사용할 기수 라벨을 자유롭게 추가/수정/삭제하세요.</p>
+            <p className="text-xs font-medium text-sand-500 mt-1">동아리에서 사용할 기수 라벨을 자유롭게 추가/수정/삭제하세요.</p>
           </div>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
+          <button onClick={onClose}><X className="w-5 h-5" strokeWidth={2.5} /></button>
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="font-black text-sm">기수 목록</label>
+          <label className="font-bold text-sm text-ink">기수 목록</label>
           {list.length === 0 ? (
-            <p className="text-xs font-bold text-gray-400 py-2">아직 등록된 기수가 없습니다.</p>
+            <p className="text-xs font-medium text-sand-400 py-2">아직 등록된 기수가 없습니다.</p>
           ) : (
-            <div className="flex flex-col border-2 border-black">
+            <div className="flex flex-col border border-sand-200 rounded-card overflow-hidden">
               {list.map((g, idx) => (
-                <div key={`${g}-${idx}`} className="flex items-center justify-between px-3 py-2 border-b border-gray-200 last:border-b-0">
+                <div key={`${g}-${idx}`} className="flex items-center justify-between px-3 py-2 border-b border-sand-200 last:border-b-0">
                   {editingIdx === idx ? (
                     <input
                       autoFocus
@@ -83,16 +83,16 @@ export function GenManagerModal({ generations, currentGeneration, onUpdate, onCl
                         if (e.key === 'Escape') { setEditingIdx(null); setError(''); }
                       }}
                       onBlur={() => commitEdit(idx)}
-                      className="flex-1 p-1 border border-orange-500 font-bold text-sm outline-none"
+                      className="field flex-1 p-1 border border-brand rounded-ctl font-bold text-sm"
                     />
                   ) : (
                     <button
                       onClick={() => { setEditingIdx(idx); setEditingValue(g); setError(''); }}
-                      className="flex-1 text-left font-bold text-sm hover:text-orange-500"
+                      className="flex-1 text-left font-bold text-sm text-ink hover:text-brand"
                     >
                       {g}
                       {g === currentGeneration && (
-                        <span className="ml-2 px-1.5 py-0.5 bg-orange-100 border border-orange-300 text-orange-700 font-black text-[10px]">
+                        <span className="ml-2 px-1.5 py-0.5 bg-brand-tint text-brand-dark rounded-md font-bold text-[10px]">
                           현재
                         </span>
                       )}
@@ -101,9 +101,9 @@ export function GenManagerModal({ generations, currentGeneration, onUpdate, onCl
                   <button
                     onClick={() => removeAt(idx)}
                     title="삭제"
-                    className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500"
+                    className="p-1.5 rounded-ctl hover:bg-bad-bg text-sand-400 hover:text-bad-fg"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" strokeWidth={2.5} />
                   </button>
                 </div>
               ))}
@@ -112,40 +112,40 @@ export function GenManagerModal({ generations, currentGeneration, onUpdate, onCl
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="font-black text-sm">새 기수 추가</label>
+          <label className="font-bold text-sm text-ink">새 기수 추가</label>
           <div className="flex gap-2">
             <input
               value={newLabel}
               onChange={e => setNewLabel(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addLabel(); } }}
               placeholder="예: 14기, 2026-봄"
-              className="flex-1 p-2 border-2 border-black font-bold text-sm outline-none focus:border-orange-500"
+              className="field flex-1 p-2 border border-sand-300 rounded-ctl font-bold text-sm"
             />
             <button
               onClick={addLabel}
               disabled={!newLabel.trim()}
-              className="px-3 py-2 bg-black text-white border-2 border-black font-black text-xs hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center gap-1"
+              className="px-3 py-2 btn-grad text-white rounded-ctl font-bold text-xs shadow-btn hover:-translate-y-0.5 disabled:opacity-50 flex items-center gap-1"
             >
-              <Plus className="w-3 h-3" /> 추가
+              <Plus className="w-3 h-3" strokeWidth={2.5} /> 추가
             </button>
           </div>
-          {error && <p className="text-red-600 font-bold text-xs">{error}</p>}
+          {error && <p className="text-bad-fg font-bold text-xs">{error}</p>}
         </div>
 
-        <div className="flex gap-2 pt-2 border-t border-gray-200">
+        <div className="flex gap-2 pt-2 border-t border-sand-200">
           <button
             onClick={onClose}
             disabled={saving}
-            className="flex-1 py-2.5 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-50"
+            className="flex-1 py-2.5 bg-white border border-sand-300 text-ink rounded-ctl font-bold text-sm hover:bg-sand-50 disabled:opacity-50"
           >
             취소
           </button>
           <button
             onClick={save}
             disabled={saving}
-            className="flex-1 py-2.5 bg-black text-white border-2 border-black font-black text-sm hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 btn-grad text-white rounded-ctl font-bold text-sm shadow-btn hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {saving && <Loader className="w-3 h-3 animate-spin" />}
+            {saving && <Loader className="w-3 h-3 animate-spin" strokeWidth={2.5} />}
             저장
           </button>
         </div>

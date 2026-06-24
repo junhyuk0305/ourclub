@@ -1,5 +1,75 @@
 @import "tailwindcss";
 
+/* ── 디자인 토큰 (SSOT: DESIGN_SYSTEM.md / 데모: DESIGN_MASTER.html) ──
+   컨셉 "AB · 따뜻한 세련": 웜 화이트 + 차분한 오렌지 3톤 + 옅은 소프트섀도.
+   임의 hex·하드섀도·border 변종 금지 — 모든 UI는 아래 토큰만 사용한다. */
+@theme {
+  /* 브랜드 오렌지 3톤 */
+  --color-brand: #EC6A2C;
+  --color-brand-dark: #E85F24;
+  --color-brand-accent: #F97316;
+  --color-brand-peach: #F9B384;
+  --color-brand-tint: #FDF2E9;
+
+  /* 잉크 + 웜 중성(sand) */
+  --color-ink: #1F1B18;
+  --color-sand-50: #FAF8F5;
+  --color-sand-100: #F3EFE9;
+  --color-sand-200: #EBE6DF;
+  --color-sand-300: #E6E0D7;
+  --color-sand-400: #A89E92;
+  --color-sand-500: #7A7066;
+  --color-sand-600: #6B6259;
+
+  /* 상태색 (bg/fg 쌍, 부드러운 톤 — 테두리 없음) */
+  --color-ok-bg: #E7F3EC;   --color-ok-fg: #2F7D4F;
+  --color-warn-bg: #FBF2DD; --color-warn-fg: #9A7515;
+  --color-info-bg: #E6EEF9; --color-info-fg: #2D5FA6;
+  --color-bad-bg: #FBE9E7;  --color-bad-fg: #B23B2E;
+  --color-off-bg: #F0ECE6;  --color-off-fg: #7A7066;
+
+  /* 그림자 — 옅게, 호버·강조 전용 (하드섀도 폐기) */
+  --shadow-soft: 0 2px 12px rgba(31,27,24,.06);
+  --shadow-soft-lg: 0 10px 28px rgba(236,106,44,.16);
+  --shadow-btn: 0 6px 16px rgba(236,106,44,.26);
+
+  /* 모서리 — 컨트롤 12 / 카드 16 (rounded-md 6px는 기본 토큰 사용) */
+  --radius-ctl: 12px;
+  --radius-card: 16px;
+}
+
+/* ── 공통 그라데이션 유틸 (DESIGN_MASTER.html §style) ───────────────
+   btn-grad: 주 버튼 채움 · cta-grad: 연한 CTA/모집칩 · stat-grad: 통계 면 · thumb-grad: 썸네일 placeholder */
+.btn-grad   { background: linear-gradient(135deg, #F2782F, #E85F24); }
+.cta-grad   { background: linear-gradient(135deg, #fff0e3, #fde2cd); }
+.stat-grad  { background: linear-gradient(135deg, #fff7ef, #fdeede); }
+.thumb-grad { background: linear-gradient(135deg, #faeede, #f5ddc6); }
+
+/* 인풋 포커스 링 — 오렌지(가입·신청·등록 폼 공통) */
+.field:focus {
+  outline: none;
+  border-color: #EC6A2C;
+  box-shadow: 0 0 0 3px rgba(236,106,44,.15);
+}
+
+/* ── 히어로 모션 유틸 (06_websell 컨셉을 경량 CSS로 차용 — GSAP/Lenis 미사용) ──
+   hero-glow: 우상단 따뜻한 오렌지 광원 / float·grad-pan: 은은한 부유·그라데이션 이동 / reveal-up: 진입 상승 페이드 */
+.hero-glow { position: relative; }
+.hero-glow::after {
+  content: ''; position: absolute; pointer-events: none; z-index: 0;
+  right: -80px; top: -80px; width: 360px; height: 360px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(249,179,132,.45), transparent 70%);
+}
+@keyframes oc-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+.animate-float { animation: oc-float 7s ease-in-out infinite; }
+@keyframes oc-grad-pan { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+.animate-grad-pan { background-size: 200% 200%; animation: oc-grad-pan 9s ease-in-out infinite alternate; }
+@keyframes oc-reveal-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+.reveal-up { animation: oc-reveal-up .7s cubic-bezier(.22,1,.36,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-grad-pan, .reveal-up { animation: none; }
+}
+
 /* ── 사이트 전반 커스텀 스크롤바 ───────────────────────────────────
    본문·중앙 콘텐츠 등 일반 스크롤 영역에 적용되는 사이트 기본 스크롤바.
    사이드 패널·모달은 아래 .hide-scrollbar 로 바를 숨긴다(specificity 로 우선). */

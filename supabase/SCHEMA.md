@@ -34,7 +34,7 @@
 ### 2.1 사용자/인증
 
 **`profiles` (base)** — 사용자 프로필
-마이그레이션 추가 컬럼: `deleted_at timestamptz`(소프트삭제), `birthdate date`, `academic_status text` (+ 일부 추가). 출처: 20260514200000, 20260518000000
+마이그레이션 추가 컬럼: `deleted_at timestamptz`(소프트삭제), `birthdate date`, `academic_status text`, `terms_agreed_at timestamptz`·`privacy_agreed_at timestamptz`(회원가입 동의 기록, 클라이언트 backfill) (+ 일부 추가). 출처: 20260514200000, 20260518000000, 20260624090000
 
 **`global_admins` (base)** — 마스터(전체 관리자) 멤버십. `id = auth.users(id)`. RLS: 본인만 SELECT.
 
@@ -122,7 +122,9 @@
 
 ### 2.7 B2B
 
-**`b2b_projects` (base)** — B2B 프로젝트. 추가 컬럼: `deadline date, required_skills text[]`(20260430100000)
+**`b2b_projects` (base)** — B2B 프로젝트. 추가 컬럼: `deadline date, required_skills text[]`(20260430100000). 상태 확장 `진행중/완료/중단`(20260624030000)
+
+**핸드오프(매칭 후) 테이블** — `b2b_project_team`(PL·팀원, 민법상 조합), `b2b_contracts`(계약 업로드·기업담당자 연락처, 비공개 `b2b-contracts` 버킷)(20260624030000); `b2b_settlements`(정산: 거래금액·수수료율 10%·납부기한·대금수령/수수료납부 시점·상태)(20260624050000); `b2b_reviews`(양방향 평점 1~5·후기, application·author_side UNIQUE)(20260624065000); `b2b_milestones`(진행 추적·산출물 제출·검수, 비공개 `b2b-deliverables` 버킷)(20260624070000). 미납 판정 `b2b_club_has_overdue(uuid)` + 신규 제안 차단 트리거 `b2b_block_overdue_application`. RLS: 해당 application의 동아리 운영진 OR 프로젝트 소유 기업담당자 OR global_admin(리뷰는 본인 측만 작성).
 
 ### 2.8 원격에만 있는 테이블 (repo 마이그레이션 밖, 2026-06-04 카탈로그 검증)
 

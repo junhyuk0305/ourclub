@@ -21,16 +21,18 @@ interface MembershipRow {
 }
 
 const statusBadge: Record<string, string> = {
-  '활동중':   'bg-green-100 text-green-700 border-green-300',
-  '수료':     'bg-blue-100 text-blue-700 border-blue-300',
-  '탈퇴':     'bg-gray-100 text-gray-500 border-gray-300',
-  '활동정지': 'bg-amber-100 text-amber-700 border-amber-300',
+  '활동중':   'bg-ok-bg text-ok-fg',
+  '수료':     'bg-info-bg text-info-fg',
+  '탈퇴':     'bg-off-bg text-off-fg',
+  '활동정지': 'bg-warn-bg text-warn-fg',
 };
 
 export default function MembershipHistorySection() {
   const { user } = useAuth();
   const [rows, setRows] = useState<MembershipRow[]>([]);
   const [fetching, setFetching] = useState(true);
+  // 동아리별 보기 필터 (거쳐온 동아리 2개 이상일 때만 노출)
+  const [selectedClub, setSelectedClub] = useState<string>('all');
 
   // 동아리 단위 탈퇴 확인 모달
   const [leaving, setLeaving] = useState<MembershipRow | null>(null);
@@ -63,43 +65,64 @@ export default function MembershipHistorySection() {
   };
 
   return (
-    <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
-      <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
-        <History className="w-6 h-6 text-orange-500" /> 참여 이력
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8">
+      <h3 className="text-2xl font-black text-ink mb-6 flex items-center gap-2">
+        <History className="w-6 h-6 text-brand" strokeWidth={2.5} /> 참여 이력
       </h3>
       {fetching ? (
-        <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gray-400" /></div>
+        <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-sand-400" /></div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300 flex flex-col items-center gap-4">
+        <div className="text-center py-12 text-sand-500 font-bold border border-dashed border-sand-300 rounded-card flex flex-col items-center gap-4">
           <p>아직 가입한 동아리가 없습니다.</p>
           <Link
             to="/clubs"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            className="inline-flex items-center gap-2 px-6 py-2.5 btn-grad text-white rounded-ctl font-bold text-sm shadow-btn hover:-translate-y-0.5 transition-all"
           >
-            동아리 탐색하러 가기 <ArrowRight className="w-4 h-4" />
+            동아리 탐색하러 가기 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {rows.map(m => {
+          {(() => {
+            const clubs = Array.from(new Map(rows.map(r => [r.club_id, r.clubs?.name ?? '—'])).entries());
+            if (clubs.length <= 1) return null;
+            return (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {[['all', '전체'] as [string, string], ...clubs].map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() => setSelectedClub(id)}
+                    className={`px-4 py-2 text-sm font-bold rounded-ctl transition-colors ${
+                      selectedClub === id
+                        ? 'btn-grad text-white shadow-btn'
+                        : 'bg-white text-sand-600 border border-sand-200 hover:bg-sand-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+          {(selectedClub === 'all' ? rows : rows.filter(r => r.club_id === selectedClub)).map(m => {
             const club = m.clubs;
             const meta = [m.generation, m.position, m.role_function].filter(Boolean).join(' · ');
             const body = (
               <>
-                <div className="text-xs font-bold text-gray-400 mb-1">
+                <div className="text-xs font-bold text-sand-400 mb-1">
                   {formatDate(m.joined_at)} 가입
                 </div>
-                <div className="font-black text-base truncate flex items-center gap-1.5">
+                <div className="font-black text-base text-ink truncate flex items-center gap-1.5">
                   {club?.name ?? '—'}
-                  {m.role === '운영진' && <Award className="w-4 h-4 shrink-0 text-orange-500" />}
+                  {m.role === '운영진' && <Award className="w-4 h-4 shrink-0 text-brand" strokeWidth={2.5} />}
                 </div>
                 {meta && (
-                  <div className="font-bold text-sm text-gray-500 truncate mt-0.5">{meta}</div>
+                  <div className="font-bold text-sm text-sand-500 truncate mt-0.5">{meta}</div>
                 )}
               </>
             );
             return (
-              <div key={m.id} className="p-5 border border-black bg-white flex items-center justify-between gap-4 hover:bg-orange-50 transition-colors">
+              <div key={m.id} className="p-5 bg-white border border-sand-200 rounded-card flex items-center justify-between gap-4 hover:bg-sand-50 transition-colors">
                 {club?.slug ? (
                   <Link to={`/clubs/${club.slug}`} className="min-w-0 group">{body}</Link>
                 ) : (
@@ -109,13 +132,13 @@ export default function MembershipHistorySection() {
                   {m.status === '활동중' && (
                     <button
                       onClick={() => openLeave(m)}
-                      className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-red-600 transition-colors"
+                      className="flex items-center gap-1 text-xs font-bold text-sand-400 hover:text-red-600 transition-colors"
                       title="이 동아리에서 나가기"
                     >
-                      <LogOut className="w-3.5 h-3.5" /> 나가기
+                      <LogOut className="w-3.5 h-3.5" strokeWidth={2.5} /> 나가기
                     </button>
                   )}
-                  <span className={`px-3 py-1.5 border font-bold text-xs ${statusBadge[m.status] ?? 'bg-gray-100 border-black'}`}>
+                  <span className={`px-3 py-1.5 rounded-ctl font-bold text-xs ${statusBadge[m.status] ?? 'bg-off-bg text-off-fg'}`}>
                     {m.status}
                   </span>
                 </div>
@@ -126,35 +149,35 @@ export default function MembershipHistorySection() {
       )}
 
       {leaving && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white border-2 border-black w-full max-w-md shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
-            <div className="p-5 border-b border-black bg-gray-50 flex justify-between items-center">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4">
+          <div className="bg-white border border-sand-200 rounded-card w-full max-w-md shadow-soft-lg overflow-hidden">
+            <div className="p-5 btn-grad text-white flex justify-between items-center">
               <h4 className="text-lg font-black flex items-center gap-2">
-                <LogOut className="w-5 h-5 text-red-600" /> 동아리 나가기
+                <LogOut className="w-5 h-5" strokeWidth={2.5} /> 동아리 나가기
               </h4>
-              <button onClick={() => setLeaving(null)} disabled={busy}><X className="w-5 h-5" /></button>
+              <button onClick={() => setLeaving(null)} disabled={busy} className="opacity-80 hover:opacity-100 transition-opacity"><X className="w-5 h-5" strokeWidth={2.5} /></button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              <p className="font-bold text-sm leading-relaxed">
-                <strong>{leaving.clubs?.name ?? '이 동아리'}</strong>에서 나갑니다.
-                활동 상태가 <span className="font-black">'탈퇴'</span>로 바뀌며, 워크스페이스·명단에서 제외돼요.
+              <p className="font-bold text-sm text-sand-600 leading-relaxed">
+                <strong className="text-ink">{leaving.clubs?.name ?? '이 동아리'}</strong>에서 나갑니다.
+                활동 상태가 <span className="font-black text-ink">'탈퇴'</span>로 바뀌며, 워크스페이스·명단에서 제외돼요.
                 계정과 다른 동아리 활동은 그대로 유지됩니다.
               </p>
               {leaving.role === '운영진' && (
-                <div className="flex gap-2 items-start bg-amber-50 border border-amber-300 p-3 text-xs font-bold text-amber-800">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="flex gap-2 items-start bg-warn-bg rounded-ctl p-3 text-xs font-bold text-warn-fg">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={2.5} />
                   <span>운영진이시네요. 남은 운영진이 없으면 나갈 수 없어요. 먼저 다른 구성원에게 운영 권한을 양도하세요.</span>
                 </div>
               )}
               {leaveError && (
-                <div className="bg-red-50 border border-red-300 p-3 text-xs font-bold text-red-700">{leaveError}</div>
+                <div className="bg-bad-bg rounded-ctl p-3 text-xs font-bold text-bad-fg">{leaveError}</div>
               )}
               <div className="flex justify-end gap-2 pt-1">
-                <button onClick={() => setLeaving(null)} disabled={busy} className="px-5 py-2.5 border border-black font-bold text-sm hover:bg-gray-100 disabled:opacity-40">
+                <button onClick={() => setLeaving(null)} disabled={busy} className="px-5 py-2.5 bg-white text-ink border border-sand-300 rounded-ctl font-bold text-sm hover:bg-sand-50 disabled:opacity-40">
                   취소
                 </button>
-                <button onClick={confirmLeave} disabled={busy} className="px-5 py-2.5 bg-red-600 text-white font-black text-sm hover:bg-red-700 transition-colors disabled:opacity-40 flex items-center gap-2">
-                  {busy ? <Loader className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />} 나가기
+                <button onClick={confirmLeave} disabled={busy} className="px-5 py-2.5 bg-red-500 text-white rounded-ctl font-bold text-sm hover:bg-red-600 transition-colors disabled:opacity-40 flex items-center gap-2">
+                  {busy ? <Loader className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" strokeWidth={2.5} />} 나가기
                 </button>
               </div>
             </div>

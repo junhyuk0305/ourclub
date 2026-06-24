@@ -39,25 +39,25 @@ export default function PulseCheckBanner() {
 
   return (
     <>
-      <div className="border border-black bg-orange-50 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <div className="border border-sand-200 rounded-card bg-brand-tint p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-soft">
         <div>
-          <div className="flex items-center gap-2 text-orange-600 font-bold text-sm mb-1 uppercase tracking-widest">
-            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+          <div className="flex items-center gap-2 text-brand-dark font-bold text-sm mb-1 uppercase tracking-widest">
+            <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
             Pulse Check
           </div>
-          <h3 className="text-xl font-black mb-1">{survey.title}</h3>
-          <p className="font-bold text-gray-600 text-sm">익명으로 진행되며, 더 나은 동아리 활동을 위해 활용됩니다.</p>
+          <h3 className="text-xl font-black text-ink mb-1">{survey.title}</h3>
+          <p className="font-bold text-sand-600 text-sm">익명으로 진행되며, 더 나은 동아리 활동을 위해 활용됩니다.</p>
         </div>
         <div className="flex gap-2 shrink-0">
           <button
             onClick={() => setDismissed(true)}
-            className="px-4 py-2 border border-black font-bold text-sm hover:bg-gray-100 transition-colors"
+            className="px-4 py-2 bg-white text-ink border border-sand-300 rounded-ctl font-bold text-sm hover:bg-sand-50 transition-colors"
           >
             닫기
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="px-6 py-2 border border-black bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none whitespace-nowrap"
+            className="px-6 py-2 btn-grad text-white rounded-ctl font-bold shadow-btn hover:-translate-y-0.5 transition-all whitespace-nowrap"
           >
             참여하기
           </button>
@@ -96,21 +96,21 @@ function PulseCheckModal({ surveyId, surveyTitle, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-8">
         {done ? (
           <div className="flex flex-col items-center gap-4 py-8">
-            <Check className="w-12 h-12 text-green-500" />
-            <p className="font-black text-xl">응답이 제출되었습니다!</p>
+            <Check className="w-12 h-12 text-ok-fg" strokeWidth={2.5} />
+            <p className="font-black text-xl text-ink">응답이 제출되었습니다!</p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-black">{surveyTitle}</h2>
-              <button onClick={onClose}><X className="w-6 h-6 hover:text-orange-500 transition-colors" /></button>
+              <h2 className="text-xl font-black text-ink">{surveyTitle}</h2>
+              <button onClick={onClose} className="text-sand-400 hover:text-brand transition-colors"><X className="w-6 h-6" strokeWidth={2.5} /></button>
             </div>
 
-            <p className="font-bold text-gray-600 mb-6 text-sm">이번 활동은 어땠나요? (익명)</p>
+            <p className="font-bold text-sand-600 mb-6 text-sm">이번 활동은 어땠나요? (익명)</p>
 
             {/* 별점 */}
             <div className="flex justify-center gap-3 mb-6">
@@ -121,13 +121,13 @@ function PulseCheckModal({ surveyId, surveyTitle, onClose }: {
                   className="transition-transform hover:scale-110"
                 >
                   <Star
-                    className={`w-10 h-10 ${n <= score ? 'text-orange-400 fill-orange-400' : 'text-gray-300'}`}
+                    className={`w-10 h-10 ${n <= score ? 'text-brand fill-brand' : 'text-sand-300'}`}
                   />
                 </button>
               ))}
             </div>
             {score > 0 && (
-              <p className="text-center font-black text-sm mb-4 text-gray-500">
+              <p className="text-center font-black text-sm mb-4 text-sand-500">
                 {['', '매우 불만족', '불만족', '보통', '만족', '매우 만족'][score]}
               </p>
             )}
@@ -137,13 +137,13 @@ function PulseCheckModal({ surveyId, surveyTitle, onClose }: {
               onChange={e => setFeedback(e.target.value)}
               placeholder="자유롭게 의견을 남겨주세요. (선택)"
               rows={3}
-              className="w-full border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors resize-none mb-6"
+              className="field w-full border border-sand-300 rounded-ctl px-4 py-3 font-bold text-ink outline-none transition-colors resize-none mb-6 placeholder:text-sand-400"
             />
 
             <button
               onClick={handleSubmit}
               disabled={score === 0 || submitting}
-              className="w-full py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+              className="w-full py-3 btn-grad text-white rounded-ctl font-bold shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {submitting && <Loader className="w-4 h-4 animate-spin" />}
               익명으로 제출

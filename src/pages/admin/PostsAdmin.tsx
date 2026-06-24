@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Edit3, Globe, Lock, Save, X, Loader, Check, Trash2, ImagePlus, Image as ImageIcon, AlertCircle, Eye } from 'lucide-react';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { MarkdownEditor } from '../../components/ui/MarkdownEditor';
@@ -262,14 +263,14 @@ export default function PostsAdmin() {
   // adminClubId 없을 때 (Context 로딩 중)
   if (!adminClubId && fetching) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+      <div className="flex flex-col h-screen bg-sand-50 overflow-hidden font-sans">
         <AdminHeader />
         <div className="flex flex-1 overflow-hidden">
-          <aside className="w-64 border-r border-black bg-white flex flex-col p-4 shrink-0">
+          <aside className="w-64 border-r border-sand-200 bg-white flex flex-col p-4 shrink-0">
             <AdminSidebar />
           </aside>
           <main className="flex-1 flex items-center justify-center">
-            <Loader className="w-8 h-8 animate-spin text-orange-500" />
+            <LoadingScreen />
           </main>
         </div>
       </div>
@@ -277,82 +278,82 @@ export default function PostsAdmin() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-sand-50 overflow-hidden font-sans">
       <AdminHeader>
         {!isEditing ? (
           <button
             onClick={openNew}
-            className="ml-4 px-6 py-2 border border-black bg-orange-500 font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-px active:shadow-none active:translate-y-1 transition-all text-sm flex items-center gap-2"
+            className="ml-4 px-6 py-2 btn-grad text-white font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-transform text-sm flex items-center gap-2"
           >
-            <Edit3 className="w-4 h-4" /> 새 포스트 작성
+            <Edit3 className="w-4 h-4" strokeWidth={2.5} /> 새 포스트 작성
           </button>
         ) : (
           <div className="flex gap-2 ml-4">
             <button
               onClick={closeEditor}
               disabled={saving}
-              className="px-4 py-2 border border-black bg-white font-black hover:bg-gray-100 transition-colors text-sm flex items-center gap-1 disabled:opacity-50"
+              className="px-4 py-2 border border-sand-300 bg-white text-sand-600 font-black rounded-ctl hover:bg-sand-50 transition-colors text-sm flex items-center gap-1 disabled:opacity-50"
             >
-              <X className="w-4 h-4" /> 취소
+              <X className="w-4 h-4" strokeWidth={2.5} /> 취소
             </button>
             {!isNew && editingPost?.is_published && (
               <a
                 href={`/stories/${editingPost.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 border border-black bg-white font-black hover:bg-orange-50 text-sm flex items-center gap-1 transition-colors"
+                className="px-4 py-2 border border-sand-300 bg-white text-sand-600 font-black rounded-ctl hover:bg-brand-tint text-sm flex items-center gap-1 transition-colors"
               >
-                <Eye className="w-4 h-4" /> 미리보기
+                <Eye className="w-4 h-4" strokeWidth={2.5} /> 미리보기
               </a>
             )}
             <button
               onClick={() => handleSave(false)}
               disabled={saving || !title.trim() || uploading}
-              className="px-4 py-2 border border-black bg-white font-black hover:bg-gray-100 text-sm disabled:opacity-50 flex items-center gap-1"
+              className="px-4 py-2 border border-sand-300 bg-white text-sand-600 font-black rounded-ctl hover:bg-sand-50 text-sm disabled:opacity-50 flex items-center gap-1"
             >
-              {saving && <Loader className="w-3 h-3 animate-spin" />} 임시저장
+              {saving && <Loader className="w-3 h-3 animate-spin" strokeWidth={2.5} />} 임시저장
             </button>
             <button
               onClick={() => handleSave(true)}
               disabled={saving || !title.trim() || uploading}
-              className="px-6 py-2 border border-black bg-black text-white font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-px active:shadow-none active:translate-y-1 transition-all text-sm disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2 btn-grad text-white font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-transform text-sm disabled:opacity-50 flex items-center gap-2"
             >
-              {saving && <Loader className="w-4 h-4 animate-spin" />}
-              <Save className="w-4 h-4" /> 저장 및 발행
+              {saving && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
+              <Save className="w-4 h-4" strokeWidth={2.5} /> 저장 및 발행
             </button>
           </div>
         )}
       </AdminHeader>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
+        <aside className="w-64 border-r border-sand-200 bg-white flex flex-col p-4 overflow-y-auto shrink-0">
           <AdminSidebar />
         </aside>
 
-        <main className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+        <main className="flex-1 bg-sand-50 p-8 overflow-y-auto">
           <div className="max-w-5xl mx-auto flex flex-col gap-8">
             {!isEditing ? (
               <>
                 <div>
-                  <h2 className="text-4xl font-black mb-2">포스트 관리</h2>
-                  <p className="text-gray-500 font-bold">동아리의 전문성과 활동을 보여주는 콘텐츠를 발행하세요.</p>
+                  <h2 className="text-4xl font-black mb-2 text-ink">포스트 관리</h2>
+                  <p className="text-sand-500 font-bold">동아리의 전문성과 활동을 보여주는 콘텐츠를 발행하세요.</p>
                 </div>
 
                 {/* 로딩 */}
                 {fetching && (
                   <div className="flex justify-center py-16">
-                    <Loader className="w-8 h-8 animate-spin text-orange-500" />
+                    <Loader className="w-8 h-8 animate-spin text-brand" strokeWidth={2.5} />
                   </div>
                 )}
 
                 {/* 불러오기 실패 */}
                 {!fetching && fetchError && (
                   <div className="flex flex-col items-center gap-4 py-16 text-center">
-                    <AlertCircle className="w-10 h-10 text-red-400" />
-                    <p className="font-black text-gray-500">포스트를 불러오지 못했습니다.</p>
+                    <AlertCircle className="w-10 h-10 text-bad-fg" strokeWidth={2.5} />
+                    <p className="font-black text-sand-500">포스트를 불러오지 못했습니다.</p>
                     <button
                       onClick={() => adminClubId && loadPosts(adminClubId)}
-                      className="px-6 py-2 border-2 border-black font-black text-sm hover:bg-orange-500 transition-colors"
+                      className="px-6 py-2 border border-sand-300 rounded-ctl font-black text-sm text-sand-600 hover:bg-brand-tint transition-colors"
                     >
                       다시 시도
                     </button>
@@ -361,12 +362,12 @@ export default function PostsAdmin() {
 
                 {/* 빈 상태 */}
                 {!fetching && !fetchError && posts.length === 0 && (
-                  <div className="border-2 border-dashed border-gray-300 p-16 flex flex-col items-center gap-4 text-center">
-                    <Edit3 className="w-12 h-12 text-gray-300" />
-                    <p className="font-black text-gray-400 text-lg">작성된 포스트가 없습니다.</p>
+                  <div className="border border-dashed border-sand-300 rounded-card p-16 flex flex-col items-center gap-4 text-center">
+                    <Edit3 className="w-12 h-12 text-sand-300" strokeWidth={2.5} />
+                    <p className="font-black text-sand-400 text-lg">작성된 포스트가 없습니다.</p>
                     <button
                       onClick={openNew}
-                      className="px-6 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors"
+                      className="px-6 py-3 btn-grad text-white font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-transform"
                     >
                       첫 포스트 작성하기
                     </button>
@@ -375,56 +376,56 @@ export default function PostsAdmin() {
 
                 {/* 목록 */}
                 {!fetching && !fetchError && posts.length > 0 && (
-                  <div className="bg-white border border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+                  <div className="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden">
                     <table className="w-full text-left">
-                      <thead className="bg-gray-100 border-b-2 border-black">
+                      <thead className="bg-sand-50 border-b border-sand-200">
                         <tr>
-                          <th className="p-4 font-black">제목</th>
-                          <th className="p-4 font-black">작성자</th>
-                          <th className="p-4 font-black text-center">이미지</th>
-                          <th className="p-4 font-black">상태</th>
-                          <th className="p-4 font-black text-right">작성일 / 조회</th>
-                          <th className="p-4 font-black text-center">관리</th>
+                          <th className="p-4 font-black text-sand-500">제목</th>
+                          <th className="p-4 font-black text-sand-500">작성자</th>
+                          <th className="p-4 font-black text-sand-500 text-center">이미지</th>
+                          <th className="p-4 font-black text-sand-500">상태</th>
+                          <th className="p-4 font-black text-sand-500 text-right">작성일 / 조회</th>
+                          <th className="p-4 font-black text-sand-500 text-center">관리</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-sand-200">
                         {posts.slice(0, shownCount).map(post => (
-                          <tr key={post.id} className="hover:bg-orange-50 group">
+                          <tr key={post.id} className="hover:bg-sand-50 group">
                             <td
-                              className="p-4 font-black text-base cursor-pointer group-hover:text-orange-600 transition-colors max-w-xs truncate"
+                              className="p-4 font-black text-base text-ink cursor-pointer group-hover:text-brand transition-colors max-w-xs truncate"
                               onClick={() => openEdit(post)}
                             >
                               {post.title}
                             </td>
-                            <td className="p-4 font-bold text-gray-600">{post.author || '—'}</td>
+                            <td className="p-4 font-bold text-sand-600">{post.author || '—'}</td>
                             <td className="p-4 text-center">
                               {post.images.length > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-500">
-                                  <ImageIcon className="w-3.5 h-3.5" /> {post.images.length}
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-sand-500">
+                                  <ImageIcon className="w-3.5 h-3.5" strokeWidth={2.5} /> {post.images.length}
                                 </span>
                               ) : (
-                                <span className="text-gray-300 text-xs">—</span>
+                                <span className="text-sand-300 text-xs">—</span>
                               )}
                             </td>
                             <td className="p-4">
                               <button
                                 onClick={() => handleTogglePublish(post)}
-                                className={`px-3 py-1 font-bold text-xs flex items-center gap-1 w-max border transition-colors ${
+                                className={`px-3 py-1 rounded-ctl font-bold text-xs flex items-center gap-1 w-max transition-colors ${
                                   post.is_published
-                                    ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
-                                    : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                    ? 'bg-ok-bg text-ok-fg hover:opacity-80'
+                                    : 'bg-off-bg text-off-fg hover:opacity-80'
                                 }`}
                               >
-                                {post.is_published ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                {post.is_published ? <Globe className="w-3 h-3" strokeWidth={2.5} /> : <Lock className="w-3 h-3" strokeWidth={2.5} />}
                                 {post.is_published ? '발행됨' : '임시저장'}
                               </button>
                             </td>
                             <td className="p-4 text-right">
-                              <p className="font-bold text-sm">
+                              <p className="font-bold text-sm text-ink">
                                 {post.created_at ? formatDate(post.created_at) : '—'}
                               </p>
                               {post.is_published && (
-                                <p className="text-xs text-gray-500 font-bold mt-1">
+                                <p className="text-xs text-sand-500 font-bold mt-1">
                                   조회 {post.view_count ?? 0}
                                 </p>
                               )}
@@ -438,16 +439,16 @@ export default function PostsAdmin() {
                                     rel="noopener noreferrer"
                                     onClick={e => e.stopPropagation()}
                                     title="공개 페이지에서 보기"
-                                    className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors rounded"
+                                    className="p-2 text-sand-400 hover:text-brand hover:bg-brand-tint transition-colors rounded-ctl"
                                   >
-                                    <Eye className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" strokeWidth={2.5} />
                                   </a>
                                 )}
                                 <button
                                   onClick={() => setDeleteId(post.id)}
-                                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors rounded"
+                                  className="p-2 text-sand-400 hover:text-bad-fg hover:bg-bad-bg transition-colors rounded-ctl"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" strokeWidth={2.5} />
                                 </button>
                               </div>
                             </td>
@@ -455,8 +456,8 @@ export default function PostsAdmin() {
                         ))}
                         {shownCount < posts.length && (
                           <tr ref={sentinelRef}>
-                            <td colSpan={7} className="text-center py-4 text-gray-400 font-bold text-sm">
-                              <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
+                            <td colSpan={7} className="text-center py-4 text-sand-400 font-bold text-sm">
+                              <Loader className="w-4 h-4 animate-spin inline-block mr-2" strokeWidth={2.5} />
                               {posts.length - shownCount}개 더 불러오는 중…
                             </td>
                           </tr>
@@ -468,21 +469,21 @@ export default function PostsAdmin() {
               </>
             ) : (
               /* ── 에디터 ── */
-              <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8 flex flex-col gap-6">
-                <h2 className="text-2xl font-black flex items-center gap-2">
-                  <Edit3 className="w-6 h-6 text-orange-500" />
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8 flex flex-col gap-6">
+                <h2 className="text-2xl font-black text-ink flex items-center gap-2">
+                  <Edit3 className="w-6 h-6 text-brand" strokeWidth={2.5} />
                   {isNew ? '새 포스트 작성' : '포스트 수정'}
                 </h2>
 
                 {/* 작성자 */}
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-xs text-gray-500 uppercase tracking-wider">작성자 / 팀</label>
+                  <label className="font-black text-xs text-sand-500 uppercase tracking-wider">작성자 / 팀</label>
                   <input
                     value={author}
                     onChange={e => setAuthor(e.target.value)}
                     placeholder="예: 기획팀, 운영진"
                     maxLength={50}
-                    className="w-full p-3 border border-gray-200 font-bold outline-none focus:border-orange-500 text-sm"
+                    className="w-full p-3 border border-sand-300 rounded-ctl font-bold text-sm field"
                   />
                 </div>
 
@@ -494,16 +495,16 @@ export default function PostsAdmin() {
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     maxLength={200}
-                    className="w-full text-4xl font-black outline-none border-b-2 border-transparent focus:border-black pb-2 placeholder:text-gray-200"
+                    className="w-full text-4xl font-black text-ink outline-none border-b border-transparent focus:border-brand pb-2 placeholder:text-sand-300"
                   />
                   {!title.trim() && (
-                    <p className="text-xs text-red-400 font-bold">제목은 필수입니다.</p>
+                    <p className="text-xs text-bad-fg font-bold">제목은 필수입니다.</p>
                   )}
                 </div>
 
                 {/* 마크다운 에디터 */}
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-xs text-gray-500 uppercase tracking-wider">본문 (Markdown)</label>
+                  <label className="font-black text-xs text-sand-500 uppercase tracking-wider">본문 (Markdown)</label>
                   <MarkdownEditor
                     value={content}
                     onChange={setContent}
@@ -515,20 +516,20 @@ export default function PostsAdmin() {
                 {/* 이미지 업로드 */}
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <label className="font-black text-xs text-gray-500 uppercase tracking-wider">
+                    <label className="font-black text-xs text-sand-500 uppercase tracking-wider">
                       이미지 첨부 ({images.length}/{MAX_IMAGES})
-                      <span className="ml-2 text-gray-400 normal-case font-medium">JPG·PNG·GIF·WEBP · 최대 {MAX_FILE_SIZE_MB}MB</span>
+                      <span className="ml-2 text-sand-400 normal-case font-medium">JPG·PNG·GIF·WEBP · 최대 {MAX_FILE_SIZE_MB}MB</span>
                     </label>
                     {images.length < MAX_IMAGES && (
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border border-black text-xs font-black hover:bg-orange-50 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-sand-300 rounded-ctl text-xs font-black text-sand-600 hover:bg-brand-tint transition-colors disabled:opacity-50"
                       >
                         {uploading
-                          ? <Loader className="w-3.5 h-3.5 animate-spin" />
-                          : <ImagePlus className="w-3.5 h-3.5" />
+                          ? <Loader className="w-3.5 h-3.5 animate-spin" strokeWidth={2.5} />
+                          : <ImagePlus className="w-3.5 h-3.5" strokeWidth={2.5} />
                         }
                         이미지 추가
                       </button>
@@ -548,7 +549,7 @@ export default function PostsAdmin() {
                       {images.map((url, idx) => (
                         <div
                           key={idx}
-                          className="relative group w-32 h-32 border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-gray-100"
+                          className="relative group w-32 h-32 border border-sand-200 rounded-card overflow-hidden shadow-soft bg-sand-100"
                         >
                           <img
                             src={url}
@@ -560,11 +561,11 @@ export default function PostsAdmin() {
                           />
                           <button
                             onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 bg-black/70 text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            className="absolute top-1 right-1 bg-ink/70 text-white p-1 rounded-ctl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-bad-fg"
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" strokeWidth={2.5} />
                           </button>
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] font-bold text-center py-0.5">
+                          <div className="absolute bottom-0 left-0 right-0 bg-ink/50 text-white text-[10px] font-bold text-center py-0.5">
                             {idx + 1}
                           </div>
                         </div>
@@ -577,13 +578,13 @@ export default function PostsAdmin() {
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploading}
-                          className="w-32 h-32 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 hover:border-orange-400 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                          className="w-32 h-32 border border-dashed border-sand-300 rounded-card flex flex-col items-center justify-center gap-1 hover:border-brand hover:bg-brand-tint transition-colors disabled:opacity-50"
                         >
                           {uploading && i === 0
-                            ? <Loader className="w-6 h-6 text-orange-400 animate-spin" />
-                            : <ImagePlus className="w-6 h-6 text-gray-300" />
+                            ? <Loader className="w-6 h-6 text-brand-peach animate-spin" strokeWidth={2.5} />
+                            : <ImagePlus className="w-6 h-6 text-sand-300" strokeWidth={2.5} />
                           }
-                          <span className="text-[10px] font-bold text-gray-400">추가</span>
+                          <span className="text-[10px] font-bold text-sand-400">추가</span>
                         </button>
                       ))}
                     </div>
@@ -592,13 +593,13 @@ export default function PostsAdmin() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="flex items-center justify-center gap-2 w-full py-8 border-2 border-dashed border-gray-300 hover:border-orange-400 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                      className="flex items-center justify-center gap-2 w-full py-8 border border-dashed border-sand-300 rounded-card hover:border-brand hover:bg-brand-tint transition-colors disabled:opacity-50"
                     >
                       {uploading
-                        ? <Loader className="w-6 h-6 text-orange-400 animate-spin" />
-                        : <ImagePlus className="w-6 h-6 text-gray-400" />
+                        ? <Loader className="w-6 h-6 text-brand-peach animate-spin" strokeWidth={2.5} />
+                        : <ImagePlus className="w-6 h-6 text-sand-400" strokeWidth={2.5} />
                       }
-                      <span className="text-sm font-bold text-gray-400">
+                      <span className="text-sm font-bold text-sand-400">
                         이미지를 클릭하여 추가 (최대 {MAX_IMAGES}개, {MAX_FILE_SIZE_MB}MB 이하)
                       </span>
                     </button>
@@ -612,20 +613,20 @@ export default function PostsAdmin() {
 
       {/* 삭제 확인 모달 */}
       {deleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] p-8 w-full max-w-sm mx-4 flex flex-col gap-6">
-            <h3 className="text-xl font-black">포스트를 삭제하시겠습니까?</h3>
-            <p className="text-gray-500 font-bold text-sm">삭제된 포스트는 복구할 수 없습니다.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg p-8 w-full max-w-sm mx-4 flex flex-col gap-6">
+            <h3 className="text-xl font-black text-ink">포스트를 삭제하시겠습니까?</h3>
+            <p className="text-sand-500 font-bold text-sm">삭제된 포스트는 복구할 수 없습니다.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteId(null)}
-                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100"
+                className="flex-1 py-3 border border-sand-300 rounded-ctl font-black text-sand-600 hover:bg-sand-50"
               >
                 취소
               </button>
               <button
                 onClick={() => handleDelete(deleteId)}
-                className="flex-1 py-3 bg-red-600 text-white font-black hover:bg-red-700"
+                className="flex-1 py-3 bg-red-500 text-white font-black rounded-ctl hover:bg-red-600"
               >
                 삭제
               </button>
@@ -636,15 +637,15 @@ export default function PostsAdmin() {
 
       {/* 토스트 */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(249,115,22,0.5)]">
-          <Check className="w-4 h-4 text-green-400 shrink-0" />
+        <div className="fixed bottom-8 right-8 z-50 bg-ink text-white px-6 py-4 rounded-card font-bold flex items-center gap-3 shadow-soft-lg">
+          <Check className="w-4 h-4 text-ok-fg shrink-0" strokeWidth={2.5} />
           <span>{toast}</span>
           {toastLink && (
             <a
               href={toastLink.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline text-orange-400 hover:text-orange-300 transition-colors whitespace-nowrap"
+              className="underline text-brand-peach hover:text-white transition-colors whitespace-nowrap"
             >
               {toastLink.label}
             </a>

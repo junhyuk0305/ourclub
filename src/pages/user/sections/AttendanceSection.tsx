@@ -148,25 +148,25 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
   };
 
   return (
-    <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8">
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-        <h3 className="text-2xl font-black flex items-center gap-2">
-          <span className="text-orange-500">✓</span> 출석 체크
+        <h3 className="text-2xl font-black text-ink flex items-center gap-2">
+          <span className="text-brand">✓</span> 출석 체크
         </h3>
         <button
           onClick={() => { setExcuseOpen(o => !o); setExMsg(null); }}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 border-black font-black text-xs transition-colors ${
-            excuseOpen ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-ctl font-bold text-xs transition-colors ${
+            excuseOpen ? 'btn-grad text-white shadow-btn' : 'bg-white text-ink border border-sand-300 hover:bg-sand-50'
           }`}
         >
-          <CalendarCheck className="w-4 h-4" /> 출석 인정 신청
+          <CalendarCheck className="w-4 h-4" strokeWidth={2.5} /> 출석 인정 신청
         </button>
       </div>
 
-      <p className="font-bold text-gray-500 mb-4">
+      <p className="font-bold text-sand-500 mb-4">
         운영진이 안내한 4자리 숫자 코드를 입력하세요.
       </p>
-      <div className="flex max-w-sm border-2 border-black focus-within:shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] transition-all">
+      <div className="flex max-w-sm border border-sand-300 rounded-ctl overflow-hidden focus-within:border-brand transition-all">
         <input
           type="text"
           inputMode="numeric"
@@ -174,38 +174,53 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
           onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setStatus('idle'); setMsg(''); }}
           onKeyDown={e => { if (e.key === 'Enter') handleAttend(); }}
           placeholder="0000"
-          className="flex-1 px-4 py-3 outline-none font-black text-lg tracking-widest placeholder:font-bold placeholder:text-gray-300"
+          className="flex-1 px-4 py-3 outline-none font-black text-lg tracking-widest text-ink placeholder:font-bold placeholder:text-sand-400"
           maxLength={4}
         />
         <button
           onClick={handleAttend}
           disabled={status === 'loading' || !code.trim()}
-          className="bg-black text-white px-6 font-black border-l-2 border-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50 flex items-center"
+          className="btn-grad text-white px-6 font-bold hover:-translate-y-0 transition-colors disabled:opacity-50 flex items-center"
         >
           {status === 'loading' ? <Loader className="w-5 h-5 animate-spin" /> : '인증'}
         </button>
       </div>
       {msg && (
-        <p className={`mt-3 font-bold text-sm flex items-center gap-1 ${status === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-          {status === 'success' && <Check className="w-4 h-4" />}
+        <p className={`mt-3 font-bold text-sm flex items-center gap-1 ${status === 'success' ? 'text-ok-fg' : 'text-bad-fg'}`}>
+          {status === 'success' && <Check className="w-4 h-4" strokeWidth={2.5} />}
           {msg}
         </p>
       )}
 
-      {/* ── 출석 인정 신청 패널 ── */}
+      {/* ── 출석 인정 신청 모달 ── */}
       {excuseOpen && (
-        <div className="mt-6 border-t-2 border-dashed border-gray-300 pt-6 flex flex-col gap-4">
-          <p className="font-bold text-gray-500 text-sm">
-            부득이하게 참석하지 못한 활동의 출석 인정을 신청합니다. 운영진 승인 시 <strong className="text-blue-600">공결</strong> 처리됩니다.
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm p-4"
+          onClick={() => { setExcuseOpen(false); setExMsg(null); }}
+        >
+          <div
+            className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-lg p-8 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-ink flex items-center gap-2">
+                <CalendarCheck className="w-6 h-6 text-brand" strokeWidth={2.5} /> 출석 인정 신청
+              </h2>
+              <button onClick={() => { setExcuseOpen(false); setExMsg(null); }} className="text-sand-400 hover:text-brand transition-colors">
+                <X className="w-6 h-6" strokeWidth={2.5} />
+              </button>
+            </div>
+          <p className="font-bold text-sand-500 text-sm">
+            부득이하게 참석하지 못한 활동의 출석 인정을 신청합니다. 운영진 승인 시 <strong className="text-info-fg">공결</strong> 처리됩니다.
           </p>
 
           {memberships.length > 1 && (
             <div>
-              <label className="block font-black text-xs mb-1.5">동아리</label>
+              <label className="block font-black text-xs text-ink mb-1.5">동아리</label>
               <select
                 value={exMemberId}
                 onChange={e => setExMemberId(e.target.value)}
-                className="w-full px-3 py-2.5 border-2 border-black font-bold text-sm outline-none focus:shadow-[2px_2px_0px_0px_rgba(249,115,22,1)]"
+                className="field w-full px-3 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm outline-none"
               >
                 <option value="" disabled>동아리 선택</option>
                 {memberships.map(m => <option key={m.id} value={m.id}>{m.clubName}</option>)}
@@ -214,24 +229,24 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
           )}
 
           <div>
-            <label className="block font-black text-xs mb-1.5">일자</label>
+            <label className="block font-black text-xs text-ink mb-1.5">일자</label>
             <input
               type="date"
               value={exDate}
               onChange={e => setExDate(e.target.value)}
-              className="w-full px-3 py-2.5 border-2 border-black font-bold text-sm outline-none focus:shadow-[2px_2px_0px_0px_rgba(249,115,22,1)]"
+              className="field w-full px-3 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm outline-none"
             />
           </div>
 
           <div>
-            <label className="block font-black text-xs mb-1.5">사유</label>
+            <label className="block font-black text-xs text-ink mb-1.5">사유</label>
             <div className="flex flex-wrap gap-2">
               {EXCUSE_REASONS.map(r => (
                 <button
                   key={r}
                   onClick={() => setExReason(r)}
-                  className={`px-3 py-1.5 border-2 border-black font-bold text-xs transition-colors ${
-                    exReason === r ? 'bg-orange-500 text-black' : 'bg-white hover:bg-gray-100'
+                  className={`px-3 py-1.5 rounded-ctl font-bold text-xs transition-colors ${
+                    exReason === r ? 'btn-grad text-white shadow-btn' : 'bg-white text-ink border border-sand-300 hover:bg-sand-50'
                   }`}
                 >
                   {r}
@@ -241,27 +256,27 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
           </div>
 
           <div>
-            <label className="block font-black text-xs mb-1.5">상세 내용</label>
+            <label className="block font-black text-xs text-ink mb-1.5">상세 내용</label>
             <textarea
               value={exDetail}
               onChange={e => setExDetail(e.target.value)}
               rows={3}
               placeholder="출석 인정 사유를 자세히 적어주세요."
-              className="w-full px-3 py-2.5 border-2 border-black font-bold text-sm outline-none focus:shadow-[2px_2px_0px_0px_rgba(249,115,22,1)] resize-none placeholder:text-gray-300"
+              className="field w-full px-3 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm outline-none resize-none placeholder:text-sand-400"
             />
           </div>
 
           <div>
-            <label className="block font-black text-xs mb-1.5">파일 첨부 <span className="text-gray-400 font-bold">(선택)</span></label>
+            <label className="block font-black text-xs text-ink mb-1.5">파일 첨부 <span className="text-sand-400 font-bold">(선택)</span></label>
             {exFile ? (
-              <div className="flex items-center gap-2 px-3 py-2 border-2 border-black bg-gray-50">
-                <Paperclip className="w-4 h-4 shrink-0" />
-                <span className="font-bold text-xs truncate flex-1">{exFile.name}</span>
-                <button onClick={() => setExFile(null)} className="hover:text-red-500"><X className="w-4 h-4" /></button>
+              <div className="flex items-center gap-2 px-3 py-2 border border-sand-300 rounded-ctl bg-sand-50">
+                <Paperclip className="w-4 h-4 shrink-0 text-sand-500" strokeWidth={2.5} />
+                <span className="font-bold text-xs text-ink truncate flex-1">{exFile.name}</span>
+                <button onClick={() => setExFile(null)} className="text-sand-400 hover:text-red-500"><X className="w-4 h-4" strokeWidth={2.5} /></button>
               </div>
             ) : (
-              <label className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-black font-bold text-xs cursor-pointer hover:bg-gray-100">
-                <Paperclip className="w-4 h-4" /> 파일 선택
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 border border-sand-300 rounded-ctl font-bold text-xs text-ink cursor-pointer hover:bg-sand-50">
+                <Paperclip className="w-4 h-4" strokeWidth={2.5} /> 파일 선택
                 <input
                   type="file"
                   className="hidden"
@@ -272,8 +287,8 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
           </div>
 
           {exMsg && (
-            <p className={`font-bold text-sm flex items-center gap-1 ${exMsg.kind === 'success' ? 'text-green-600' : 'text-red-500'}`}>
-              {exMsg.kind === 'success' && <Check className="w-4 h-4" />}
+            <p className={`font-bold text-sm flex items-center gap-1 ${exMsg.kind === 'success' ? 'text-ok-fg' : 'text-bad-fg'}`}>
+              {exMsg.kind === 'success' && <Check className="w-4 h-4" strokeWidth={2.5} />}
               {exMsg.text}
             </p>
           )}
@@ -281,10 +296,11 @@ export default function AttendanceSection({ onActivityChange }: { onActivityChan
           <button
             onClick={submitExcuse}
             disabled={exSubmitting}
-            className="self-start px-6 py-2.5 bg-black text-white font-black text-sm border-2 border-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="self-start px-6 py-2.5 btn-grad text-white rounded-ctl font-bold text-sm shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {exSubmitting && <Loader className="w-4 h-4 animate-spin" />} 신청하기
           </button>
+          </div>
         </div>
       )}
     </div>

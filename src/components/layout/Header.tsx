@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCorp } from '../../contexts/CorpContext';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { STORY_ENABLED } from '../../lib/features';
+import { preloadPath } from '../../lib/preload';
 
 interface AlertItem {
   id: string;
@@ -79,9 +81,10 @@ function useUserNotifications(userId: string | undefined) {
 }
 
 const NAV_LINKS = [
-  { to: '/clubs',   label: '동아리 찾기' },
-  { to: '/b2b',     label: '기업 라운지' },
-  { to: '/stories', label: '동아리 스토리' },
+  { to: '/for-clubs', label: '동아리 운영' },
+  { to: '/clubs',     label: '동아리 찾기' },
+  { to: '/b2b',       label: '기업 라운지' },
+  ...(STORY_ENABLED ? [{ to: '/stories', label: '동아리 스토리' }] : []),
 ];
 
 export const Header = () => {
@@ -136,7 +139,8 @@ export const Header = () => {
 
   return (
     <>
-      <header className="h-16 border-b border-black flex items-center justify-between px-6 bg-white sticky top-0 z-50">
+      <header className="h-16 border-b border-sand-200 bg-white sticky top-0 z-50">
+       <div className="max-w-6xl mx-auto w-full px-6 h-full flex items-center justify-between">
         {/* 로고 */}
         <Link to="/" className="flex items-center gap-2">
           <img src="/logo.svg" alt="" className="h-7 w-auto" />
@@ -146,9 +150,12 @@ export const Header = () => {
         {/* 데스크톱 내비 */}
         <nav className="hidden md:flex gap-8 text-sm font-bold">
           {NAV_LINKS.map(({ to, label }) => (
-            <NavLink key={to} to={to} className={({ isActive }) =>
+            <NavLink key={to} to={to}
+              onMouseEnter={() => preloadPath(to)}
+              onFocus={() => preloadPath(to)}
+              className={({ isActive }) =>
               // 밑줄 공간(border-b-2 + pb-1)을 항상 확보하고 색만 토글 → active 전환 시 레이아웃 밀림 없음
-              `border-b-2 pb-1 transition-colors ${isActive ? 'text-orange-500 border-orange-500' : 'border-transparent hover:text-orange-500'}`
+              `border-b-2 pb-1 transition-colors ${isActive ? 'text-brand border-brand' : 'border-transparent hover:text-brand'}`
             }>{label}</NavLink>
           ))}
         </nav>
@@ -157,44 +164,44 @@ export const Header = () => {
         <div className="flex gap-2 items-center">
           {user ? (
             <>
-              <Link to="/mypage" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
+              <Link to="/mypage" className="hidden lg:block px-3 py-2 text-sm font-bold text-sand-600 hover:text-brand transition-colors">
                 학생 마이페이지
               </Link>
               {!isAdmin && !isCorpUser && (
-                <Link to="/club-setup" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
+                <Link to="/club-setup" className="hidden lg:block px-3 py-2 text-sm font-bold text-sand-600 hover:text-brand transition-colors">
                   동아리 운영하기
                 </Link>
               )}
               {isAdmin && (
-                <Link to="/admin/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-gray-600 hover:text-orange-500 transition-colors">
+                <Link to="/admin/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-sand-600 hover:text-brand transition-colors">
                   운영진 워크스페이스
                 </Link>
               )}
               {isCorpUser && (
-                <Link to="/corp/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-purple-600 hover:text-purple-800 transition-colors">
+                <Link to="/corp/dashboard" className="hidden lg:block px-3 py-2 text-sm font-bold text-brand hover:text-brand-dark transition-colors">
                   기업 비즈니스 센터
                 </Link>
               )}
-              <div className="hidden lg:block w-px h-4 bg-gray-300 mx-2" />
+              <div className="hidden lg:block w-px h-4 bg-sand-200 mx-2" />
 
               {/* 벨 버튼 + 드롭다운 */}
               <div className="relative" ref={dropRef}>
                 <button
                   onClick={() => setBellOpen(v => !v)}
-                  className="p-2 hover:bg-orange-500 border border-transparent hover:border-black transition-colors relative"
+                  className="p-2 hover:bg-brand-tint rounded-ctl transition-colors relative"
                   title="알림"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-5 h-5" strokeWidth={2.5} />
                   {dotVisible && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border border-white" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand rounded-full border border-white" />
                   )}
                 </button>
 
                 {bellOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-80 bg-white border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] z-50">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-black bg-gray-50">
+                  <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-sand-200 rounded-card shadow-soft-lg z-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-sand-200 bg-sand-50">
                       <span className="font-black text-sm">알림</span>
-                      <button onClick={() => setBellOpen(false)} className="p-1 hover:bg-gray-200 rounded transition-colors">
+                      <button onClick={() => setBellOpen(false)} className="p-1 hover:bg-sand-100 rounded-ctl transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -204,12 +211,12 @@ export const Header = () => {
                         <button
                           key={n.id}
                           onClick={() => { markRead(n.id); setBellOpen(false); if (n.link && n.link.startsWith('/') && !n.link.startsWith('//')) navigate(n.link); }}
-                          className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-100 text-left ${!n.is_read ? 'bg-orange-50/60' : ''}`}
+                          className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-brand-tint transition-colors border-b border-sand-100 text-left ${!n.is_read ? 'bg-brand-tint/60' : ''}`}
                         >
-                          <span className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-orange-500'}`} />
+                          <span className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                           <div className="flex-1 min-w-0">
                             <p className="font-black text-sm">{n.title}</p>
-                            {n.body && <p className="text-xs font-bold text-gray-500 mt-0.5 break-words">{n.body}</p>}
+                            {n.body && <p className="text-xs font-bold text-sand-500 mt-0.5 break-words">{n.body}</p>}
                           </div>
                         </button>
                       ))}
@@ -217,7 +224,7 @@ export const Header = () => {
                       {/* 모집 알림 */}
                       {alertLoading ? (
                         notifications.length === 0 && (
-                          <div className="px-4 py-6 text-center text-sm font-bold text-gray-400">불러오는 중...</div>
+                          <div className="px-4 py-6 text-center text-sm font-bold text-sand-400">불러오는 중...</div>
                         )
                       ) : activeAlerts.length > 0 ? (
                         activeAlerts.map(a => {
@@ -230,39 +237,39 @@ export const Header = () => {
                             <button
                               key={a.id}
                               onClick={() => { setBellOpen(false); navigate(`/clubs/${a.clubs.slug}/recruit`); }}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-100 text-left"
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-tint transition-colors border-b border-sand-100 text-left"
                             >
                               {a.clubs.logo_url ? (
-                                <img src={a.clubs.logo_url} alt={a.clubs.name} className="w-9 h-9 rounded-full object-cover border border-black shrink-0" />
+                                <img src={a.clubs.logo_url} alt={a.clubs.name} className="w-9 h-9 rounded-full object-cover border border-sand-200 shrink-0" />
                               ) : (
-                                <div className="w-9 h-9 rounded-full bg-orange-500 border border-black flex items-center justify-center font-black text-black text-sm shrink-0">
+                                <div className="w-9 h-9 rounded-full btn-grad text-white flex items-center justify-center font-black text-sm shrink-0">
                                   {a.clubs.name[0]}
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-black text-sm truncate">{a.clubs.name}</span>
-                                  {a.clubs.is_certified && <CheckCircle className="w-3.5 h-3.5 text-orange-500 shrink-0" />}
+                                  {a.clubs.is_certified && <CheckCircle className="w-3.5 h-3.5 text-brand-accent shrink-0" />}
                                 </div>
-                                <p className="text-xs font-bold text-orange-500 mt-0.5">
+                                <p className="text-xs font-bold text-brand mt-0.5">
                                   🔔 모집 시작{dDay !== null && dDay >= 0 ? ` · D-${dDay}` : ''}
                                 </p>
                               </div>
-                              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                              <ChevronRight className="w-4 h-4 text-sand-400 shrink-0" />
                             </button>
                           );
                         })
                       ) : notifications.length === 0 ? (
                         <div className="px-4 py-8 flex flex-col items-center gap-2">
-                          <Bell className="w-8 h-8 text-gray-200" />
-                          <p className="text-sm font-bold text-gray-400 text-center">새 알림이 없습니다</p>
-                          <p className="text-xs font-medium text-gray-400 text-center">동아리 목록에서 ♥를 눌러 모집 알림을 설정하세요</p>
+                          <Bell className="w-8 h-8 text-sand-300" />
+                          <p className="text-sm font-bold text-sand-400 text-center">새 알림이 없습니다</p>
+                          <p className="text-xs font-medium text-sand-400 text-center">동아리 목록에서 ♥를 눌러 모집 알림을 설정하세요</p>
                         </div>
                       ) : null}
                     </div>
-                    <div className="border-t border-black px-4 py-3 bg-gray-50">
+                    <div className="border-t border-sand-200 px-4 py-3 bg-sand-50">
                       <Link to="/clubs" onClick={() => setBellOpen(false)}
-                        className="text-xs font-black text-gray-500 hover:text-orange-500 transition-colors flex items-center gap-1">
+                        className="text-xs font-black text-sand-600 hover:text-brand transition-colors flex items-center gap-1">
                         동아리 전체보기 <ChevronRight className="w-3 h-3" />
                       </Link>
                     </div>
@@ -271,7 +278,7 @@ export const Header = () => {
               </div>
             </>
           ) : (
-            <Link to="/login" className="hidden md:block px-5 py-2 border-2 border-black text-sm font-black bg-white hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-px active:shadow-none ml-2">
+            <Link to="/login" className="hidden md:block px-5 py-2 btn-grad text-white text-sm font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-transform ml-2">
               로그인 / 가입
             </Link>
           )}
@@ -279,36 +286,37 @@ export const Header = () => {
           {/* 모바일 햄버거 버튼 */}
           <button
             onClick={() => setMobileOpen(v => !v)}
-            className="md:hidden p-2 border border-transparent hover:border-black hover:bg-orange-500 transition-colors"
+            className="md:hidden p-2 hover:bg-brand-tint rounded-ctl transition-colors"
             aria-label="메뉴 열기"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileOpen ? <X className="w-5 h-5" strokeWidth={2.5} /> : <Menu className="w-5 h-5" strokeWidth={2.5} />}
           </button>
         </div>
+       </div>
       </header>
 
       {/* 모바일 드로어 오버레이 */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          className="fixed inset-0 bg-ink/40 z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* 모바일 드로어 */}
-      <div className={`fixed top-16 right-0 bottom-0 w-72 bg-white border-l-2 border-black z-40 flex flex-col transform transition-transform duration-200 md:hidden ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-16 right-0 bottom-0 w-72 bg-white border-l border-sand-200 z-40 flex flex-col transform transition-transform duration-200 md:hidden ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* 내비 링크 */}
-        <nav className="flex flex-col border-b border-black">
+        <nav className="flex flex-col border-b border-sand-200">
           {NAV_LINKS.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `px-6 py-4 font-bold text-base border-b border-gray-100 flex items-center justify-between transition-colors ${isActive ? 'text-orange-500 bg-orange-50' : 'hover:bg-gray-50'}`
+                `px-6 py-4 font-bold text-base border-b border-sand-100 flex items-center justify-between transition-colors ${isActive ? 'text-brand bg-brand-tint' : 'hover:bg-sand-50'}`
               }
             >
               {label}
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 text-sand-400" />
             </NavLink>
           ))}
         </nav>
@@ -317,37 +325,37 @@ export const Header = () => {
         <div className="flex flex-col p-4 gap-2">
           {user ? (
             <>
-              <Link to="/mypage" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
-                학생 마이페이지 <ChevronRight className="w-4 h-4 text-gray-400" />
+              <Link to="/mypage" className="px-4 py-3 font-bold text-sm border border-sand-200 rounded-ctl hover:bg-sand-50 transition-colors flex items-center justify-between">
+                학생 마이페이지 <ChevronRight className="w-4 h-4 text-sand-400" />
               </Link>
               {!isAdmin && !isCorpUser && (
-                <Link to="/club-setup" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
-                  동아리 운영하기 <ChevronRight className="w-4 h-4 text-gray-400" />
+                <Link to="/club-setup" className="px-4 py-3 font-bold text-sm border border-sand-200 rounded-ctl hover:bg-sand-50 transition-colors flex items-center justify-between">
+                  동아리 운영하기 <ChevronRight className="w-4 h-4 text-sand-400" />
                 </Link>
               )}
               {isAdmin && (
-                <Link to="/admin/dashboard" className="px-4 py-3 font-bold text-sm border border-black hover:bg-gray-50 transition-colors flex items-center justify-between">
-                  운영진 워크스페이스 <ChevronRight className="w-4 h-4 text-gray-400" />
+                <Link to="/admin/dashboard" className="px-4 py-3 font-bold text-sm border border-sand-200 rounded-ctl hover:bg-sand-50 transition-colors flex items-center justify-between">
+                  운영진 워크스페이스 <ChevronRight className="w-4 h-4 text-sand-400" />
                 </Link>
               )}
               {isCorpUser && (
-                <Link to="/corp/dashboard" className="px-4 py-3 font-bold text-sm border border-purple-400 text-purple-600 hover:bg-purple-50 transition-colors flex items-center justify-between">
+                <Link to="/corp/dashboard" className="px-4 py-3 font-bold text-sm border border-sand-300 text-brand rounded-ctl hover:bg-brand-tint transition-colors flex items-center justify-between">
                   기업 비즈니스 센터 <ChevronRight className="w-4 h-4" />
                 </Link>
               )}
             </>
           ) : (
-            <Link to="/login" className="w-full px-4 py-3 border-2 border-black font-black text-sm text-center bg-black text-white hover:bg-orange-500 hover:text-black hover:border-black transition-colors shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]">
+            <Link to="/login" className="w-full px-4 py-3 btn-grad text-white font-black text-sm text-center rounded-ctl shadow-btn transition-colors">
               로그인 / 가입
             </Link>
           )}
         </div>
 
         {/* 하단 브랜드 */}
-        <div className="mt-auto px-6 py-4 border-t border-black">
+        <div className="mt-auto px-6 py-4 border-t border-sand-200">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-orange-500 border border-black" />
-            <span className="font-black text-sm tracking-tighter text-gray-400">OURCLUB</span>
+            <img src="/logo.svg" alt="" className="h-4 w-auto" />
+            <span className="font-black text-sm tracking-tighter text-sand-400">OURCLUB</span>
           </div>
         </div>
       </div>

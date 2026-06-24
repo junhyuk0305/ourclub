@@ -10,4 +10,4 @@ Disallow: /club-register
 
 Allow: /
 
-Sitemap: https://ourclub.kr/sitemap.xml
+Sitemap: https://ourclub-univ.com/sitemap.xml

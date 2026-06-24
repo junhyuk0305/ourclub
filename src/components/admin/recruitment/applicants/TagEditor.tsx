@@ -17,15 +17,15 @@ export function TagEditor({ tags, onChange }: { tags: string[]; onChange: (tags:
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <Tag className="w-3.5 h-3.5 text-gray-400" />
-        <span className="text-xs font-black uppercase tracking-widest text-gray-500">태그</span>
+        <Tag className="w-3.5 h-3.5 text-sand-400" strokeWidth={2.5} />
+        <span className="text-xs font-black uppercase tracking-widest text-sand-500">태그</span>
       </div>
       <div className="flex flex-wrap gap-1.5 items-center">
         {tags.length === 0 && !editing && (
-          <span className="text-xs text-gray-400 font-bold">아직 태그가 없습니다.</span>
+          <span className="text-xs text-sand-400 font-bold">아직 태그가 없습니다.</span>
         )}
         {tags.map(t => (
-          <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 border border-orange-300 text-xs font-black">
+          <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-tint text-brand-dark rounded-ctl text-xs font-black">
             #{t}
             <button onClick={() => remove(t)} className="hover:text-red-500">
               <X className="w-3 h-3" />
@@ -44,15 +44,15 @@ export function TagEditor({ tags, onChange }: { tags: string[]; onChange: (tags:
               }}
               onBlur={() => { add(); setEditing(false); }}
               placeholder="태그 입력 후 Enter"
-              className="px-2 py-1 border border-black font-bold text-xs outline-none focus:border-orange-500 w-32"
+              className="field px-2 py-1 border border-sand-300 rounded-ctl font-bold text-xs w-32"
             />
           </div>
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1 px-2 py-1 border border-dashed border-gray-300 hover:border-orange-400 hover:text-orange-500 text-xs font-bold text-gray-400 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-ctl border border-dashed border-sand-300 hover:border-brand hover:text-brand text-xs font-bold text-sand-400 transition-colors"
           >
-            <Plus className="w-3 h-3" /> 태그 추가
+            <Plus className="w-3 h-3" strokeWidth={2.5} /> 태그 추가
           </button>
         )}
       </div>

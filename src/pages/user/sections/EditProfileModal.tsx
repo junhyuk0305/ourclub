@@ -47,12 +47,12 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-4 p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-lg mx-4 p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-black">프로필 수정</h2>
-          <button onClick={onClose} className="hover:text-orange-500 transition-colors">
-            <X className="w-6 h-6" />
+          <h2 className="text-2xl font-black text-ink">프로필 수정</h2>
+          <button onClick={onClose} className="text-sand-400 hover:text-brand transition-colors">
+            <X className="w-6 h-6" strokeWidth={2.5} />
           </button>
         </div>
 
@@ -63,32 +63,32 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
           { label: '전공', value: major, set: setMajor, placeholder: '경영학과' },
         ] as { label: string; value: string; set: (v: string) => void; placeholder: string }[]).map(({ label, value, set, placeholder }) => (
           <div key={label} className="flex flex-col gap-1">
-            <label className="font-black text-sm">{label}</label>
+            <label className="font-black text-sm text-ink">{label}</label>
             <input
               value={value}
               onChange={e => set(e.target.value)}
               placeholder={placeholder}
-              className="border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 transition-colors"
+              className="field border border-sand-300 rounded-ctl px-4 py-2 font-bold text-ink outline-none transition-colors placeholder:text-sand-400"
             />
           </div>
         ))}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label className="font-black text-sm">생년월일</label>
+            <label className="font-black text-sm text-ink">생년월일</label>
             <input
               type="date"
               value={birthdate}
               onChange={e => setBirthdate(e.target.value)}
-              className="border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 transition-colors bg-white cursor-pointer"
+              className="field border border-sand-300 rounded-ctl px-4 py-2 font-bold text-ink outline-none transition-colors bg-white cursor-pointer"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="font-black text-sm">학적 상태</label>
+            <label className="font-black text-sm text-ink">학적 상태</label>
             <select
               value={academicStatus}
               onChange={e => setAcademicStatus(e.target.value)}
-              className="border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
+              className="field border border-sand-300 rounded-ctl px-4 py-2 font-bold text-ink outline-none bg-white cursor-pointer"
             >
               <option value="">선택 안 함</option>
               <option value="재학">재학</option>
@@ -100,19 +100,19 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="font-black text-sm">스킬 태그</label>
+          <label className="font-black text-sm text-ink">스킬 태그</label>
           <div className="flex gap-2">
             <input
               value={skillInput}
               onChange={e => setSkillInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
               placeholder="React, 기획, Figma…"
-              className="flex-1 border-2 border-black px-4 py-2 font-bold outline-none focus:border-orange-500 transition-colors"
+              className="field flex-1 border border-sand-300 rounded-ctl px-4 py-2 font-bold text-ink outline-none transition-colors placeholder:text-sand-400"
             />
             <button
               type="button"
               onClick={addSkill}
-              className="px-4 py-2 bg-black text-white font-black hover:bg-orange-500 transition-colors"
+              className="px-4 py-2 btn-grad text-white rounded-ctl font-bold shadow-btn hover:-translate-y-0.5 transition-all"
             >
               추가
             </button>
@@ -120,10 +120,10 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
           {skills.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {skills.map(s => (
-                <span key={s} className="flex items-center gap-1 px-3 py-1 bg-orange-100 border border-orange-300 text-orange-700 font-bold text-sm">
+                <span key={s} className="flex items-center gap-1 px-3 py-1 bg-brand-tint text-brand-dark rounded-ctl font-bold text-sm">
                   {s}
                   <button onClick={() => setSkills(prev => prev.filter(x => x !== s))} className="hover:text-red-500">
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3" strokeWidth={2.5} />
                   </button>
                 </span>
               ))}
@@ -131,16 +131,16 @@ export default function EditProfileModal({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {errorMsg && <p className="text-red-600 font-bold text-sm">{errorMsg}</p>}
+        {errorMsg && <p className="text-bad-fg font-bold text-sm">{errorMsg}</p>}
 
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 transition-colors">
+          <button onClick={onClose} className="flex-1 py-3 bg-white text-ink border border-sand-300 rounded-ctl font-bold hover:bg-sand-50 transition-colors">
             취소
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 btn-grad text-white rounded-ctl font-bold shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving && <Loader className="w-4 h-4 animate-spin" />} 저장
           </button>

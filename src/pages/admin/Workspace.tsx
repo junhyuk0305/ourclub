@@ -4,13 +4,16 @@ import {
   Loader, Check, Globe, ChevronDown, ChevronUp, Clock,
   MessageSquare, Layers, MousePointer, GripVertical, Image as ImageIcon,
   Minus, Columns, RotateCcw, RotateCw, Monitor, Tablet, Smartphone,
-  Copy, BarChart2, LayoutGrid, Timer, Trash2, X, ChevronLeft, ChevronRight,
+  Copy, BarChart2, LayoutGrid, Timer, Trash2, X, ChevronLeft, ChevronRight, LayoutTemplate,
 } from 'lucide-react';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
+import SectionTemplateModal from '../../components/admin/SectionTemplateModal';
+import { instantiateTemplate } from '../../lib/templates/sections';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { WorkspaceProperties } from '../../components/admin/WorkspaceProperties';
 import { BlockPropertiesPanel } from '../../components/admin/BlockPropertiesPanel';
-import { BlockBody, WB_STYLE, genId, mkSection, mkRow, rowGridTemplate, resolveSectionBg, SectionDecor, rowCardWrapStyle, RowCardHeader, resolveThemeHex } from '../../components/blockKit';
+import { BlockBody, WB_STYLE, genId, mkSection, mkRow, rowGridTemplate, resolveSectionBg, SectionDecor, rowCardWrapStyle, RowCardHeader, resolveThemeHex, getThemeText, THEME_HEX } from '../../components/blockKit';
 import {
   findNode, patchNode, deleteNode, removeWidget, insertTop, insertInColumn,
   addRow as addRowTo, moveRow, setRowCols, moveWidgetInColumn, widgetsLostOnShrink,
@@ -47,11 +50,11 @@ function mkStatItem(id: string, value: string, label: string) {
    Helpers
 ───────────────────────────────────────────── */
 function mkCell(id: string, n: number) {
-  return { id, title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#374151', titleColor: '#111827', titleSize: 18, textSize: 14, padding: 24, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '', imgPosition: 'top', imgHeight: 180 };
+  return { id, title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#6B6259', titleColor: '#1F1B18', titleSize: 18, textSize: 14, padding: 24, borderRadius: 12, borderWidth: 1, borderColor: '#EBE6DF', imgSrc: '', imgPosition: 'top', imgHeight: 180 };
 }
 
 function mkSlide(id: string) {
-  return { id, bgType: 'color', bgValue: '#111111', overlayOpacity: 0, h1: '메인 카피를\n입력하세요', subtitle: '서브 카피를 입력하세요', href: '', align: 'center' };
+  return { id, bgType: 'color', bgValue: '#1F1B18', overlayOpacity: 0, h1: '메인 카피를\n입력하세요', subtitle: '서브 카피를 입력하세요', href: '', align: 'center' };
 }
 
 /* ─────────────────────────────────────────────
@@ -61,18 +64,18 @@ function mkSlide(id: string) {
 function makeWidget(type: string): any {
   const id = genId();
   let nb: any = { id, type };
-  if (type === 'text')            nb = { ...nb, text: '텍스트를 입력하세요.', seoTag: 'p', align: 'left', fontSize: 16, fontWeight: 400, textColor: '#111827', lineHeight: 1.7, paddingY: 32 };
-  if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionUrl: '', btnSize: 'm', btnTextColor: '#ffffff', borderWidth: 0, radius: 8, btnShadow: 'none', btnAnim: 'none', btnTemplate: 'solid', paddingY: 32 };
-  if (type === 'countdown')       nb = { ...nb, label: '모집 마감까지', expiredText: '모집이 마감되었습니다', bgColor: '#0a0a0a', textColor: '#ffffff', accentColor: '', paddingY: 56 };
-  if (type === 'faq')             nb = { ...nb, title: '자주 묻는 질문', items: [{ id: id + '_1', question: '질문을 입력하세요', answer: '답변을 입력하세요.' }], iconStyle: 'plus', openBg: '#fff7ed' };
-  if (type === 'timeline')        nb = { ...nb, title: '채용 프로세스', nodes: [{ id: id + '_1', title: '1단계', desc: '설명을 입력하세요' }, { id: id + '_2', title: '2단계', desc: '설명을 입력하세요' }], activeColor: '#f97316', lineColor: '#111827' };
+  if (type === 'text')            nb = { ...nb, text: '텍스트를 입력하세요.', seoTag: 'p', align: 'left', fontSize: 16, fontWeight: 400, textColor: '#1F1B18', lineHeight: 1.7, paddingY: 32 };
+  if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionUrl: '', btnSize: 'm', btnTextColor: '#ffffff', borderWidth: 0, radius: 12, btnShadow: 'none', btnAnim: 'none', btnTemplate: 'solid', paddingY: 32 };
+  if (type === 'countdown')       nb = { ...nb, label: '모집 마감까지', expiredText: '모집이 마감되었습니다', bgColor: '#1F1B18', textColor: '#ffffff', accentColor: '', paddingY: 56 };
+  if (type === 'faq')             nb = { ...nb, title: '자주 묻는 질문', items: [{ id: id + '_1', question: '질문을 입력하세요', answer: '답변을 입력하세요.' }], iconStyle: 'plus', openBg: '#FDF2E9' };
+  if (type === 'timeline')        nb = { ...nb, title: '모집 프로세스', nodes: [{ id: id + '_1', title: '1단계', desc: '설명을 입력하세요' }, { id: id + '_2', title: '2단계', desc: '설명을 입력하세요' }], activeColor: '#EC6A2C', lineColor: '#1F1B18' };
   if (type === 'heroSlider')      nb = { ...nb, height: 60, slides: [mkSlide(id + '_s1')], autoPlay: false, interval: 4000 };
   if (type === 'layoutContainer') nb = { ...nb, mode: 'tabs', cols: 2, gap: 20, paddingY: 40, bgColor: '', cells: [mkCell(id + '_c1', 1), mkCell(id + '_c2', 2)] };
   if (type === 'spacer')          nb = { ...nb, height: 64 };
   if (type === 'image')           nb = { ...nb, src: '', alt: '', width: 100, align: 'center', aspect: 'auto', objectFit: 'cover', radius: 0, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 };
-  if (type === 'divider')         nb = { ...nb, variant: 'line', style: 'solid', color: '#e5e7eb', thickness: 1, width: 100, paddingY: 24, bgColor: '',
+  if (type === 'divider')         nb = { ...nb, variant: 'line', style: 'solid', color: '#EBE6DF', thickness: 1, width: 100, paddingY: 24, bgColor: '',
                                           tickerItems: ['브랜드 전략 동아리', '2019년 창립', '누적 프로젝트 32건', '현업 취업률 80%'], separator: '✦', speed: 24, tickerFontSize: 13 };
-  if (type === 'stats')           nb = { ...nb, items: [mkStatItem(id+'_1','200+','누적 회원'),mkStatItem(id+'_2','50+','완성 프로젝트'),mkStatItem(id+'_3','3년','운영 역사')], cols: 3, layout: 'strip', bgColor: '#ffffff', valueColor: '#111827', labelColor: '#6b7280', valueSize: 48, labelSize: 14, paddingY: 56, animate: true };
+  if (type === 'stats')           nb = { ...nb, items: [mkStatItem(id+'_1','200+','누적 회원'),mkStatItem(id+'_2','50+','완성 프로젝트'),mkStatItem(id+'_3','3년','운영 역사')], cols: 3, layout: 'strip', bgColor: '#ffffff', valueColor: '#1F1B18', labelColor: '#7A7066', valueSize: 48, labelSize: 14, paddingY: 56, animate: true };
   return nb;
 }
 
@@ -93,6 +96,7 @@ export default function Workspace() {
   const [showFloatingBtn, setShowFloatingBtn] = useState(true);
   const [smoothScroll, setSmoothScroll] = useState(false);
   const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   /* blocks */
   const [blocks, setBlocks] = useState<any[]>(DEFAULT_BLOCKS);
@@ -429,6 +433,17 @@ export default function Workspace() {
     setInsertMenuIdx(null);
   };
 
+  /* 섹션 템플릿 삽입 — 선택 블록 다음(없으면 맨 끝)에 한 덩어리. instantiate 가 모든 id 재생성. */
+  const handleInsertTemplate = (tplBlock: any) => {
+    const nb = instantiateTemplate(tplBlock);
+    newBlockIdRef.current = nb.id;
+    const selIdx = selectedBlockId ? blocks.findIndex(b => b.id === selectedBlockId) : -1;
+    const insertAt = selIdx >= 0 ? selIdx + 1 : blocks.length;
+    commit([...blocks.slice(0, insertAt), nb, ...blocks.slice(insertAt)], true);
+    setSelectedBlockId(nb.id);
+    setTemplateModalOpen(false);
+  };
+
   /* 상태 갱신 단일 진입점 (set + history + autosave). key=같은 필드 연속 편집 합치기용 */
   const commit = (next: any[], force = false, key?: string) => { setBlocks(next); pushHistory(next, force, key); triggerAutoSave(next); };
 
@@ -551,18 +566,6 @@ export default function Workspace() {
   const mkConfigSetter = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, key: string) =>
     (val: T) => { setter(val); triggerAutoSave(blocks, { activeTheme, showFloatingBtn, smoothScroll, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc, [key]: val }); };
 
-  const themeHex: Record<string, string> = {
-    'orange-500': '#f97316', 'black': '#000000', 'white': '#ffffff',
-    'blue-600': '#2563eb', 'green-600': '#16a34a', 'purple-500': '#a855f7',
-  };
-  const resolveThemeHex = (t: string) =>
-    t.startsWith('custom:') ? t.replace('custom:', '') : (themeHex[t] || '#f97316');
-  const getThemeText = (t: string) => {
-    const hex = resolveThemeHex(t);
-    if (t === 'white' || hex === '#ffffff') return 'text-black';
-    return 'text-white';
-  };
-
   const selectedFound = selectedBlockId ? findNode(blocks, selectedBlockId) : null;
   const selectedBlock = selectedFound?.node ?? null;
   const selectedKind = selectedFound?.kind ?? null;
@@ -573,24 +576,24 @@ export default function Workspace() {
     return (
       <div className="relative w-full h-0 z-30" onClick={e => e.stopPropagation()}>
         <div className="group/iz absolute left-0 right-0 -top-2 h-4 flex items-center justify-center">
-          <div className={`absolute left-10 right-10 h-px bg-orange-400 transition-opacity ${open ? 'opacity-100' : 'opacity-0 group-hover/iz:opacity-100'}`} />
+          <div className={`absolute left-10 right-10 h-px bg-brand transition-opacity ${open ? 'opacity-100' : 'opacity-0 group-hover/iz:opacity-100'}`} />
           <button
             onClick={() => setInsertMenuIdx(open ? null : idx)}
             title="여기에 위젯 추가"
-            className={`relative flex items-center justify-center w-5 h-5 rounded-full border border-orange-500 bg-white text-orange-500 hover:bg-orange-500 hover:text-white transition-all ${open ? 'opacity-100 rotate-45' : 'opacity-0 group-hover/iz:opacity-100'}`}>
+            className={`relative flex items-center justify-center w-5 h-5 rounded-full border border-brand bg-white text-brand hover:bg-brand hover:text-white transition-all ${open ? 'opacity-100 rotate-45' : 'opacity-0 group-hover/iz:opacity-100'}`}>
             <Plus className="w-3 h-3" />
           </button>
         </div>
         {open && (
-          <div className="absolute z-50 left-1/2 -translate-x-1/2 top-2.5 w-64 bg-white border border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] p-2"
+          <div className="absolute z-50 left-1/2 -translate-x-1/2 top-2.5 w-64 bg-white border border-sand-200 rounded-card shadow-soft-lg p-2"
             onClick={e => e.stopPropagation()}>
-            <div className="text-[12px] font-black text-gray-400 uppercase tracking-widest px-1 pb-1.5">여기에 위젯 삽입</div>
+            <div className="text-[12px] font-black text-sand-400 uppercase tracking-widest px-1 pb-1.5">여기에 위젯 삽입</div>
             <div className="grid grid-cols-3 gap-1">
               {PALETTE.filter(p => !p.disabled).map(({ type, label, icon: Icon }) => (
                 <button key={type} onClick={() => handleAddBlock(type, idx)}
-                  className="flex flex-col items-center gap-1 p-2 border border-gray-200 rounded hover:border-black hover:bg-orange-50 transition-colors">
-                  <Icon className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="text-[12px] font-bold text-gray-600 leading-tight text-center">{label}</span>
+                  className="flex flex-col items-center gap-1 p-2 border border-sand-200 rounded-ctl hover:border-brand hover:bg-brand-tint transition-colors">
+                  <Icon className="w-3.5 h-3.5 text-sand-500" />
+                  <span className="text-[12px] font-bold text-sand-600 leading-tight text-center">{label}</span>
                 </button>
               ))}
             </div>
@@ -625,28 +628,28 @@ export default function Workspace() {
         onDrop={e => { e.preventDefault(); e.stopPropagation(); nested && colInfo ? onDropInColumn(colInfo.sectionId, colInfo.rowId, colInfo.colId, block.id) : onDropOnTop(block.id); }}
         onDragEnd={clearDrag}
         className={`wbe-widget relative group transition-all ${nested ? '' : 'animate-slide-down'}
-          ${isSel ? 'z-20' : 'hover:ring-inset hover:ring-2 hover:ring-orange-300 hover:z-10'}
+          ${isSel ? 'z-20' : 'hover:ring-inset hover:ring-2 hover:ring-brand/40 hover:z-10'}
           ${isDragOver && dragId !== block.id ? 'ring-2 ring-green-500' : ''}`}
       >
         {/* 선택 외곽선 — 위젯 콘텐츠(배경 포함) 위에 그려 항상 보이게 */}
-        {isSel && <div className="pointer-events-none absolute inset-0 z-[25] border-[3px] border-orange-500" />}
+        {isSel && <div className="pointer-events-none absolute inset-0 z-[25] border-2 border-brand" />}
         {/* 드래그 핸들 — 위젯 좌측 중앙. 섹션 내부(nested)는 컬럼 바깥(-left-6)에, top-level 은
            프레임이 overflowX:clip 이라 바깥이 잘리므로 안쪽(left-0)에 둬서 항상 보이게 한다. */}
         <div draggable onDragStart={e => onDragStartNode(e, block.id)} onClick={e => e.stopPropagation()}
-          className={`absolute ${nested ? '-left-6 rounded-l' : 'left-0 rounded-r'} top-1/2 -translate-y-1/2 cursor-grab z-30 bg-orange-500 text-white p-1 transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
+          className={`absolute ${nested ? '-left-6 rounded-l' : 'left-0 rounded-r'} top-1/2 -translate-y-1/2 cursor-grab z-30 bg-brand text-white p-1 transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
           title="드래그하여 이동">
           <GripVertical className="w-3.5 h-3.5" />
         </div>
 
         {/* 라벨 + 액션 — 선택 시 상단 가장자리. 드래그 핸들은 위 좌측 바깥에 분리 배치. */}
         <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-30 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`}>
-          <span className="text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none bg-orange-500">{PALETTE_LABEL[block.type] ?? block.type}</span>
+          <span className="text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none bg-brand">{PALETTE_LABEL[block.type] ?? block.type}</span>
           {isSel && (
             <div className="flex items-center gap-0.5 pointer-events-auto">
               <button onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'up'); }} disabled={!nested && topIndex === 0} title="위로 이동"
-                className="bg-gray-700 text-white text-[11px] font-black px-1 py-0.5 hover:bg-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronUp className="w-3 h-3" /></button>
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronUp className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'down'); }} disabled={!nested && topIndex === blocks.length - 1} title="아래로 이동"
-                className="bg-gray-700 text-white text-[11px] font-black px-1 py-0.5 hover:bg-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronDown className="w-3 h-3" /></button>
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronDown className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleDuplicateBlock(block.id); }} title="복제"
                 className="bg-blue-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-blue-600 transition-colors flex items-center gap-0.5"><Copy className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleDeleteBlock(block.id); }} title="삭제"
@@ -685,19 +688,19 @@ export default function Workspace() {
         onDragEnd={clearDrag}
         /* hover/선택 시 z-30 으로 올려, 음수 오프셋 chrome(+위젯·행 추가·열 버튼)이
            다음 섹션에 가려지지 않고 위에 그려지도록 한다. */
-        className={`relative group/sec transition-all animate-slide-down ${isSel ? 'z-30' : 'hover:ring-inset hover:ring-2 hover:ring-orange-300 hover:z-30'}`}
+        className={`relative group/sec transition-all animate-slide-down ${isSel ? 'z-30' : 'hover:ring-inset hover:ring-2 hover:ring-brand/40 hover:z-30'}`}
       >
         {/* 선택 외곽선 — 섹션 배경/콘텐츠 위에 그려 항상 보이게 */}
-        {isSel && <div className="pointer-events-none absolute inset-0 z-[35] border-[3px] border-orange-500" />}
+        {isSel && <div className="pointer-events-none absolute inset-0 z-[35] border-2 border-brand" />}
         {/* 섹션 툴바 — hover 시엔 라벨만, 선택 시에만 액션 버튼 노출 (위젯과 동일한 맥락형 규칙) */}
         <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-40 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0 group-hover/sec:opacity-100'}`}>
-          <span className={`ml-5 text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none ${isSel ? 'bg-orange-500' : 'bg-orange-400/90'}`}>섹션</span>
+          <span className={`ml-5 text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none ${isSel ? 'bg-brand' : 'bg-brand/90'}`}>섹션</span>
           {isSel && (
             <div className="flex items-center gap-0.5 pointer-events-auto">
               <button onClick={e => { e.stopPropagation(); handleMoveBlock(section.id, 'up'); }} disabled={topIndex === 0} title="위로 이동"
-                className="bg-gray-700 text-white text-[11px] font-black px-1 py-0.5 hover:bg-gray-900 disabled:opacity-30 flex items-center"><ChevronUp className="w-3 h-3" /></button>
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink disabled:opacity-30 flex items-center"><ChevronUp className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleMoveBlock(section.id, 'down'); }} disabled={topIndex === blocks.length - 1} title="아래로 이동"
-                className="bg-gray-700 text-white text-[11px] font-black px-1 py-0.5 hover:bg-gray-900 disabled:opacity-30 flex items-center"><ChevronDown className="w-3 h-3" /></button>
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink disabled:opacity-30 flex items-center"><ChevronDown className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleDuplicateBlock(section.id); }} title="복제"
                 className="bg-blue-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-blue-600 flex items-center"><Copy className="w-3 h-3" /></button>
               <button onClick={e => { e.stopPropagation(); handleDeleteBlock(section.id); }} title="섹션 삭제"
@@ -706,8 +709,8 @@ export default function Workspace() {
           )}
         </div>
         <div draggable onDragStart={e => onDragStartNode(e, section.id)} onClick={e => e.stopPropagation()}
-          className={`absolute left-1 top-1 cursor-grab z-40 p-1 rounded transition-opacity ${isSel ? 'opacity-70' : 'opacity-0 group-hover/sec:opacity-60'}`} title="드래그하여 섹션 순서 변경">
-          <GripVertical className="w-3.5 h-3.5 text-orange-400" />
+          className={`absolute left-1 top-1 cursor-grab z-40 p-1 rounded-ctl transition-opacity ${isSel ? 'opacity-70' : 'opacity-0 group-hover/sec:opacity-60'}`} title="드래그하여 섹션 순서 변경">
+          <GripVertical className="w-3.5 h-3.5 text-brand" />
         </div>
 
         {/* 섹션 배경 + 콘텐츠 (공개 렌더 SectionBlock 과 동일 시각) */}
@@ -742,21 +745,21 @@ export default function Workspace() {
                 {/* 행 툴바 — 행 위쪽 gap 에 오버레이. 해당 행 hover 또는 행 선택 시에만(맥락형) */}
                 <div className={`absolute -top-6 left-0 z-30 flex items-center gap-1.5 transition-opacity pointer-events-auto ${selectedBlockId === row.id ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100'}`}
                   onClick={e => e.stopPropagation()}>
-                  <span className="text-[11px] font-black text-orange-700/70 bg-white/80 px-1 rounded">열</span>
-                  <div className="inline-flex border border-orange-300 rounded overflow-hidden bg-white">
+                  <span className="text-[11px] font-black text-brand/70 bg-white/80 px-1 rounded">열</span>
+                  <div className="inline-flex border border-brand/40 rounded-ctl overflow-hidden bg-white">
                     {[1, 2, 3, 4].map(n => (
                       <button key={n} onClick={e => { e.stopPropagation(); handleSetRowCols(row.id, n); }}
-                        className={`px-2 py-0.5 text-[11px] font-black ${ (row.cols || 1) === n ? 'bg-orange-500 text-white' : 'bg-white text-orange-600 hover:bg-orange-50'}`}>{n}</button>
+                        className={`px-2 py-0.5 text-[11px] font-black ${ (row.cols || 1) === n ? 'bg-brand text-white' : 'bg-white text-brand hover:bg-brand-tint'}`}>{n}</button>
                     ))}
                   </div>
                   <button onClick={e => { e.stopPropagation(); setSelectedBlockId(row.id); }} title="행 세부 설정 (비율)"
-                    className="px-1.5 py-0.5 text-[11px] font-bold border border-orange-200 rounded text-orange-600 bg-white hover:bg-orange-50">비율</button>
+                    className="px-1.5 py-0.5 text-[11px] font-bold border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint">비율</button>
                   <button onClick={e => { e.stopPropagation(); handleMoveRow(section.id, row.id, 'up'); }} disabled={ri === 0} title="행 위로"
-                    className="p-0.5 border border-orange-200 rounded text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                    className="p-0.5 border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
                   <button onClick={e => { e.stopPropagation(); handleMoveRow(section.id, row.id, 'down'); }} disabled={ri === (section.rows.length - 1)} title="행 아래로"
-                    className="p-0.5 border border-orange-200 rounded text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                    className="p-0.5 border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
                   <button onClick={e => { e.stopPropagation(); handleDeleteBlock(row.id); }} title="행 삭제"
-                    className="p-0.5 border border-red-200 rounded text-red-500 bg-white hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
+                    className="p-0.5 border border-red-200 rounded-ctl text-red-500 bg-white hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {/* 행 그리드 */}
                 <div className="wb-section-row" data-collapse={(row.cols || 1) >= 2 ? '' : undefined}
@@ -770,19 +773,19 @@ export default function Workspace() {
                       <div key={col.id}
                         onDragOver={e => { if (dragId) { e.preventDefault(); setDragOverId(col.id); } }}
                         onDrop={e => { e.preventDefault(); onDropInColumn(section.id, row.id, col.id, null); }}
-                        className={`wbe-col relative group/col rounded transition-colors ${isColOver ? 'outline outline-2 outline-green-500 bg-green-50/40' : ''}`}
+                        className={`wbe-col relative group/col rounded-ctl transition-colors ${isColOver ? 'outline outline-2 outline-green-500 bg-green-50/40' : ''}`}
                         style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined, ...(rowCard || {}) }}>
                         {rowCard && <RowCardHeader row={row} idx={ci} accent={resolveThemeHex(activeTheme)} />}
                         {(col.widgets || []).map((w: any) => renderWidgetShell(w, { nested: true, colInfo }))}
                         {/* 빈 칸 — 점선 테두리 + 작은 + 아이콘만(문구 제거로 노이즈 감소). 칸 hover/섹션 선택 시 */}
                         {empty && (
-                          <div className={`absolute inset-0 flex items-center justify-center border border-dashed border-orange-200 rounded transition-opacity pointer-events-none ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
-                            <Plus className="w-4 h-4 text-orange-300" />
+                          <div className={`absolute inset-0 flex items-center justify-center border border-dashed border-brand/30 rounded-ctl transition-opacity pointer-events-none ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                            <Plus className="w-4 h-4 text-brand" />
                           </div>
                         )}
                         {/* + 위젯 — 컬럼 하단 오버레이. 해당 칸 hover 또는 섹션 선택 시에만(맥락형) */}
                         <button onClick={e => { e.stopPropagation(); setColPicker(colInfo); }} title="이 칸에 위젯 추가"
-                          className={`absolute left-1/2 -translate-x-1/2 -bottom-3 z-30 inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-orange-300 bg-white text-orange-600 hover:bg-orange-50 text-[12px] font-bold rounded shadow-sm transition-all ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                          className={`absolute left-1/2 -translate-x-1/2 -bottom-3 z-30 inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-brand/40 bg-white text-brand hover:bg-brand-tint text-[12px] font-bold rounded-ctl shadow-sm transition-all ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
                           <Plus className="w-3 h-3" /> 위젯
                         </button>
                       </div>
@@ -795,7 +798,7 @@ export default function Workspace() {
           {/* 행 추가 — 섹션 하단 오버레이. 섹션 선택 시에만. 단일 버튼으로 단순화(열 수는 행 툴바에서 1~4 조정) */}
           <div className={`absolute left-0 right-0 bottom-1 z-30 flex items-center justify-center transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`} onClick={e => e.stopPropagation()}>
             <button onClick={e => { e.stopPropagation(); addRowToSection(section.id, 1); }} title="행 추가 (열 수는 행 위 1~4 버튼에서 조정)"
-              className="inline-flex items-center gap-1 px-3 py-1 border border-dashed border-orange-300 bg-white text-orange-600 text-[11px] font-bold rounded hover:bg-orange-50">
+              className="inline-flex items-center gap-1 px-3 py-1 border border-dashed border-brand/40 bg-white text-brand text-[11px] font-bold rounded-ctl hover:bg-brand-tint">
               <Plus className="w-3 h-3" /> 행 추가
             </button>
           </div>
@@ -805,40 +808,40 @@ export default function Workspace() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-sand-50 overflow-hidden font-sans">
 
       {/* 단일 렌더 코어(blockKit)가 의존하는 공유 CSS — 공개 페이지와 동일 시각 보장 */}
       <style dangerouslySetInnerHTML={{ __html: WB_STYLE }} />
 
       {/* ── Top Bar ── */}
-      <header className="h-13 border-b border-black bg-white flex items-center justify-between px-5 flex-shrink-0" style={{ height: '52px' }}>
+      <header className="h-13 border-b border-sand-200 bg-white flex items-center justify-between px-5 flex-shrink-0" style={{ height: '52px' }}>
         <div className="flex items-center gap-3">
-          <Link to="/admin/dashboard" className="p-2 hover:bg-gray-100 border border-transparent hover:border-black rounded transition-colors">
+          <Link to="/admin/dashboard" className="p-2 hover:bg-sand-100 border border-transparent hover:border-brand rounded-ctl transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-px h-5 bg-gray-200" />
-          <h1 className="font-black text-sm tracking-tight">1-Page 웹빌더</h1>
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-sand-200" />
+          <h1 className="font-black text-sm tracking-tight">1PAGE 웹 디자인</h1>
+          <div className="w-px h-5 bg-sand-200" />
           <button onClick={undo} disabled={!canUndo} title="실행취소 (Ctrl+Z)"
-            className="p-1.5 border border-transparent hover:border-gray-300 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            className="p-1.5 border border-transparent hover:border-sand-300 rounded-ctl transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button onClick={redo} disabled={!canRedo} title="재실행 (Ctrl+Y)"
-            className="p-1.5 border border-transparent hover:border-gray-300 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            className="p-1.5 border border-transparent hover:border-sand-300 rounded-ctl transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
             <RotateCw className="w-3.5 h-3.5" />
           </button>
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-sand-200" />
           <div className="text-xs font-bold flex items-center gap-1" title="편집 내용은 초안으로 자동 임시저장됩니다. 방문자에게는 '발행'한 내용만 보입니다.">
-            {saveStatus === 'saving'  && <><Loader className="w-3 h-3 animate-spin text-gray-400" /><span className="text-gray-400">임시저장 중...</span></>}
-            {saveStatus === 'saved'   && <><Check className="w-3 h-3 text-green-500" /><span className="text-gray-400">초안 저장됨</span></>}
-            {saveStatus === 'unsaved' && <span className="text-orange-500 font-black">● 저장 안 됨</span>}
+            {saveStatus === 'saving'  && <><Loader className="w-3 h-3 animate-spin text-sand-400" /><span className="text-sand-400">임시저장 중...</span></>}
+            {saveStatus === 'saved'   && <><Check className="w-3 h-3 text-green-500" /><span className="text-sand-400">초안 저장됨</span></>}
+            {saveStatus === 'unsaved' && <span className="text-brand font-black">● 저장 안 됨</span>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex border border-gray-200 rounded overflow-hidden">
+          <div className="flex border border-sand-200 rounded-ctl overflow-hidden">
             {[{ mode: 'desktop', Icon: Monitor, label: '데스크톱' }, { mode: 'tablet', Icon: Tablet, label: '태블릿' }, { mode: 'mobile', Icon: Smartphone, label: '모바일' }].map(({ mode, Icon, label }) => (
               <button key={mode} onClick={() => setViewportMode(mode as typeof viewportMode)} title={label}
-                className={`p-1.5 transition-colors ${viewportMode === mode ? 'bg-black text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                className={`p-1.5 transition-colors ${viewportMode === mode ? 'bg-brand text-white' : 'text-sand-400 hover:bg-sand-100'}`}>
                 <Icon className="w-3.5 h-3.5" />
               </button>
             ))}
@@ -847,14 +850,14 @@ export default function Workspace() {
           <div className="text-[11px] font-bold flex items-center gap-1 mr-0.5"
             title={isPublished ? '방문자에게는 마지막으로 발행한 내용이 보입니다.' : '아직 발행 전이라 방문자에게는 기본 소개 페이지가 보입니다.'}>
             {!isPublished
-              ? <span className="text-gray-400">미발행 · 기본 페이지 노출</span>
+              ? <span className="text-sand-400">미발행 · 기본 페이지 노출</span>
               : hasUnpublishedChanges
-                ? <span className="text-orange-500">● 발행 안 된 변경사항</span>
+                ? <span className="text-brand">● 발행 안 된 변경사항</span>
                 : <span className="text-green-600 flex items-center gap-1"><Check className="w-3 h-3" />발행됨</span>}
           </div>
           <Link to={`/clubs/${adminClub?.slug ?? ''}`} target="_blank"
             title="편집 중인 초안을 새 탭에서 전체 화면으로 미리봅니다."
-            className="px-3 py-1.5 border border-black bg-white hover:bg-gray-50 text-xs font-bold shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-y-px transition-all">
+            className="px-3 py-1.5 border border-sand-300 rounded-ctl bg-white hover:bg-sand-50 hover:border-brand text-xs font-bold text-ink shadow-soft active:translate-y-px transition-all">
             미리보기
           </Link>
           {(() => {
@@ -862,10 +865,10 @@ export default function Workspace() {
             return (
               <button onClick={handlePublish} disabled={!canPublish || publishing}
                 title={canPublish ? '현재 초안을 공개본으로 발행합니다.' : '발행할 변경사항이 없습니다.'}
-                className={`px-4 py-1.5 font-black border text-xs transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-1.5 font-black border rounded-ctl text-xs transition-all flex items-center gap-1.5 ${
                   canPublish
-                    ? 'border-black bg-orange-500 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:-translate-y-px active:shadow-none active:translate-y-px'
-                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-default'}`}>
+                    ? 'border-transparent btn-grad text-white shadow-btn hover:-translate-y-0.5 active:translate-y-0'
+                    : 'border-sand-200 bg-sand-100 text-sand-400 cursor-default'}`}>
                 <Globe className="w-3.5 h-3.5" />
                 {publishing ? '발행 중...' : (!isPublished ? '발행' : hasUnpublishedChanges ? '변경사항 발행' : '발행됨')}
               </button>
@@ -886,29 +889,33 @@ export default function Workspace() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Left Rail: 얇은 바 + 위젯 추가(+) → 모달 ── */}
-        <aside className="w-14 border-r border-black bg-white flex flex-col items-center pt-4 shrink-0 gap-1.5">
+        <aside className="w-14 border-r border-sand-200 bg-white flex flex-col items-center pt-4 shrink-0 gap-1.5">
           <button onClick={() => setWidgetPickerOpen(true)} title="위젯 추가"
-            className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-white hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none">
+            className="w-10 h-10 flex items-center justify-center border border-sand-300 rounded-ctl bg-white hover:bg-brand-tint hover:border-brand hover:text-brand transition-colors shadow-soft active:translate-y-0.5">
             <Plus className="w-5 h-5" />
           </button>
-          <span className="text-[10px] font-black text-gray-400 tracking-wide">추가</span>
+          <span className="text-[10px] font-black text-sand-400 tracking-wide">추가</span>
+          <div className="w-7 h-px bg-sand-200 my-1.5" />
+          <button onClick={() => setTemplateModalOpen(true)} title="섹션 템플릿"
+            className="w-10 h-10 flex items-center justify-center border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 transition-all active:translate-y-0">
+            <LayoutTemplate className="w-5 h-5" />
+          </button>
+          <span className="text-[10px] font-black text-sand-400 tracking-wide">템플릿</span>
         </aside>
 
         {/* ── Center Canvas ── */}
         <main
-          className="flex-1 bg-[#f0f0f0] flex flex-col items-center overflow-y-auto p-6 relative min-h-0"
+          className="flex-1 bg-sand-100 flex flex-col items-center overflow-y-auto p-6 relative min-h-0"
           onClick={() => { setSelectedBlockId(null); setEditingBlockId(null); setInsertMenuIdx(null); }}
         >
           {fetching ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader className="w-7 h-7 animate-spin text-orange-500" />
-            </div>
+            <LoadingScreen />
           ) : (
             <div
               /* overflowX:clip → 풀블리드 위젯이 프레임 좌우로 새는 것만 막고,
                  overflowY:visible → 위젯/섹션 편집 chrome(툴바·+버튼)이 위아래로 안 잘리게 한다.
                  (overflow:hidden 은 양축을 모두 잘라 chrome 을 먹어버림) */
-              className="border border-gray-300 shadow-xl min-h-[800px] flex flex-col relative shrink-0 w-full transition-[max-width] duration-200"
+              className="border border-sand-300 shadow-xl min-h-[800px] flex flex-col relative shrink-0 w-full transition-[max-width] duration-200"
               style={{
                 maxWidth: viewportMode === 'mobile' ? '390px' : viewportMode === 'tablet' ? '768px' : '100%',
                 backgroundColor: pageBgColor || '#ffffff',
@@ -926,9 +933,12 @@ export default function Workspace() {
                   style={{ maxWidth: contentWidth === 'full' ? '100%' : `${contentWidth}px` }}
                 >
                 {blocks.length === 0 && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300 py-20">
+                  <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sand-400 py-20">
                     <MousePointer className="w-8 h-8" />
-                    <button onClick={() => setWidgetPickerOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border-2 border-black rounded text-black hover:bg-black hover:text-white transition-colors shadow-[3px_3px_0_0_rgba(0,0,0,1)]"><Plus className="w-4 h-4" /> 위젯 추가하기</button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setTemplateModalOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 transition-all"><LayoutTemplate className="w-4 h-4" /> 템플릿으로 시작</button>
+                      <button onClick={() => setWidgetPickerOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border border-sand-300 rounded-ctl text-ink bg-white hover:bg-sand-50 hover:border-brand transition-colors shadow-soft"><Plus className="w-4 h-4" /> 위젯 추가하기</button>
+                    </div>
                   </div>
                 )}
 
@@ -946,14 +956,14 @@ export default function Workspace() {
                   <div
                     onDragOver={e => { e.preventDefault(); setDragOverId('__bottom__'); }}
                     onDrop={e => { e.preventDefault(); onDropOnTop(null); }}
-                    className={`mx-10 my-3 py-4 border-2 border-dashed rounded text-center text-[12px] font-bold transition-colors ${dragOverId === '__bottom__' ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-300 text-gray-400'}`}>
+                    className={`mx-10 my-3 py-4 border-2 border-dashed rounded-ctl text-center text-[12px] font-bold transition-colors ${dragOverId === '__bottom__' ? 'border-green-500 bg-green-50 text-green-600' : 'border-sand-300 text-sand-400'}`}>
                     ⬇ 여기에 놓으면 섹션 밖 맨 아래로 이동합니다
                   </div>
                 )}
 
                 {blocks.length > 0 && (
                   <div className="py-8 px-10">
-                    <button onClick={() => setWidgetPickerOpen(true)} className="w-full py-6 border-2 border-dashed border-gray-200 hover:border-black flex items-center justify-center gap-2 text-gray-400 hover:text-black text-xs font-bold transition-colors">
+                    <button onClick={() => setWidgetPickerOpen(true)} className="w-full py-6 border-2 border-dashed border-sand-200 hover:border-brand flex items-center justify-center gap-2 text-sand-400 hover:text-brand text-xs font-bold transition-colors">
                       <Plus className="w-3.5 h-3.5" /> 위젯 추가
                     </button>
                   </div>
@@ -966,7 +976,7 @@ export default function Workspace() {
           {showFloatingBtn && (
             <div className="sticky bottom-6 self-end mr-4 z-50 pointer-events-none max-w-[860px] w-full flex justify-end -mt-16">
               <button
-                className={`pointer-events-auto px-6 py-3 font-black border-2 border-black text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 transition-all ${getThemeText(activeTheme)}`}
+                className={`pointer-events-auto px-6 py-3 font-black border border-transparent rounded-ctl text-sm shadow-btn hover:-translate-y-0.5 transition-all ${getThemeText(activeTheme)}`}
                 style={{ backgroundColor: resolveThemeHex(activeTheme) }}
               >
                 지원하기 →
@@ -980,15 +990,15 @@ export default function Workspace() {
             패널 본문은 width+opacity 슬라이드로 등장/이탈(motion, reduced-motion 시 즉시). */}
         <div className="flex shrink-0 min-h-0">
           {/* 토글 레일 — 좌측 레일(w-14)과 동일한 두께·스타일로 맞춰 항상 또렷하게 보이도록 */}
-          <div className="w-14 shrink-0 border-l border-black bg-white flex flex-col items-center pt-4 gap-1.5">
+          <div className="w-14 shrink-0 border-l border-sand-200 bg-white flex flex-col items-center pt-4 gap-1.5">
             <button
               onClick={togglePanel}
               title={panelOpen ? '속성 패널 접기' : '속성 패널 펼치기'}
-              className="w-10 h-10 flex items-center justify-center border-2 border-black rounded bg-white hover:bg-black hover:text-white transition-colors shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none"
+              className="w-10 h-10 flex items-center justify-center border border-sand-300 rounded-ctl bg-white hover:bg-brand-tint hover:border-brand hover:text-brand transition-colors shadow-soft active:translate-y-0.5"
             >
               {panelOpen ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             </button>
-            <span className="text-[10px] font-black text-gray-400 tracking-wide">{panelOpen ? '접기' : '속성'}</span>
+            <span className="text-[10px] font-black text-sand-400 tracking-wide">{panelOpen ? '접기' : '속성'}</span>
           </div>
           <AnimatePresence initial={false}>
             {panelOpen && (
@@ -1022,7 +1032,7 @@ export default function Workspace() {
             }}
             onDeselect={() => setSelectedBlockId(null)}
             onDelete={() => handleDeleteBlock(selectedBlock.id)}
-            themeHex={themeHex}
+            themeHex={THEME_HEX}
             activeTheme={activeTheme}
           />
         ) : (
@@ -1042,7 +1052,7 @@ export default function Workspace() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 font-bold text-sm flex items-center gap-2 shadow-[4px_4px_0_0_rgba(249,115,22,0.7)]">
+        <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-card font-bold text-sm flex items-center gap-2 shadow-soft-lg">
           <Check className="w-4 h-4 text-green-400" /> {toast}
         </div>
       )}
@@ -1050,46 +1060,50 @@ export default function Workspace() {
       {/* ── 저장 충돌 모달 — 다른 운영진이 먼저 저장해 버전이 어긋났을 때 ── */}
       {conflict && (
         <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] w-[440px] max-w-[92vw] p-6">
-            <div className="font-black text-lg mb-2">다른 사람이 페이지를 수정했어요</div>
-            <p className="text-[13px] font-bold text-gray-600 leading-relaxed mb-5">
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg w-[440px] max-w-[92vw] p-6">
+            <div className="font-black text-lg mb-2 text-ink">다른 사람이 페이지를 수정했어요</div>
+            <p className="text-[13px] font-bold text-sand-600 leading-relaxed mb-5">
               내가 편집하는 동안 다른 운영진이 이 페이지를 저장했습니다.
-              지금 내 변경을 그대로 저장하면 <b className="text-black">상대의 변경이 사라집니다.</b><br />
+              지금 내 변경을 그대로 저장하면 <b className="text-ink">상대의 변경이 사라집니다.</b><br />
               어떻게 할지 선택해 주세요.
             </p>
             <div className="flex flex-col gap-2">
               <button onClick={resolveReload}
-                className="w-full px-4 py-2.5 font-black text-sm border-2 border-black bg-orange-500 text-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:-translate-y-px active:translate-y-px active:shadow-none transition-all">
-                최신 내용 불러오기 <span className="font-bold text-black/70">(내 변경 취소)</span>
+                className="w-full px-4 py-2.5 font-black text-sm border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 active:translate-y-0 transition-all">
+                최신 내용 불러오기 <span className="font-bold text-white/80">(내 변경 취소)</span>
               </button>
               <button onClick={resolveOverwrite}
-                className="w-full px-4 py-2.5 font-black text-sm border-2 border-black bg-white hover:bg-gray-50 shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:translate-y-px active:shadow-none transition-all">
-                내 변경으로 덮어쓰기 <span className="font-bold text-gray-500">(상대 변경 삭제)</span>
+                className="w-full px-4 py-2.5 font-black text-sm border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 hover:border-brand shadow-soft active:translate-y-px transition-all">
+                내 변경으로 덮어쓰기 <span className="font-bold text-sand-500">(상대 변경 삭제)</span>
               </button>
             </div>
-            <p className="text-[11px] font-bold text-gray-400 mt-3 leading-snug">
+            <p className="text-[11px] font-bold text-sand-400 mt-3 leading-snug">
               내 변경이 중요하다면 먼저 내용을 복사해 둔 뒤 ‘최신 내용 불러오기’를 누르는 것이 안전합니다.
             </p>
           </div>
         </div>
       )}
 
+      {/* 섹션 템플릿 갤러리 모달 (좌측 레일 템플릿 버튼) */}
+      <SectionTemplateModal open={templateModalOpen} activeTheme={activeTheme}
+        onClose={() => setTemplateModalOpen(false)} onInsert={handleInsertTemplate} />
+
       {/* 위젯 추가 모달 (좌측 레일 + 버튼) */}
       {widgetPickerOpen && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" onClick={() => setWidgetPickerOpen(false)}>
-          <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] p-5 w-[540px] max-w-[92vw] animate-slide-down" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg p-5 w-[540px] max-w-[92vw] animate-slide-down" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <div className="font-black text-base">위젯 추가</div>
-              <button onClick={() => setWidgetPickerOpen(false)} className="p-1.5 border border-gray-200 hover:border-black rounded transition-colors"><X className="w-4 h-4" /></button>
+              <div className="font-black text-base text-ink">위젯 추가</div>
+              <button onClick={() => setWidgetPickerOpen(false)} className="p-1.5 border border-sand-200 hover:border-brand rounded-ctl transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <div className="grid grid-cols-3 gap-2 max-h-[62vh] overflow-y-auto hide-scrollbar">
               {PALETTE.map(({ type, label, icon: Icon, disabled }) => (
                 <button key={type} disabled={disabled} onClick={() => { handleAddBlock(type); setWidgetPickerOpen(false); }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 border rounded transition-all text-center group
-                    ${disabled ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
-                      : 'border-gray-200 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] cursor-pointer'}`}>
-                  <Icon className={`w-5 h-5 shrink-0 ${disabled ? 'text-gray-300' : 'text-gray-500 group-hover:text-black'}`} />
-                  <span className={`font-bold text-[12px] leading-tight ${disabled ? 'text-gray-300' : 'text-gray-700 group-hover:text-black'}`}>{label}</span>
+                  className={`flex flex-col items-center justify-center gap-2 p-4 border rounded-ctl transition-all text-center group
+                    ${disabled ? 'border-sand-100 text-sand-400 cursor-not-allowed bg-sand-50'
+                      : 'border-sand-200 hover:border-brand hover:bg-brand-tint hover:shadow-soft hover:-translate-y-0.5 cursor-pointer'}`}>
+                  <Icon className={`w-5 h-5 shrink-0 ${disabled ? 'text-sand-400' : 'text-sand-500 group-hover:text-brand'}`} />
+                  <span className={`font-bold text-[12px] leading-tight ${disabled ? 'text-sand-400' : 'text-sand-600 group-hover:text-brand'}`}>{label}</span>
                 </button>
               ))}
             </div>
@@ -1100,14 +1114,14 @@ export default function Workspace() {
       {/* 섹션 컬럼 위젯 피커 */}
       {colPicker && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center" onClick={() => setColPicker(null)}>
-          <div className="bg-white border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,1)] p-4 w-[360px]" onClick={e => e.stopPropagation()}>
-            <div className="text-xs font-black mb-3">이 칸에 추가할 위젯 선택</div>
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg p-4 w-[360px]" onClick={e => e.stopPropagation()}>
+            <div className="text-xs font-black mb-3 text-ink">이 칸에 추가할 위젯 선택</div>
             <div className="grid grid-cols-3 gap-1.5 max-h-[60vh] overflow-y-auto hide-scrollbar">
               {COLUMN_WIDGETS.map(({ type, label, icon: Icon }) => (
                 <button key={type} onClick={() => { addWidgetToColumn(type, colPicker.sectionId, colPicker.rowId, colPicker.colId); setColPicker(null); }}
-                  className="flex flex-col items-center gap-1 p-2.5 border border-gray-200 rounded hover:border-black hover:bg-rose-50 transition-colors">
-                  <Icon className="w-4 h-4 text-gray-500" />
-                  <span className="text-[12px] font-bold text-gray-600 leading-tight text-center">{label}</span>
+                  className="flex flex-col items-center gap-1 p-2.5 border border-sand-200 rounded-ctl hover:border-brand hover:bg-brand-tint transition-colors">
+                  <Icon className="w-4 h-4 text-sand-500" />
+                  <span className="text-[12px] font-bold text-sand-600 leading-tight text-center">{label}</span>
                 </button>
               ))}
             </div>

@@ -41,44 +41,44 @@ export default function ScrapsSection() {
   };
 
   return (
-    <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
-      <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
-        <Heart className="w-6 h-6 text-orange-500" /> 스크랩 (관심 동아리)
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8">
+      <h3 className="text-2xl font-black text-ink mb-6 flex items-center gap-2">
+        <Heart className="w-6 h-6 text-brand" strokeWidth={2.5} /> 스크랩 (관심 동아리)
       </h3>
       {fetching ? (
-        <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gray-400" /></div>
+        <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-sand-400" /></div>
       ) : scraps.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 font-bold border-2 border-dashed border-gray-300 flex flex-col items-center gap-4">
+        <div className="text-center py-12 text-sand-500 font-bold border border-dashed border-sand-300 rounded-card flex flex-col items-center gap-4">
           <p>아직 스크랩한 동아리가 없습니다.</p>
           <Link
             to="/clubs"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            className="inline-flex items-center gap-2 px-6 py-2.5 btn-grad text-white rounded-ctl font-bold text-sm shadow-btn hover:-translate-y-0.5 transition-all"
           >
-            관심 동아리 찾아보기 <ArrowRight className="w-4 h-4" />
+            관심 동아리 찾아보기 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
           </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {scraps.map(s => (
-            <div key={s.id} className="p-4 border border-black bg-gray-50 flex items-center justify-between">
+            <div key={s.id} className="p-4 border border-sand-200 rounded-card bg-sand-50 flex items-center justify-between">
               {s.club ? (
                 <Link to={`/clubs/${s.club.slug}`} className="min-w-0 group">
-                  <div className="font-black text-lg truncate group-hover:text-orange-600 transition-colors">{s.club.name}</div>
-                  <div className="text-sm font-bold text-gray-500 truncate">
+                  <div className="font-black text-lg text-ink truncate group-hover:text-brand transition-colors">{s.club.name}</div>
+                  <div className="text-sm font-bold text-sand-500 truncate">
                     {s.club.type} {s.club.one_line_desc ? `· ${s.club.one_line_desc}` : ''}
                   </div>
                 </Link>
               ) : (
                 <div className="min-w-0">
-                  <div className="font-black text-lg text-gray-400">삭제된 동아리</div>
+                  <div className="font-black text-lg text-sand-400">삭제된 동아리</div>
                 </div>
               )}
               <button
                 onClick={() => handleRemove(s.id)}
-                className="text-gray-400 hover:text-red-500 transition-colors p-2 border border-transparent hover:border-red-200 hover:bg-red-50 shrink-0"
+                className="text-sand-400 hover:text-red-500 transition-colors p-2 rounded-ctl border border-transparent hover:bg-red-50 shrink-0"
                 title="스크랩 삭제"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" strokeWidth={2.5} />
               </button>
             </div>
           ))}

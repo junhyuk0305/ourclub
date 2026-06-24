@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { PlayCircle, Loader, Copy, Check } from 'lucide-react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { AdminHeader } from '../../components/admin/AdminHeader';
+import { SessionTabs } from '../../components/admin/SessionTabs';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll } from '../../lib/fetchAll';
@@ -227,64 +226,60 @@ export default function AttendanceCreate() {
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
-        </aside>
+        <main className="flex-1 bg-sand-50 p-8 overflow-y-auto">
+          <div className="max-w-5xl flex flex-col gap-6">
+            <SessionTabs />
 
-        <main className="flex-1 bg-white p-8 overflow-y-auto">
-          <div className="max-w-3xl flex flex-col gap-8">
+            <div className="max-w-3xl flex flex-col gap-6">
             <div>
-              <h2 className="text-4xl font-black mb-2">세션 출석기록 생성</h2>
-              <p className="text-gray-500 font-bold">새로운 출석 코드를 발급하고 대상을 설정합니다.</p>
+              <h3 className="text-lg font-black text-ink mb-1">새 출석 세션 시작</h3>
+              <p className="text-sand-500 font-bold text-sm">새로운 출석 코드를 발급하고 대상을 설정합니다.</p>
             </div>
 
             {liveSession ? (
-              <div className="border-4 border-orange-500 p-8 shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] bg-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-orange-500 text-white font-black px-4 py-1 flex items-center gap-2">
+              <div className="border border-brand rounded-card p-8 shadow-soft-lg bg-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 btn-grad text-white font-black px-4 py-1 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-white animate-pulse" /> LIVE · {fmt(timeLeft)}
                 </div>
-                <h3 className="text-3xl font-black mb-1">{liveSession.title}</h3>
-                <p className="font-bold text-gray-500 mb-8">현재 세션 출석 진행 중. 화면에 코드를 띄워주세요.</p>
-                <div className="relative flex items-center justify-center py-10 bg-gray-50 border-2 border-black mb-8">
-                  <div className="text-9xl font-black tracking-[0.3em]">{liveSession.attendance_code}</div>
+                <h3 className="text-3xl font-black text-ink mb-1">{liveSession.title}</h3>
+                <p className="font-bold text-sand-500 mb-8">현재 세션 출석 진행 중. 화면에 코드를 띄워주세요.</p>
+                <div className="relative flex items-center justify-center py-10 bg-sand-50 border border-sand-200 rounded-card mb-8">
+                  <div className="text-9xl font-black text-ink tracking-[0.3em]">{liveSession.attendance_code}</div>
                   <button
                     onClick={handleCopy}
-                    className="absolute top-3 right-3 px-3 py-1.5 bg-white border border-black font-black text-xs hover:bg-orange-500 hover:text-white flex items-center gap-1"
+                    className="absolute top-3 right-3 px-3 py-1.5 rounded-ctl bg-white border border-sand-300 font-bold text-xs text-ink hover:bg-sand-50 flex items-center gap-1"
                     title="코드 복사"
                   >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? <Check className="w-3 h-3" strokeWidth={2.5} /> : <Copy className="w-3 h-3" strokeWidth={2.5} />}
                     {copied ? '복사됨' : '복사'}
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full border-4 border-orange-500 flex items-center justify-center font-black text-xl">
+                    <div className="w-16 h-16 rounded-full border border-brand flex items-center justify-center font-black text-xl text-ink">
                       {liveCount}
                     </div>
                     <div className="font-bold">
-                      <p className="text-gray-500">출석 완료</p>
-                      <p className="text-xl">{liveCount} / {liveTargetCount}명</p>
+                      <p className="text-sand-500">출석 완료</p>
+                      <p className="text-xl text-ink">{liveCount} / {liveTargetCount}명</p>
                     </div>
                   </div>
                   <button
                     onClick={handleEnd}
-                    className="px-6 py-3 bg-black text-white font-black hover:bg-gray-800 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-1 active:shadow-none transition-all"
+                    className="px-6 py-3 rounded-ctl bg-ink text-white font-bold hover:opacity-90 transition-all"
                   >
                     출석 마감하기
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="border-2 border-black p-8 bg-orange-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-5">
-                <h3 className="text-2xl font-black flex items-center gap-2">
-                  <PlayCircle className="w-6 h-6 text-orange-500" /> 새 세션 시작하기
+              <div className="border border-sand-200 rounded-card p-8 bg-brand-tint shadow-soft flex flex-col gap-5">
+                <h3 className="text-2xl font-black text-ink flex items-center gap-2">
+                  <PlayCircle className="w-6 h-6 text-brand" strokeWidth={2.5} /> 새 세션 시작하기
                 </h3>
 
                 {errorMsg && (
-                  <div className="bg-red-50 border-2 border-red-500 px-4 py-3 text-red-700 font-bold text-sm whitespace-pre-line">
+                  <div className="bg-bad-bg text-bad-fg rounded-ctl px-4 py-3 font-bold text-sm whitespace-pre-line">
                     {errorMsg}
                   </div>
                 )}
@@ -292,28 +287,28 @@ export default function AttendanceCreate() {
                 {/* 세션 이름 + 날짜 */}
                 <div className="flex gap-4">
                   <div className="flex-1 flex flex-col gap-1">
-                    <label className="font-black text-sm">세션 이름 *</label>
+                    <label className="font-black text-sm text-ink">세션 이름 *</label>
                     <input
                       value={sessionName}
                       onChange={e => setSessionName(e.target.value)}
                       placeholder="예: 2차 정규 세션 (마케팅 실습)"
-                      className="p-3 border border-black font-bold outline-none focus:border-orange-500"
+                      className="field p-3 border border-sand-300 rounded-ctl font-bold outline-none"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="font-black text-sm">날짜</label>
+                    <label className="font-black text-sm text-ink">날짜</label>
                     <input
                       type="date"
                       value={sessionDate}
                       onChange={e => setSessionDate(e.target.value)}
-                      className="p-3 border border-black font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
+                      className="field p-3 border border-sand-300 rounded-ctl font-bold outline-none bg-white cursor-pointer"
                     />
                   </div>
                 </div>
 
                 {/* 마감 시간 */}
                 <div className="flex flex-col gap-2">
-                  <label className="font-black text-sm">출석 마감 시간</label>
+                  <label className="font-black text-sm text-ink">출석 마감 시간</label>
                   <div className="flex flex-wrap items-center gap-2">
                     {PRESET_DURATIONS.map(p => {
                       const on = !customDuration && durationMin === p.minutes;
@@ -322,8 +317,8 @@ export default function AttendanceCreate() {
                           key={p.minutes}
                           type="button"
                           onClick={() => { setCustomDuration(false); setDurationMin(p.minutes); }}
-                          className={`px-3 py-1.5 border-2 border-black font-black text-xs ${
-                            on ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                          className={`px-3 py-1.5 rounded-ctl font-bold text-xs transition-all ${
+                            on ? 'bg-ink text-white' : 'bg-white border border-sand-300 text-ink hover:bg-sand-50'
                           }`}
                         >
                           {p.label}
@@ -333,8 +328,8 @@ export default function AttendanceCreate() {
                     <button
                       type="button"
                       onClick={() => setCustomDuration(true)}
-                      className={`px-3 py-1.5 border-2 border-black font-black text-xs ${
-                        customDuration ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                      className={`px-3 py-1.5 rounded-ctl font-bold text-xs transition-all ${
+                        customDuration ? 'bg-ink text-white' : 'bg-white border border-sand-300 text-ink hover:bg-sand-50'
                       }`}
                     >
                       직접 입력
@@ -347,9 +342,9 @@ export default function AttendanceCreate() {
                           max={180}
                           value={durationMin}
                           onChange={e => setDurationMin(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="w-20 p-1.5 border-2 border-black font-bold text-sm outline-none focus:border-orange-500"
+                          className="field w-20 p-1.5 border border-sand-300 rounded-ctl font-bold text-sm outline-none"
                         />
-                        <span className="font-bold text-sm">분</span>
+                        <span className="font-bold text-sm text-ink">분</span>
                       </div>
                     )}
                   </div>
@@ -361,7 +356,7 @@ export default function AttendanceCreate() {
                     {/* 기수 선택 칩 */}
                     {genOptions.length > 1 && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-black text-gray-500">기수 선택:</span>
+                        <span className="text-xs font-black text-sand-500">기수 선택:</span>
                         {genOptions.map(g => {
                           const on = selectedGens.has(g);
                           const cnt = allMembers.filter(m => genKey(m) === g).length;
@@ -370,13 +365,13 @@ export default function AttendanceCreate() {
                               key={g}
                               type="button"
                               onClick={() => toggleGen(g)}
-                              className={`px-2.5 py-1 border-2 border-black font-black text-xs flex items-center gap-1 ${
-                                on ? 'bg-orange-500 text-black' : 'bg-white text-gray-400 hover:bg-gray-100'
+                              className={`px-2.5 py-1 rounded-ctl font-bold text-xs flex items-center gap-1 transition-all ${
+                                on ? 'btn-grad text-white' : 'bg-white border border-sand-300 text-sand-400 hover:bg-sand-50'
                               }`}
                             >
                               {g === NO_GEN ? '미지정' : g}
-                              {g === currentGen && <span className="text-[9px] text-orange-700">현재</span>}
-                              <span className={`px-1 rounded ${on ? 'bg-black/10' : 'bg-gray-100'}`}>{cnt}</span>
+                              {g === currentGen && <span className={`text-[9px] ${on ? 'text-white/80' : 'text-brand'}`}>현재</span>}
+                              <span className={`px-1 rounded ${on ? 'bg-white/20' : 'bg-sand-100'}`}>{cnt}</span>
                             </button>
                           );
                         })}
@@ -384,25 +379,25 @@ export default function AttendanceCreate() {
                     )}
 
                     <div className="flex items-center justify-between">
-                      <label className="font-black text-sm">출석 대상자 ({targetMembers.length}명)</label>
+                      <label className="font-black text-sm text-ink">출석 대상자 ({targetMembers.length}명)</label>
                       <div className="flex items-center gap-3">
                         {candidateMembers.length > 0 && (
                           <button
                             type="button"
                             onClick={toggleAllVisible}
-                            className="text-xs font-black underline hover:no-underline"
+                            className="text-xs font-black text-brand underline hover:no-underline"
                           >
                             {allVisibleChecked ? '전체 해제' : '전체 선택'}
                           </button>
                         )}
-                        <span className="text-xs font-bold text-gray-500">
+                        <span className="text-xs font-bold text-sand-500">
                           체크 해제 시 모수에서 제외됩니다
                         </span>
                       </div>
                     </div>
-                    <div className="border-2 border-black bg-white max-h-60 overflow-y-auto">
+                    <div className="border border-sand-200 rounded-card bg-white max-h-60 overflow-y-auto">
                       {candidateMembers.length === 0 ? (
-                        <p className="px-3 py-6 text-center text-xs font-bold text-gray-400">
+                        <p className="px-3 py-6 text-center text-xs font-bold text-sand-400">
                           위에서 기수를 하나 이상 선택하세요.
                         </p>
                       ) : candidateMembers.map(m => {
@@ -410,18 +405,18 @@ export default function AttendanceCreate() {
                         return (
                           <label
                             key={m.id}
-                            className={`flex items-center gap-2 px-3 py-2 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 text-sm font-bold ${
-                              excluded ? 'text-gray-400 line-through' : ''
+                            className={`flex items-center gap-2 px-3 py-2 border-b border-sand-200 last:border-b-0 cursor-pointer hover:bg-sand-50 text-sm font-bold ${
+                              excluded ? 'text-sand-400 line-through' : 'text-ink'
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={!excluded}
                               onChange={() => toggleExclude(m.id)}
-                              className="w-4 h-4 accent-orange-500"
+                              className="w-4 h-4 accent-brand"
                             />
                             <span>{m.profiles?.name ?? m.display_name ?? '—'}</span>
-                            <span className="text-xs text-gray-400">{m.generation}</span>
+                            <span className="text-xs text-sand-400">{m.generation}</span>
                           </label>
                         );
                       })}
@@ -432,16 +427,15 @@ export default function AttendanceCreate() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !sessionName.trim() || targetMembers.length === 0}
-                  className="w-full py-4 bg-orange-500 text-black border border-black font-black hover:bg-orange-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 btn-grad text-white rounded-ctl font-bold shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {creating && <Loader className="w-4 h-4 animate-spin" />}
                   코드 생성 · {durationMin}분 타이머 시작
                 </button>
               </div>
             )}
+            </div>
           </div>
         </main>
-      </div>
-    </div>
   );
 }

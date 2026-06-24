@@ -2,8 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from 're
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList } from 'recharts';
 import { Users, Search, Award, Loader, UserPlus, Check, Save, Info, Bell, CheckCircle, XCircle, AlertTriangle, Settings, Download, GraduationCap, ChevronDown, Archive } from 'lucide-react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { AdminHeader } from '../../components/admin/AdminHeader';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
@@ -36,10 +35,10 @@ interface JoinRequest {
 }
 
 const STATUS_BADGE: Record<MemberStatus, string> = {
-  '활동중':  'bg-green-100 text-green-700 border-green-300',
-  '수료':    'bg-blue-100 text-blue-700 border-blue-300',
-  '탈퇴':    'bg-gray-100 text-gray-500 border-gray-300',
-  '활동정지': 'bg-red-100 text-red-700 border-red-300',
+  '활동중':  'bg-ok-bg text-ok-fg',
+  '수료':    'bg-info-bg text-info-fg',
+  '탈퇴':    'bg-off-bg text-off-fg',
+  '활동정지': 'bg-bad-bg text-bad-fg',
 };
 
 export default function MembersAdmin() {
@@ -347,7 +346,7 @@ export default function MembersAdmin() {
   const renderCustomInput = (f: CustomField, m: Member) => {
     const val = getCustomVal(m.id, f.id);
     const onChange = (v: string) => setCustomDraft(m.id, f.id, v);
-    const base = 'border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500';
+    const base = 'field border border-sand-300 rounded-ctl p-1 text-sm font-bold';
     switch (f.field_type) {
       case 'select':
         return (
@@ -417,11 +416,12 @@ export default function MembersAdmin() {
     }
 
     const results = await Promise.all([...memberOps, ...customOps]);
-    const failed = results.filter(r => (r as { error?: unknown }).error).length;
+    const errors = results.map(r => (r as { error?: { message?: string } }).error).filter(Boolean);
     setBulkSaving(false);
     setShowSaveModal(false);
-    if (failed > 0) {
-      showToast(`${failed}건 저장 실패. 다시 시도해주세요.`);
+    if (errors.length > 0) {
+      // DB 트리거(예: 마지막 운영진 보호)가 던진 메시지를 그대로 노출 — 무한 재시도 방지
+      showToast(errors[0]?.message ?? `${errors.length}건 저장 실패. 다시 시도해주세요.`);
       return;
     }
     setMembers(prev => prev.map(m => drafts[m.id] ? { ...m, ...drafts[m.id] } : m));
@@ -674,57 +674,51 @@ export default function MembersAdmin() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
-        </aside>
-
-        <main ref={scrollRef} className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+    <>
+        <main ref={scrollRef} className="flex-1 bg-sand-50 p-8 overflow-y-auto">
           <div className={`max-w-5xl flex flex-col gap-6 ${draftCount > 0 && activeTab === 'members' ? 'pb-32' : ''}`}>
-            <div className="flex justify-between items-end border-b border-black pb-6">
+            <div className="flex justify-between items-end border-b border-sand-200 pb-6">
               <div>
-                <h2 className="text-4xl font-black mb-2">부원 명단 관리</h2>
-                <p className="text-gray-500 font-bold">동아리 멤버 현황 및 역할/상태를 관리합니다.</p>
+                <h2 className="text-4xl font-black text-ink mb-2">부원 명단 관리</h2>
+                <p className="text-sand-500 font-medium">동아리 멤버 현황 및 역할/상태를 관리합니다.</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowPullModal(true)}
-                  className="px-4 py-2 border border-black font-black bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-px active:translate-y-1 active:shadow-none flex items-center gap-2"
+                  className="px-4 py-2 border border-sand-200 rounded-ctl font-bold bg-white text-ink hover:bg-sand-50 shadow-soft flex items-center gap-2"
                 >
-                  <Download className="w-5 h-5" /> 합격자 끌어오기
+                  <Download className="w-5 h-5" strokeWidth={2.5} /> 합격자 끌어오기
                 </button>
                 <button
                   onClick={() => setShowInviteModal(true)}
-                  className="px-6 py-2 border border-black font-black bg-orange-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-px active:translate-y-1 active:shadow-none flex items-center gap-2"
+                  className="btn-grad px-6 py-2 rounded-ctl font-bold text-white shadow-btn flex items-center gap-2"
                 >
-                  <UserPlus className="w-5 h-5" /> 구성원 추가
+                  <UserPlus className="w-5 h-5" strokeWidth={2.5} /> 구성원 추가
                 </button>
               </div>
             </div>
 
             {/* 현재 활동 기수 배너 */}
-            <div className="bg-white border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex flex-wrap items-center gap-3">
+            <div className="bg-white border border-sand-200 rounded-card p-4 shadow-soft flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-orange-500" />
-                <span className="font-black text-sm">현재 활동 기수</span>
+                <GraduationCap className="w-5 h-5 text-brand" strokeWidth={2.5} />
+                <span className="font-bold text-sm text-ink">현재 활동 기수</span>
               </div>
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setGenPickerOpen(v => !v); }}
-                  className="px-3 py-1.5 border-2 border-black font-black text-sm flex items-center gap-1 bg-white hover:bg-gray-100 min-w-[100px] justify-between"
+                  className="px-3 py-1.5 border border-sand-300 rounded-ctl font-bold text-sm flex items-center gap-1 bg-white hover:bg-sand-50 min-w-[100px] justify-between"
                 >
                   {currentGeneration ?? '미지정'}
-                  <ChevronDown className="w-3 h-3" />
+                  <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
                 </button>
                 {genPickerOpen && (
                   <div
-                    className="absolute top-full left-0 mt-1 z-20 bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-w-[140px] max-h-60 overflow-y-auto"
+                    className="absolute top-full left-0 mt-1 z-20 bg-white border border-sand-200 rounded-card shadow-soft-lg min-w-[140px] max-h-60 overflow-y-auto"
                     onClick={e => e.stopPropagation()}
                   >
                     {generations.length === 0 ? (
-                      <p className="px-3 py-2 text-xs font-bold text-gray-400">먼저 [기수 관리]에서 기수를 추가하세요.</p>
+                      <p className="px-3 py-2 text-xs font-medium text-sand-400">먼저 [기수 관리]에서 기수를 추가하세요.</p>
                     ) : (
                       <>
                         <button
@@ -733,7 +727,7 @@ export default function MembersAdmin() {
                             setGenPickerOpen(false);
                             if (r.error) showToast(`변경 실패: ${r.error}`);
                           }}
-                          className="block w-full text-left px-3 py-2 text-xs font-bold hover:bg-gray-50 border-b border-gray-200 text-gray-500"
+                          className="block w-full text-left px-3 py-2 text-xs font-medium hover:bg-sand-50 border-b border-sand-200 text-sand-500"
                         >
                           (미지정)
                         </button>
@@ -745,7 +739,7 @@ export default function MembersAdmin() {
                               setGenPickerOpen(false);
                               if (r.error) showToast(`변경 실패: ${r.error}`);
                             }}
-                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-orange-50 ${g === currentGeneration ? 'bg-orange-100' : ''}`}
+                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint ${g === currentGeneration ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
                           >
                             {g}
                           </button>
@@ -758,39 +752,39 @@ export default function MembersAdmin() {
               <button
                 onClick={() => setShowCloseGenModal(true)}
                 disabled={!currentGeneration}
-                className="px-3 py-1.5 border-2 border-black bg-white hover:bg-red-50 font-black text-xs flex items-center gap-1 disabled:opacity-40"
+                className="px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-bad-bg font-bold text-xs flex items-center gap-1 disabled:opacity-40"
                 title="현재 기수의 활동중 부원을 모두 '수료' 처리합니다."
               >
-                <Archive className="w-3 h-3" /> 기수 마감
+                <Archive className="w-3 h-3" strokeWidth={2.5} /> 기수 마감
               </button>
               <button
                 onClick={() => setShowGenManager(true)}
-                className="ml-auto px-3 py-1.5 border-2 border-black bg-white hover:bg-gray-100 font-black text-xs flex items-center gap-1"
+                className="ml-auto px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-xs flex items-center gap-1"
               >
-                <Settings className="w-3 h-3" /> 기수 목록 관리
+                <Settings className="w-3 h-3" strokeWidth={2.5} /> 기수 목록 관리
               </button>
             </div>
 
             {/* 탭 */}
-            <div className="flex gap-0 border-2 border-black w-fit">
+            <div className="flex gap-0 border border-sand-200 rounded-ctl overflow-hidden w-fit">
               <button
                 onClick={() => setActiveTab('members')}
-                className={`px-5 py-2.5 font-black text-sm border-r-2 border-black transition-colors flex items-center gap-2 ${
-                  activeTab === 'members' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                className={`px-5 py-2.5 font-bold text-sm border-r border-sand-200 transition-colors flex items-center gap-2 ${
+                  activeTab === 'members' ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-sand-50'
                 }`}
               >
-                <Users className="w-4 h-4" /> 부원 명단
+                <Users className="w-4 h-4" strokeWidth={2.5} /> 부원 명단
               </button>
               <button
                 onClick={() => setActiveTab('join-requests')}
-                className={`px-5 py-2.5 font-black text-sm transition-colors flex items-center gap-2 ${
-                  activeTab === 'join-requests' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                className={`px-5 py-2.5 font-bold text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'join-requests' ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-sand-50'
                 }`}
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4" strokeWidth={2.5} />
                 합류 신청
                 {joinRequests.length > 0 && (
-                  <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 font-black rounded-full">
+                  <span className="bg-brand text-white text-xs px-1.5 py-0.5 font-bold rounded-full">
                     {joinRequests.length}
                   </span>
                 )}
@@ -802,40 +796,40 @@ export default function MembersAdmin() {
               <div className="flex flex-col gap-3">
                 {joinFetching ? (
                   <div className="flex justify-center py-16">
-                    <Loader className="w-8 h-8 animate-spin text-orange-500" />
+                    <Loader className="w-8 h-8 animate-spin text-brand" strokeWidth={2.5} />
                   </div>
                 ) : joinRequests.length === 0 ? (
-                  <div className="bg-white border border-black p-12 text-center">
-                    <Bell className="w-10 h-10 mx-auto text-gray-200 mb-3" />
-                    <p className="font-bold text-gray-400">대기 중인 합류 신청이 없습니다.</p>
+                  <div className="bg-white border border-sand-200 rounded-card p-12 text-center">
+                    <Bell className="w-10 h-10 mx-auto text-sand-200 mb-3" strokeWidth={2.5} />
+                    <p className="font-medium text-sand-400">대기 중인 합류 신청이 없습니다.</p>
                   </div>
                 ) : (
                   joinRequests.map(req => (
-                    <div key={req.id} className="bg-white border border-black p-5 flex flex-col gap-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <div key={req.id} className="bg-white border border-sand-200 rounded-card p-5 flex flex-col gap-4 shadow-soft">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-black text-lg">{req.profiles?.name ?? '—'}</p>
-                          <p className="text-sm font-bold text-gray-400">{req.profiles?.email}</p>
+                          <p className="font-black text-lg text-ink">{req.profiles?.name ?? '—'}</p>
+                          <p className="text-sm font-medium text-sand-400">{req.profiles?.email}</p>
                           {(req.profiles?.university || req.profiles?.major) && (
-                            <p className="text-sm font-bold text-gray-400">
+                            <p className="text-sm font-medium text-sand-400">
                               {[req.profiles.university, req.profiles.major].filter(Boolean).join(' · ')}
                             </p>
                           )}
                         </div>
                         <div className="text-right shrink-0">
                           {req.role_title && (
-                            <span className="inline-block border-2 border-black px-2 py-0.5 text-xs font-black mb-1">
+                            <span className="inline-block border border-sand-300 rounded-ctl px-2 py-0.5 text-xs font-bold text-ink mb-1">
                               희망 직책: {req.role_title}
                             </span>
                           )}
-                          <p className="text-xs font-bold text-gray-400">
+                          <p className="text-xs font-medium text-sand-400">
                             {formatDate(req.created_at)}
                           </p>
                         </div>
                       </div>
 
                       {req.intro && (
-                        <div className="bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600 whitespace-pre-line">
+                        <div className="bg-sand-50 border border-sand-200 rounded-ctl px-4 py-3 text-sm font-medium text-sand-600 whitespace-pre-line">
                           {req.intro}
                         </div>
                       )}
@@ -844,17 +838,17 @@ export default function MembersAdmin() {
                         <button
                           onClick={() => handleJoinDecision(req, '거절')}
                           disabled={joinProcessing[req.id]}
-                          className="flex-1 py-2.5 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                          className="flex-1 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm text-ink hover:bg-sand-50 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
                         >
-                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <XCircle className="w-4 h-4" strokeWidth={2.5} />}
                           거절
                         </button>
                         <button
                           onClick={() => handleJoinDecision(req, '승인')}
                           disabled={joinProcessing[req.id]}
-                          className="flex-1 py-2.5 bg-orange-500 border-2 border-black font-black text-sm hover:bg-black hover:text-orange-500 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 py-2.5 btn-grad rounded-ctl font-bold text-sm text-white shadow-btn disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
                         >
-                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <CheckCircle className="w-4 h-4" strokeWidth={2.5} />}
                           승인 (운영진 등록)
                         </button>
                       </div>
@@ -867,14 +861,14 @@ export default function MembersAdmin() {
             {/* ── 부원 명단 탭 ───────── */}
             {activeTab === 'members' && <>
             {selectedCount > 0 ? (
-              <div className="flex justify-between items-center bg-orange-500 border-2 border-black p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                <div className="flex items-center gap-3">
-                  <span className="font-black text-sm">
+              <div className="flex justify-between items-center btn-grad rounded-card p-3 shadow-soft">
+                <div className="flex items-center gap-3 text-white">
+                  <span className="font-bold text-sm">
                     <strong>{selectedCount}명</strong> 선택됨
                   </span>
                   <button
                     onClick={() => setSelectedIds(new Set())}
-                    className="text-xs font-black underline hover:no-underline"
+                    className="text-xs font-bold underline hover:no-underline"
                   >
                     선택 취소
                   </button>
@@ -887,7 +881,7 @@ export default function MembersAdmin() {
                       applyBulk({ status: e.target.value as MemberStatus });
                       e.target.value = '';
                     }}
-                    className="px-3 py-1.5 border-2 border-black bg-white font-black text-xs cursor-pointer outline-none"
+                    className="field px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink font-bold text-xs cursor-pointer"
                   >
                     <option value="">상태 변경 ▾</option>
                     {(['활동중','수료','탈퇴','활동정지'] as MemberStatus[]).map(s => (
@@ -901,7 +895,7 @@ export default function MembersAdmin() {
                       applyBulk({ role: e.target.value as Member['role'] });
                       e.target.value = '';
                     }}
-                    className="px-3 py-1.5 border-2 border-black bg-white font-black text-xs cursor-pointer outline-none"
+                    className="field px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink font-bold text-xs cursor-pointer"
                   >
                     <option value="">역할 변경 ▾</option>
                     {(['운영진','부원'] as Member['role'][]).map(r => (
@@ -917,16 +911,16 @@ export default function MembersAdmin() {
                   <div className="relative">
                     <button
                       onClick={(e) => { e.stopPropagation(); setViewGenOpen(v => !v); }}
-                      className="px-3 py-2 border border-black bg-white hover:bg-gray-100 font-black text-sm flex items-center gap-1.5 min-w-[130px] justify-between"
+                      className="px-3 py-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-sm flex items-center gap-1.5 min-w-[130px] justify-between"
                     >
-                      <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{viewGen === GEN_ALL ? '전체 기수' : viewGen}{viewGen === currentGeneration && viewGen !== GEN_ALL ? ' (현재)' : ''}</span>
-                      <ChevronDown className="w-3 h-3" />
+                      <span className="flex items-center gap-1.5"><Users className="w-4 h-4" strokeWidth={2.5} />{viewGen === GEN_ALL ? '전체 기수' : viewGen}{viewGen === currentGeneration && viewGen !== GEN_ALL ? ' (현재)' : ''}</span>
+                      <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
                     </button>
                     {viewGenOpen && (
-                      <div className="absolute top-full left-0 mt-1 z-20 bg-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] min-w-[150px] max-h-72 overflow-y-auto" onClick={e => e.stopPropagation()}>
+                      <div className="absolute top-full left-0 mt-1 z-20 bg-white border border-sand-200 rounded-card shadow-soft-lg min-w-[150px] max-h-72 overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => { setViewGen(GEN_ALL); setViewGenOpen(false); }}
-                          className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-orange-50 border-b border-gray-200 ${viewGen === GEN_ALL ? 'bg-orange-100' : ''}`}
+                          className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint border-b border-sand-200 ${viewGen === GEN_ALL ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
                         >
                           전체 기수
                         </button>
@@ -934,10 +928,10 @@ export default function MembersAdmin() {
                           <button
                             key={g}
                             onClick={() => { setViewGen(g); setViewGenOpen(false); }}
-                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-orange-50 flex items-center justify-between ${g === viewGen ? 'bg-orange-100' : ''}`}
+                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint flex items-center justify-between ${g === viewGen ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
                           >
                             {g}
-                            {g === currentGeneration && <span className="text-[10px] font-black text-orange-600">현재</span>}
+                            {g === currentGeneration && <span className="text-[10px] font-bold text-brand">현재</span>}
                           </button>
                         ))}
                       </div>
@@ -945,13 +939,13 @@ export default function MembersAdmin() {
                   </div>
                   {/* 상태 분포 (현재 기수 보기 기준) — 상태별 색 차등 */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="flex items-center gap-1.5 px-3 py-2 border border-black bg-black text-white font-black text-xs">
-                      전체 <span className="bg-white text-black px-1.5 py-0.5 rounded-full">{genPool.length}</span>
+                    <span className="flex items-center gap-1.5 px-3 py-2 rounded-ctl bg-ink text-white font-bold text-xs">
+                      전체 <span className="bg-white text-ink px-1.5 py-0.5 rounded-full">{genPool.length}</span>
                     </span>
                     {(['활동중','수료','탈퇴','활동정지'] as MemberStatus[]).map(s => {
                       const cnt = genPool.filter(m => m.status === s).length;
                       return (
-                        <span key={s} className={`flex items-center gap-1.5 px-3 py-2 border font-black text-xs ${STATUS_BADGE[s]}`}>
+                        <span key={s} className={`flex items-center gap-1.5 px-3 py-2 rounded-ctl font-bold text-xs ${STATUS_BADGE[s]}`}>
                           {s} <span className="bg-white/70 px-1.5 py-0.5 rounded-full">{cnt}</span>
                         </span>
                       );
@@ -959,71 +953,71 @@ export default function MembersAdmin() {
                   </div>
                   {/* 필터 결과 인원수 (M2-2) */}
                   {isFiltering && (
-                    <span className="text-sm font-black text-orange-600">필터 결과 총 {filtered.length}명</span>
+                    <span className="text-sm font-bold text-brand">필터 결과 총 {filtered.length}명</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sand-400" strokeWidth={2.5} />
                     <input
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder="이름 또는 학과 검색"
-                      className="pl-9 pr-4 py-2 border border-black outline-none focus:border-orange-500 font-bold"
+                      className="field pl-9 pr-4 py-2 border border-sand-300 rounded-ctl font-medium"
                     />
                   </div>
                   <button
                     onClick={handleExportExcel}
                     disabled={filtered.length === 0}
                     title="엑셀 다운로드 (현재 필터링 결과)"
-                    className="px-3 py-2 border border-black bg-white hover:bg-gray-100 font-black text-sm flex items-center gap-1 disabled:opacity-50"
+                    className="px-3 py-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-sm flex items-center gap-1 disabled:opacity-50"
                   >
-                    <Download className="w-4 h-4" /> 엑셀
+                    <Download className="w-4 h-4" strokeWidth={2.5} /> 엑셀
                   </button>
                   <button
                     onClick={() => setShowColumnSettings(true)}
                     title="항목 설정"
-                    className="p-2 border border-black bg-white hover:bg-gray-100 font-black"
+                    className="p-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold"
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings className="w-4 h-4" strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
             )}
 
             {draftCount > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 text-orange-700 font-bold text-sm">
-                <Info className="w-4 h-4 shrink-0" />
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-tint border border-brand/30 rounded-card text-brand-dark font-medium text-sm">
+                <Info className="w-4 h-4 shrink-0" strokeWidth={2.5} />
                 <span>변경된 행은 주황색으로 표시됩니다. 하단의 <strong>저장</strong> 버튼을 눌러 모두 한번에 확정하세요.</span>
               </div>
             )}
 
-            <div className="bg-white border border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden">
               {fetching ? (
-                <div className="flex justify-center py-16"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>
+                <LoadingScreen />
               ) : members.length === 0 ? (
                 <div className="flex flex-col items-center gap-4 py-16 text-center">
-                  <div className="w-16 h-16 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-gray-300" />
+                  <div className="w-16 h-16 border border-dashed border-sand-200 rounded-card flex items-center justify-center">
+                    <Users className="w-8 h-8 text-sand-300" strokeWidth={2.5} />
                   </div>
-                  <p className="text-gray-400 font-bold">아직 등록된 부원이 없습니다.</p>
+                  <p className="text-sand-400 font-medium">아직 등록된 부원이 없습니다.</p>
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 btn-grad text-white font-bold text-sm rounded-ctl shadow-btn transition-colors"
                   >
-                    <UserPlus className="w-4 h-4" /> 첫 구성원 추가하기
+                    <UserPlus className="w-4 h-4" strokeWidth={2.5} /> 첫 구성원 추가하기
                   </button>
                 </div>
               ) : (
                 <div className="text-left">
                   {/* 헤더 — 모든 행과 동일한 gridCols 공유 → 컬럼 정렬 보장 */}
-                  <div className="grid bg-gray-100 border-b border-black text-sm font-black" style={{ gridTemplateColumns: gridCols }}>
+                  <div className="grid bg-sand-50 border-b border-sand-200 text-sm font-bold text-sand-500" style={{ gridTemplateColumns: gridCols }}>
                     <div className="p-4">
                       <input
                         type="checkbox"
                         checked={allVisibleChecked}
                         onChange={toggleSelectAll}
-                        className="w-4 h-4 accent-orange-500 cursor-pointer"
+                        className="w-4 h-4 accent-brand cursor-pointer"
                         aria-label="전체 선택"
                       />
                     </div>
@@ -1033,13 +1027,13 @@ export default function MembersAdmin() {
                     <div className="p-4">출석률</div>
                     <ColumnHeaderFilter label="상태" col="status" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
                     {visibleCustomFields.map(f => (
-                      <div key={f.id} className="p-4">{f.name}{f.required && <span className="text-red-500 ml-0.5">*</span>}</div>
+                      <div key={f.id} className="p-4">{f.name}{f.required && <span className="text-bad-fg ml-0.5">*</span>}</div>
                     ))}
                   </div>
 
                   {/* 바디 — 윈도잉: 보이는 행만 DOM 에 둔다(절대배치) */}
                   {filtered.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 font-bold">표시할 부원이 없습니다.</div>
+                    <div className="p-8 text-center text-sand-500 font-medium">표시할 부원이 없습니다.</div>
                   ) : (
                     <div ref={listRef} style={{ position: 'relative', height: rowV.getTotalSize() }}>
                       {rowV.getVirtualItems().map(item => {
@@ -1051,7 +1045,7 @@ export default function MembersAdmin() {
                             key={item.key}
                             data-index={item.index}
                             ref={rowV.measureElement}
-                            className={`grid border-b border-gray-200 transition-colors ${isSelected ? 'bg-orange-100' : isDirty ? 'bg-orange-50' : 'bg-white hover:bg-gray-50'}`}
+                            className={`grid border-b border-sand-200 transition-colors ${isSelected ? 'bg-brand-tint' : isDirty ? 'bg-brand-tint/50' : 'bg-white hover:bg-sand-50'}`}
                             style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start - scrollMargin}px)`, gridTemplateColumns: gridCols }}
                           >
                             <div className="p-4">
@@ -1059,27 +1053,27 @@ export default function MembersAdmin() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => toggleSelect(m.id)}
-                                className="w-4 h-4 accent-orange-500 cursor-pointer"
+                                className="w-4 h-4 accent-brand cursor-pointer"
                                 aria-label={`${memberName(m)} 선택`}
                               />
                             </div>
-                            <div className="p-4 font-black text-lg">
+                            <div className="p-4 font-black text-lg text-ink">
                               {memberName(m)}
-                              {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
+                              {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-brand" strokeWidth={2.5} />}
                               {!m.profiles && (
-                                <span className="ml-2 px-1.5 py-0.5 bg-gray-100 border border-gray-300 font-bold text-[10px] align-middle text-gray-500">
+                                <span className="ml-2 px-1.5 py-0.5 bg-sand-100 rounded-md font-medium text-[10px] align-middle text-sand-500">
                                   계정 미연결
                                 </span>
                               )}
                             </div>
-                            <div className="p-4 font-bold text-sm">
-                              {memberUniversity(m) || <span className="text-gray-300 font-bold">—</span>}
+                            <div className="p-4 font-medium text-sm text-sand-600">
+                              {memberUniversity(m) || <span className="text-sand-300 font-medium">—</span>}
                             </div>
                             <div className="p-4">
                               <select
                                 value={getVal(m, 'generation')}
                                 onChange={e => setDraft(m.id, { generation: e.target.value || null })}
-                                className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500 bg-white cursor-pointer"
+                                className="field w-24 border border-sand-300 rounded-ctl p-1 text-sm font-bold bg-white cursor-pointer"
                               >
                                 <option value="">—</option>
                                 {generations.map(g => <option key={g} value={g}>{g}</option>)}
@@ -1092,18 +1086,18 @@ export default function MembersAdmin() {
                             <div className="p-4">
                               {m.attendanceRate != null ? (
                                 <div className="flex items-center gap-2">
-                                  <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
-                                    <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
+                                  <div className="w-20 h-2.5 bg-sand-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-brand" style={{ width: `${m.attendanceRate}%` }} />
                                   </div>
-                                  <span className="font-black text-sm">{m.attendanceRate}%</span>
+                                  <span className="font-bold text-sm text-ink">{m.attendanceRate}%</span>
                                 </div>
-                              ) : <span className="text-gray-400 text-sm font-bold">—</span>}
+                              ) : <span className="text-sand-400 text-sm font-medium">—</span>}
                             </div>
                             <div className="p-4">
                               <select
                                 value={(drafts[m.id]?.status ?? m.status) as string}
                                 onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
-                                className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
+                                className={`field text-xs font-bold p-1.5 rounded-ctl cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
                               >
                                 {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
                               </select>
@@ -1123,8 +1117,8 @@ export default function MembersAdmin() {
             </div>
 
             {chartData.length > 0 && (
-              <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                <h3 className="font-black text-sm mb-3 flex items-center gap-2">
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                <h3 className="font-black text-sm text-ink mb-3 flex items-center gap-2">
                   📊 기수별 평균 출석률
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
@@ -1135,7 +1129,7 @@ export default function MembersAdmin() {
                       formatter={(value: number) => [`${value}%`, '평균 출석률']}
                       labelFormatter={(label: string) => `${label} (${chartData.find(d => d.generation === label)?.count}명)`}
                     />
-                    <Bar dataKey="avg" fill="#f97316">
+                    <Bar dataKey="avg" fill="#EC6A2C">
                       <LabelList dataKey="avg" position="top" formatter={(v: number) => `${v}%`} style={{ fontWeight: 700, fontSize: 11 }} />
                     </Bar>
                   </BarChart>
@@ -1146,7 +1140,6 @@ export default function MembersAdmin() {
 
           </div>
         </main>
-      </div>
 
       {showInviteModal && (
         <InviteModal
@@ -1189,15 +1182,15 @@ export default function MembersAdmin() {
 
       {showCloseGenModal && currentGeneration && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-7 flex flex-col gap-5">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-7 flex flex-col gap-5">
             <div className="flex items-start gap-3">
-              <Archive className="w-7 h-7 text-orange-500 shrink-0 mt-0.5" />
+              <Archive className="w-7 h-7 text-brand shrink-0 mt-0.5" strokeWidth={2.5} />
               <div>
-                <h2 className="text-2xl font-black mb-1">기수 마감</h2>
-                <p className="text-gray-600 font-bold text-sm">
-                  <strong className="text-black">{currentGeneration}</strong> 의 활동중 부원
+                <h2 className="text-2xl font-black text-ink mb-1">기수 마감</h2>
+                <p className="text-sand-600 font-medium text-sm">
+                  <strong className="text-ink">{currentGeneration}</strong> 의 활동중 부원
                   ({members.filter(m => m.status === '활동중' && m.generation === currentGeneration).length}명)을
-                  모두 <strong className="text-black">수료</strong> 상태로 변경합니다.<br />
+                  모두 <strong className="text-ink">수료</strong> 상태로 변경합니다.<br />
                   마감 후에는 현재 활동 기수가 비워집니다.
                 </p>
               </div>
@@ -1206,16 +1199,16 @@ export default function MembersAdmin() {
               <button
                 onClick={() => setShowCloseGenModal(false)}
                 disabled={closingGen}
-                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 disabled:opacity-50"
+                className="flex-1 py-3 border border-sand-300 rounded-ctl font-bold text-ink hover:bg-sand-50 disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handleCloseCurrentGen}
                 disabled={closingGen}
-                className="flex-1 py-3 bg-orange-500 text-black border-2 border-black font-black hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 btn-grad text-white rounded-ctl font-bold shadow-btn disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {closingGen && <Loader className="w-4 h-4 animate-spin" />}
+                {closingGen && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
                 마감하기
               </button>
             </div>
@@ -1237,8 +1230,8 @@ export default function MembersAdmin() {
 
       {/* 하단 고정 저장 바 (drafts 있을 때만) */}
       {draftCount > 0 && activeTab === 'members' && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 bg-orange-500 border-2 border-black px-6 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-4">
-          <span className="font-black text-sm">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 btn-grad rounded-card px-6 py-3 shadow-soft-lg flex items-center gap-4">
+          <span className="font-bold text-sm text-white">
             <strong>{draftCount}명</strong>의 변경사항이 있습니다
           </span>
           <button
@@ -1247,16 +1240,16 @@ export default function MembersAdmin() {
               setCustomDrafts({});
               showToast('변경사항을 취소했습니다.');
             }}
-            className="px-3 py-1.5 border-2 border-black bg-white font-black text-xs hover:bg-gray-100"
+            className="px-3 py-1.5 rounded-ctl bg-white text-ink font-bold text-xs hover:bg-sand-50"
           >
             취소
           </button>
           <button
             onClick={() => setShowSaveModal(true)}
             disabled={bulkSaving}
-            className="px-4 py-1.5 bg-black text-white font-black text-xs border-2 border-black hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1"
+            className="px-4 py-1.5 bg-ink text-white font-bold text-xs rounded-ctl hover:bg-ink/90 disabled:opacity-50 flex items-center gap-1"
           >
-            {bulkSaving ? <Loader className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+            {bulkSaving ? <Loader className="w-3 h-3 animate-spin" strokeWidth={2.5} /> : <Save className="w-3 h-3" strokeWidth={2.5} />}
             저장
           </button>
         </div>
@@ -1265,13 +1258,13 @@ export default function MembersAdmin() {
       {/* 일괄 저장 확인 모달 */}
       {showSaveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-8 flex flex-col gap-5">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-8 flex flex-col gap-5">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-7 h-7 text-orange-500 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-7 h-7 text-brand shrink-0 mt-0.5" strokeWidth={2.5} />
               <div>
-                <h2 className="text-2xl font-black mb-1">변경사항 저장</h2>
-                <p className="text-gray-600 font-bold text-sm">
-                  총 <strong className="text-black">{draftCount}명</strong>의 회원 정보가 변경되었습니다.<br />
+                <h2 className="text-2xl font-black text-ink mb-1">변경사항 저장</h2>
+                <p className="text-sand-600 font-medium text-sm">
+                  총 <strong className="text-ink">{draftCount}명</strong>의 회원 정보가 변경되었습니다.<br />
                   정말로 저장하시겠습니까?
                 </p>
               </div>
@@ -1280,16 +1273,16 @@ export default function MembersAdmin() {
               <button
                 onClick={() => setShowSaveModal(false)}
                 disabled={bulkSaving}
-                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 disabled:opacity-50"
+                className="flex-1 py-3 border border-sand-300 rounded-ctl font-bold text-ink hover:bg-sand-50 disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={saveAll}
                 disabled={bulkSaving}
-                className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 btn-grad text-white rounded-ctl font-bold shadow-btn disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {bulkSaving && <Loader className="w-4 h-4 animate-spin" />}
+                {bulkSaving && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
                 저장하기
               </button>
             </div>
@@ -1298,10 +1291,10 @@ export default function MembersAdmin() {
       )}
 
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(249,115,22,0.5)]">
-          <Check className="w-4 h-4 text-green-400" /> {toast}
+        <div className="fixed bottom-8 right-8 z-50 bg-ink text-white px-6 py-4 rounded-card font-medium flex items-center gap-2 shadow-soft-lg">
+          <Check className="w-4 h-4 text-ok-fg" strokeWidth={2.5} /> {toast}
         </div>
       )}
-    </div>
+    </>
   );
 }

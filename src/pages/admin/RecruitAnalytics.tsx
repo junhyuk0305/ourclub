@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { AdminHeader } from '../../components/admin/AdminHeader';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAllIn } from '../../lib/fetchAll';
 import {
-  BarChart3, Loader, Users, TrendingUp, Compass, Activity, AlertCircle, PieChart,
+  BarChart3, Users, TrendingUp, Compass, Activity, AlertCircle, PieChart,
 } from 'lucide-react';
 import { Question, QuestionType } from '../../types/recruitment';
 
@@ -166,21 +165,14 @@ export default function RecruitAnalytics() {
   const maxWeekly = Math.max(1, ...weeklyInflow.map(w => w.count));
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
-        </aside>
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto p-8 flex flex-col gap-6">
+    <div className="max-w-6xl mx-auto p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h1 className="text-3xl font-black flex items-center gap-3">
-                  <BarChart3 className="w-7 h-7 text-blue-500" />
+                <h1 className="text-3xl font-black text-ink flex items-center gap-3">
+                  <BarChart3 className="w-7 h-7 text-brand" strokeWidth={2.5} />
                   분석 리포트
                 </h1>
-                <p className="text-gray-500 font-bold text-sm mt-1">
+                <p className="text-sand-500 font-bold text-sm mt-1">
                   지원 유입·합격률·경로별 인사이트를 한 페이지에서 확인합니다.
                 </p>
               </div>
@@ -188,7 +180,7 @@ export default function RecruitAnalytics() {
                 <select
                   value={selectedRid}
                   onChange={e => setSelectedRid(e.target.value)}
-                  className="px-4 py-2.5 border-2 border-black font-bold text-sm bg-white outline-none focus:border-blue-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  className="field px-4 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm bg-white outline-none"
                 >
                   <option value="all">전체 공고 ({recruitments.length})</option>
                   {recruitments.map(r => (
@@ -199,46 +191,46 @@ export default function RecruitAnalytics() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-20"><Loader className="w-8 h-8 animate-spin text-blue-500" /></div>
+              <LoadingScreen />
             ) : recruitments.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-gray-300 p-16 text-center">
-                <BarChart3 className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                <h3 className="text-xl font-black text-gray-400 mb-2">분석할 데이터가 없습니다</h3>
-                <p className="font-bold text-gray-400 text-sm">먼저 공고를 만들고 지원자가 모이면 인사이트가 표시됩니다.</p>
+              <div className="bg-white border border-dashed border-sand-300 rounded-card p-16 text-center">
+                <BarChart3 className="w-12 h-12 text-sand-300 mx-auto mb-4" strokeWidth={2.5} />
+                <h3 className="text-xl font-black text-sand-400 mb-2">분석할 데이터가 없습니다</h3>
+                <p className="font-bold text-sand-400 text-sm">먼저 공고를 만들고 지원자가 모이면 인사이트가 표시됩니다.</p>
               </div>
             ) : (
               <>
                 {/* KPI 3개 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Kpi label="총 지원자 수" value={kpi.total} suffix="명" icon={<Users className="w-5 h-5" />} accent="bg-blue-50 border-blue-300" />
-                  <Kpi label="최종 합격률" value={kpi.passRate} suffix="%" decimals={1} icon={<TrendingUp className="w-5 h-5" />} accent="bg-green-50 border-green-300" />
-                  <Kpi label="합격 / 불합격" value={kpi.passed} suffix={` / ${kpi.rejected}`} icon={<Activity className="w-5 h-5" />} accent="bg-orange-50 border-orange-300" />
+                  <Kpi label="총 지원자 수" value={kpi.total} suffix="명" icon={<Users className="w-5 h-5" strokeWidth={2.5} />} accent="bg-info-bg text-info-fg" />
+                  <Kpi label="최종 합격률" value={kpi.passRate} suffix="%" decimals={1} icon={<TrendingUp className="w-5 h-5" strokeWidth={2.5} />} accent="bg-ok-bg text-ok-fg" />
+                  <Kpi label="합격 / 불합격" value={kpi.passed} suffix={` / ${kpi.rejected}`} icon={<Activity className="w-5 h-5" strokeWidth={2.5} />} accent="bg-brand-tint text-brand" />
                 </div>
 
                 {/* 주간 유입 그래프 */}
-                <div className="bg-white border-2 border-black p-6">
-                  <h3 className="font-black text-base mb-1">주간 지원자 유입</h3>
-                  <p className="text-xs text-gray-500 font-bold mb-5">최근 8주 동안 매주 새로 들어온 지원자 수입니다.</p>
+                <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
+                  <h3 className="font-black text-base text-ink mb-1">주간 지원자 유입</h3>
+                  <p className="text-xs text-sand-500 font-bold mb-5">최근 8주 동안 매주 새로 들어온 지원자 수입니다.</p>
                   <div className="flex items-end gap-2 h-48">
                     {weeklyInflow.map((w, i) => (
                       <div key={i} className="flex-1 flex flex-col items-center gap-2 min-w-0">
                         <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
                           {w.count > 0 && (
-                            <div className="text-center text-xs font-black text-blue-600 mb-1">{w.count}</div>
+                            <div className="text-center text-xs font-black text-brand mb-1">{w.count}</div>
                           )}
                           <div
-                            className="w-full bg-blue-500 border-t-2 border-black transition-all hover:bg-blue-600"
+                            className="w-full bg-brand rounded-t-md transition-all hover:bg-brand-dark"
                             style={{ height: `${(w.count / maxWeekly) * 140}px`, minHeight: w.count > 0 ? '8px' : '0' }}
                             title={`${w.label} 주: ${w.count}명`}
                           />
                         </div>
-                        <span className={`text-[10px] font-bold ${i === weeklyInflow.length - 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+                        <span className={`text-[10px] font-bold ${i === weeklyInflow.length - 1 ? 'text-brand' : 'text-sand-400'}`}>
                           {w.label}
                         </span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs font-bold text-gray-400">
+                  <div className="mt-3 flex items-center justify-between text-xs font-bold text-sand-400">
                     <span>← 8주 전</span>
                     <span>이번 주 →</span>
                   </div>
@@ -251,10 +243,10 @@ export default function RecruitAnalytics() {
                     distribution={sourceStats.distribution}
                   />
                 ) : (
-                  <div className="bg-white border-2 border-dashed border-gray-300 p-8 text-center">
-                    <Compass className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="font-bold text-gray-400 text-sm mb-1">지원경로별 통계가 없습니다.</p>
-                    <p className="text-xs text-gray-400 font-medium">
+                  <div className="bg-white border border-dashed border-sand-300 rounded-card p-8 text-center">
+                    <Compass className="w-10 h-10 text-sand-300 mx-auto mb-3" strokeWidth={2.5} />
+                    <p className="font-bold text-sand-400 text-sm mb-1">지원경로별 통계가 없습니다.</p>
+                    <p className="text-xs text-sand-400 font-medium">
                       지원서에 <strong>지원경로</strong> 타입 질문을 추가하면 자동 집계됩니다.
                     </p>
                   </div>
@@ -263,8 +255,8 @@ export default function RecruitAnalytics() {
                 {/* 선택형 질문 응답 분포 */}
                 {questionStats.length > 0 && (
                   <div className="flex flex-col gap-4">
-                    <h3 className="font-black text-base flex items-center gap-2">
-                      <PieChart className="w-5 h-5 text-orange-500" />
+                    <h3 className="font-black text-base text-ink flex items-center gap-2">
+                      <PieChart className="w-5 h-5 text-brand" strokeWidth={2.5} />
                       지원서 응답 분포
                     </h3>
                     {questionStats.map(({ question, distribution }) => (
@@ -274,8 +266,8 @@ export default function RecruitAnalytics() {
                 )}
 
                 {questionStats.length === 0 && !sourceStats && (
-                  <div className="bg-blue-50 border border-blue-200 p-4 text-sm font-bold text-blue-800 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div className="bg-info-bg rounded-card p-4 text-sm font-bold text-info-fg flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={2.5} />
                     <p>
                       더 풍부한 인사이트를 위해, 지원서에 <strong>단일 선택 · 다중 선택 · 지원경로 · 동의 항목</strong> 타입의 질문을 추가해보세요.
                     </p>
@@ -283,20 +275,17 @@ export default function RecruitAnalytics() {
                 )}
               </>
             )}
-          </div>
-        </main>
-      </div>
     </div>
   );
 }
 
 function Kpi({ label, value, suffix, icon, accent, decimals }: { label: string; value: number; suffix?: string; icon: React.ReactNode; accent: string; decimals?: number }) {
   return (
-    <div className={`border-2 p-5 ${accent}`}>
-      <div className="flex items-center gap-2 text-gray-600 font-bold text-sm mb-2">{icon}{label}</div>
-      <p className="text-3xl font-black">
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+      <div className={`inline-flex items-center gap-2 font-bold text-sm mb-2 px-2.5 py-1 rounded-ctl ${accent}`}>{icon}{label}</div>
+      <p className="text-3xl font-black text-ink">
         {value.toFixed(decimals ?? 0)}
-        {suffix && <span className="text-base font-bold text-gray-500 ml-1">{suffix}</span>}
+        {suffix && <span className="text-base font-bold text-sand-500 ml-1">{suffix}</span>}
       </p>
     </div>
   );
@@ -307,12 +296,12 @@ function SourceBreakdown({ fieldName, distribution }: { fieldName: string; distr
   const max = Math.max(1, ...entries.map(([, v]) => v.total));
 
   return (
-    <div className="bg-white border-2 border-black p-6">
-      <h3 className="font-black text-base flex items-center gap-2 mb-1">
-        <Compass className="w-5 h-5 text-orange-500" />
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
+      <h3 className="font-black text-base text-ink flex items-center gap-2 mb-1">
+        <Compass className="w-5 h-5 text-brand" strokeWidth={2.5} />
         지원경로별 지원자 수·합격률
       </h3>
-      <p className="text-xs text-gray-500 font-bold mb-5">질문: <strong>{fieldName}</strong></p>
+      <p className="text-xs text-sand-500 font-bold mb-5">질문: <strong>{fieldName}</strong></p>
       <div className="flex flex-col gap-3">
         {entries.map(([source, v]) => {
           const rate = v.total > 0 ? (v.passed / v.total) * 100 : 0;
@@ -320,11 +309,11 @@ function SourceBreakdown({ fieldName, distribution }: { fieldName: string; distr
           return (
             <div key={source}>
               <div className="flex items-center justify-between mb-1.5 text-sm">
-                <span className="font-black">{source}</span>
-                <span className="text-xs font-bold text-gray-500">{v.total}명 · 합격 {v.passed}명 · {rate.toFixed(1)}%</span>
+                <span className="font-black text-ink">{source}</span>
+                <span className="text-xs font-bold text-sand-500">{v.total}명 · 합격 {v.passed}명 · {rate.toFixed(1)}%</span>
               </div>
-              <div className="h-6 bg-gray-100 border border-gray-200 overflow-hidden">
-                <div className="h-full bg-orange-500 transition-all" style={{ width: `${width}%` }} />
+              <div className="h-6 bg-sand-100 border border-sand-200 rounded-ctl overflow-hidden">
+                <div className="h-full bg-brand transition-all" style={{ width: `${width}%` }} />
               </div>
             </div>
           );
@@ -340,20 +329,20 @@ function QuestionDistribution({ question, distribution }: { question: Question; 
   const max = Math.max(1, ...entries.map(([, n]) => n));
 
   return (
-    <div className="bg-white border-2 border-black p-6">
-      <h4 className="font-black text-sm mb-1">{question.title}</h4>
-      <p className="text-xs text-gray-400 font-bold mb-4">{TYPE_LABEL[question.type]} · 응답 {total}건</p>
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
+      <h4 className="font-black text-sm text-ink mb-1">{question.title}</h4>
+      <p className="text-xs text-sand-400 font-bold mb-4">{TYPE_LABEL[question.type]} · 응답 {total}건</p>
       <div className="flex flex-col gap-2">
         {entries.map(([opt, count]) => {
           const pct = total > 0 ? (count / total) * 100 : 0;
           const width = (count / max) * 100;
           return (
             <div key={opt} className="flex items-center gap-3">
-              <span className="text-xs font-bold w-32 truncate">{opt}</span>
-              <div className="flex-1 h-5 bg-gray-100 border border-gray-200 overflow-hidden">
-                <div className="h-full bg-blue-500" style={{ width: `${width}%` }} />
+              <span className="text-xs font-bold w-32 truncate text-sand-600">{opt}</span>
+              <div className="flex-1 h-5 bg-sand-100 border border-sand-200 rounded-ctl overflow-hidden">
+                <div className="h-full bg-brand" style={{ width: `${width}%` }} />
               </div>
-              <span className="text-xs font-black w-20 text-right">{count}명 · {pct.toFixed(0)}%</span>
+              <span className="text-xs font-black w-20 text-right text-ink">{count}명 · {pct.toFixed(0)}%</span>
             </div>
           );
         })}

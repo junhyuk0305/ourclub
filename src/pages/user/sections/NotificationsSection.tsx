@@ -76,28 +76,28 @@ export default function NotificationsSection() {
   const unread = items.filter(n => !n.is_read).length;
 
   return (
-    <div className="border border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
+    <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-2xl font-black flex items-center gap-2">
-          <Bell className="w-6 h-6 text-orange-500" /> 알림
+        <h3 className="text-2xl font-black text-ink flex items-center gap-2">
+          <Bell className="w-6 h-6 text-brand" strokeWidth={2.5} /> 알림
           {unread > 0 && (
-            <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-black rounded-full">{unread}</span>
+            <span className="px-2 py-0.5 bg-brand text-white text-xs font-black rounded-full">{unread}</span>
           )}
         </h3>
         {unread > 0 && (
-          <button onClick={markAllRead} className="text-xs font-black text-gray-500 hover:text-black flex items-center gap-1">
-            <Check className="w-4 h-4" /> 모두 읽음
+          <button onClick={markAllRead} className="text-xs font-black text-sand-500 hover:text-ink flex items-center gap-1">
+            <Check className="w-4 h-4" strokeWidth={2.5} /> 모두 읽음
           </button>
         )}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
+        <div className="flex items-center justify-center py-16 text-sand-400">
           <Loader className="w-6 h-6 animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
-          <Bell className="w-10 h-10" />
+        <div className="flex flex-col items-center justify-center py-16 text-sand-400 gap-3">
+          <Bell className="w-10 h-10" strokeWidth={2.5} />
           <p className="font-bold text-sm">아직 받은 알림이 없습니다.</p>
         </div>
       ) : (
@@ -106,20 +106,20 @@ export default function NotificationsSection() {
             <button
               key={n.id}
               onClick={() => open(n)}
-              className={`text-left flex items-start gap-4 p-4 border transition-colors ${
+              className={`text-left flex items-start gap-4 p-4 border rounded-card transition-colors ${
                 n.is_read
-                  ? 'border-gray-200 bg-white hover:bg-gray-50'
-                  : 'border-orange-300 bg-orange-50 hover:bg-orange-100'
+                  ? 'border-sand-200 bg-white hover:bg-sand-50'
+                  : 'border-brand bg-brand-tint hover:bg-brand-tint/70'
               } ${n.link ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${n.is_read ? 'bg-gray-200' : 'bg-orange-500'}`} />
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${n.is_read ? 'bg-sand-300' : 'bg-brand'}`} />
               <div className="flex-1 min-w-0">
-                <p className="font-black text-sm text-gray-900">{n.title}</p>
-                {n.body && <p className="text-xs font-bold text-gray-500 mt-1 whitespace-pre-wrap break-words">{n.body}</p>}
+                <p className="font-black text-sm text-ink">{n.title}</p>
+                {n.body && <p className="text-xs font-bold text-sand-500 mt-1 whitespace-pre-wrap break-words">{n.body}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-gray-400">{notifTimeAgo(n.created_at)}</span>
-                {n.link && <ArrowRight className="w-4 h-4 text-gray-400" />}
+                <span className="text-xs font-bold text-sand-400">{notifTimeAgo(n.created_at)}</span>
+                {n.link && <ArrowRight className="w-4 h-4 text-sand-400" strokeWidth={2.5} />}
               </div>
             </button>
           ))}

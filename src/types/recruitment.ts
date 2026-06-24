@@ -150,7 +150,7 @@ export function makeQuestion(type: QuestionType): Question {
   }
 }
 
-// ── 채용 메인 페이지 (Phase 5) ───────────────────────────────────────────
+// ── 모집 메인 페이지 (Phase 5) ───────────────────────────────────────────
 
 export type SloganPosition =
   | 'in-left' | 'in-center' | 'in-right'

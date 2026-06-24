@@ -118,29 +118,29 @@ export function PullApplicantsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-lg mx-4 p-7 flex flex-col gap-5 max-h-[88vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-lg mx-4 p-7 flex flex-col gap-5 max-h-[88vh]">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-black flex items-center gap-2">
-              <Download className="w-5 h-5 text-orange-500" /> 합격자 끌어오기
+            <h2 className="text-2xl font-black text-ink flex items-center gap-2">
+              <Download className="w-5 h-5 text-brand" strokeWidth={2.5} /> 합격자 끌어오기
             </h2>
-            <p className="text-xs font-bold text-gray-500 mt-1">최종 합격한 지원자를 명단에 추가합니다. 기수를 지정하세요.</p>
+            <p className="text-xs font-medium text-sand-500 mt-1">최종 합격한 지원자를 명단에 추가합니다. 기수를 지정하세요.</p>
           </div>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
+          <button onClick={onClose}><X className="w-5 h-5 text-sand-500" strokeWidth={2.5} /></button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-500 px-3 py-2 text-red-700 font-bold text-sm">{error}</div>
+          <div className="bg-bad-bg rounded-ctl px-3 py-2 text-bad-fg font-bold text-sm">{error}</div>
         )}
 
         {/* 기수 지정 */}
         <div className="flex items-center gap-2">
-          <label className="font-black text-sm">추가할 기수</label>
+          <label className="font-bold text-sm text-ink">추가할 기수</label>
           <select
             value={generation}
             onChange={e => setGeneration(e.target.value)}
-            className="px-3 py-1.5 border-2 border-black font-bold text-sm outline-none bg-white cursor-pointer"
+            className="field px-3 py-1.5 border border-sand-300 rounded-ctl font-medium text-sm bg-white cursor-pointer"
           >
             <option value="">미지정</option>
             {generations.map(g => <option key={g} value={g}>{g}</option>)}
@@ -148,56 +148,56 @@ export function PullApplicantsModal({
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader className="w-7 h-7 animate-spin text-orange-500" /></div>
+          <div className="flex justify-center py-12"><Loader className="w-7 h-7 animate-spin text-brand" strokeWidth={2.5} /></div>
         ) : applicants.length === 0 ? (
-          <div className="py-12 text-center font-bold text-gray-400 border-2 border-dashed border-gray-300">
+          <div className="py-12 text-center font-medium text-sand-400 border border-dashed border-sand-300 rounded-card">
             최종 합격 단계의 지원자가 없습니다.
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <button onClick={toggleAll} className="text-xs font-black underline hover:no-underline">
+              <button onClick={toggleAll} className="text-xs font-bold text-brand underline hover:no-underline">
                 {allChecked ? '전체 해제' : '전체 선택'}
               </button>
-              <span className="text-xs font-bold text-gray-500">선택 {selected.size} / {applicants.length}명</span>
+              <span className="text-xs font-medium text-sand-500">선택 {selected.size} / {applicants.length}명</span>
             </div>
 
-            <div className="border-2 border-black overflow-y-auto flex-1 min-h-0">
+            <div className="border border-sand-200 rounded-card overflow-y-auto flex-1 min-h-0">
               {applicants.map(a => {
                 const checked = selected.has(a.userId);
                 return (
                   <label
                     key={a.userId}
-                    className={`flex items-center gap-3 px-3 py-2.5 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 ${checked ? 'bg-orange-50' : ''}`}
+                    className={`flex items-center gap-3 px-3 py-2.5 border-b border-sand-200 last:border-b-0 cursor-pointer hover:bg-sand-50 ${checked ? 'bg-brand-tint' : ''}`}
                   >
-                    <input type="checkbox" checked={checked} onChange={() => toggle(a.userId)} className="w-4 h-4 accent-orange-500" />
+                    <input type="checkbox" checked={checked} onChange={() => toggle(a.userId)} className="w-4 h-4 accent-brand" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-sm">{a.name}</span>
+                        <span className="font-bold text-sm text-ink">{a.name}</span>
                         {a.alreadyMember && (
-                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 border border-blue-300 font-bold text-[10px]">이미 멤버</span>
+                          <span className="px-1.5 py-0.5 bg-info-bg text-info-fg rounded-md font-bold text-[10px]">이미 멤버</span>
                         )}
                       </div>
-                      <p className="text-xs font-bold text-gray-400 truncate">{a.email} · {a.recruitmentTitle}</p>
+                      <p className="text-xs font-medium text-sand-400 truncate">{a.email} · {a.recruitmentTitle}</p>
                     </div>
                   </label>
                 );
               })}
             </div>
-            <p className="text-[11px] font-bold text-gray-400">
+            <p className="text-[11px] font-medium text-sand-400">
               ※ '이미 멤버'는 선택 시 활동중으로 전환되고 지정 기수로 갱신됩니다(휴식→복귀·기수 재배정).
             </p>
           </>
         )}
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 border-2 border-black font-black text-sm hover:bg-gray-100">취소</button>
+          <button onClick={onClose} className="flex-1 py-2.5 bg-white border border-sand-300 text-ink font-bold text-sm rounded-ctl hover:bg-sand-50">취소</button>
           <button
             onClick={submit}
             disabled={saving || selected.size === 0}
-            className="flex-1 py-2.5 bg-black text-white border-2 border-black font-black text-sm hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="flex-1 py-2.5 btn-grad text-white font-bold text-sm rounded-ctl shadow-btn hover:-translate-y-0.5 disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
-            {saving ? <Loader className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+            {saving ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <UserCheck className="w-4 h-4" strokeWidth={2.5} />}
             {selected.size}명 명단에 추가
           </button>
         </div>

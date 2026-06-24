@@ -7,15 +7,15 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type Size = 'sm' | 'md';
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  primary: 'bg-orange-500 text-white hover:bg-orange-600',
-  secondary: 'bg-white text-black border-[3px] border-black hover:bg-black hover:text-white',
+  primary: 'btn-grad text-white shadow-btn hover:-translate-y-0.5',
+  secondary: 'bg-white text-ink border border-sand-300 hover:bg-sand-50',
   danger: 'bg-red-500 text-white hover:bg-red-600',
-  ghost: 'bg-transparent text-black hover:bg-gray-100',
+  ghost: 'bg-transparent text-brand hover:bg-brand-tint',
 };
 
 const SIZE_CLASS: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2.5 text-sm',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,7 +26,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export function Button({ variant = 'primary', size = 'md', className = '', ...props }: ButtonProps) {
   return (
     <button
-      className={`font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${VARIANT_CLASS[variant]} ${SIZE_CLASS[size]} ${className}`}
+      className={`font-bold rounded-ctl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 ${VARIANT_CLASS[variant]} ${SIZE_CLASS[size]} ${className}`}
       {...props}
     />
   );

@@ -61,7 +61,7 @@ export const ClubPageRenderer: React.FC<ClubPageRendererProps> = ({ blocks, conf
 
   const themeColor = resolveThemeHex(activeTheme);
   const isCustomTheme = activeTheme.startsWith('custom:');
-  const themeBg = isCustomTheme ? '' : (THEME_BG[activeTheme] || 'bg-orange-500');
+  const themeBg = isCustomTheme ? '' : (THEME_BG[activeTheme] || 'bg-brand');
   const themeText = getThemeText(activeTheme);
   const themeStyle = isCustomTheme ? { backgroundColor: themeColor } : {};
 
@@ -75,7 +75,7 @@ export const ClubPageRenderer: React.FC<ClubPageRendererProps> = ({ blocks, conf
 
       {showFloatingBtn && activeRecruit && (
         <div className="fixed bottom-6 right-6 z-50">
-          <button onClick={onApply} className={`px-6 py-3 font-black border-2 border-black text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 transition-all ${themeBg} ${themeText}`} style={themeStyle}>
+          <button onClick={onApply} className={`px-6 py-3 font-black border border-transparent rounded-ctl text-sm shadow-btn hover:-translate-y-0.5 transition-all ${themeBg} ${themeText}`} style={themeStyle}>
             지원하기 →
           </button>
         </div>

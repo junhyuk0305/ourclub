@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader, ExternalLink, CheckCircle, FileText, ChevronRight, Building2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
+import { statusColor } from '../../lib/statusColor';
 import { useAuth } from '../../contexts/AuthContext';
-import { MasterLayout } from './MasterLayout';
 
 interface CorpRequest {
   id: string;
@@ -19,18 +19,11 @@ interface CorpRequest {
   reviewer_note: string | null;
   reviewed_at: string | null;
   created_at: string;
+  b2b_terms_agreed_at: string | null;
   profiles: { name: string; email: string } | null;
 }
 
 const STATUS_TABS = ['검토대기', '검토중', '보완요청', '승인', '거절'];
-
-const STATUS_STYLE: Record<string, string> = {
-  '검토대기': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  '검토중':   'bg-blue-100 text-blue-800 border-blue-300',
-  '보완요청': 'bg-red-100 text-red-800 border-red-300',
-  '승인':     'bg-green-100 text-green-800 border-green-300',
-  '거절':     'bg-gray-100 text-gray-600 border-gray-300',
-};
 
 function fmt(iso: string) {
   return formatDate(iso, 'medium');
@@ -111,20 +104,20 @@ export default function CorpRequests() {
   };
 
   return (
-    <MasterLayout>
+    <>
       <div className="max-w-7xl mx-auto flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-black mb-1">기업 가입 심사</h1>
-          <p className="font-bold text-gray-500">기업 가입 신청을 검토하고 승인하세요.</p>
+          <h1 className="text-3xl font-black text-ink mb-1">기업 가입 심사</h1>
+          <p className="font-bold text-sand-500">기업 가입 신청을 검토하고 승인하세요.</p>
         </div>
 
-        <div className="flex gap-0 border-2 border-black w-fit bg-white">
+        <div className="flex gap-1 border border-sand-200 rounded-ctl w-fit bg-sand-100 p-1">
           {STATUS_TABS.map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 font-black text-sm border-r-2 border-black last:border-r-0 transition-colors ${
-                tab === t ? 'bg-black text-white' : 'hover:bg-gray-100'
+              className={`px-4 py-1.5 font-black text-sm rounded-ctl transition-colors ${
+                tab === t ? 'bg-white text-ink shadow-soft' : 'text-sand-500 hover:text-ink'
               }`}
             >
               {t}
@@ -137,29 +130,29 @@ export default function CorpRequests() {
           <div className="w-80 shrink-0 flex flex-col gap-2">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-orange-500" />
+                <Loader className="w-6 h-6 animate-spin text-brand" strokeWidth={2.5} />
               </div>
             ) : list.length === 0 ? (
-              <div className="bg-white border-2 border-black p-8 text-center">
-                <p className="font-bold text-gray-400 text-sm">해당 상태의 신청이 없어요.</p>
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8 text-center">
+                <p className="font-bold text-sand-400 text-sm">해당 상태의 신청이 없어요.</p>
               </div>
             ) : (
               list.map(req => (
                 <button
                   key={req.id}
                   onClick={() => setSelected(req)}
-                  className={`w-full text-left bg-white border-2 border-black p-4 transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
-                    selected?.id === req.id ? 'shadow-[4px_4px_0px_0px_rgba(147,51,234,1)] border-purple-600' : ''
+                  className={`w-full text-left bg-white border rounded-card p-4 transition-all hover:shadow-soft-lg ${
+                    selected?.id === req.id ? 'border-brand shadow-soft-lg' : 'border-sand-200 shadow-soft'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="font-black text-sm leading-snug">{req.corp_name}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                    <span className="font-black text-sm text-ink leading-snug">{req.corp_name}</span>
+                    <ChevronRight className="w-4 h-4 text-sand-400 shrink-0 mt-0.5" strokeWidth={2.5} />
                   </div>
-                  <p className="text-xs font-bold text-gray-400 mb-2">{req.business_number}</p>
+                  <p className="text-xs font-bold text-sand-400 mb-2">{req.business_number}</p>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-black px-2 py-0.5 border ${STATUS_STYLE[req.status]}`}>{req.status}</span>
-                    <span className="text-xs font-bold text-gray-400">{fmt(req.created_at)}</span>
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-ctl ${statusColor(req.status)}`}>{req.status}</span>
+                    <span className="text-xs font-bold text-sand-400">{fmt(req.created_at)}</span>
                   </div>
                 </button>
               ))
@@ -169,12 +162,12 @@ export default function CorpRequests() {
           {/* 상세 */}
           {selected ? (
             <div className="flex-1 flex flex-col gap-4">
-              <div className="bg-white border-2 border-black p-6">
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-black flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-purple-600" /> {selected.corp_name}
+                  <h2 className="text-xl font-black text-ink flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-brand" strokeWidth={2.5} /> {selected.corp_name}
                   </h2>
-                  <span className={`text-sm font-black px-3 py-1 border-2 ${STATUS_STYLE[selected.status]}`}>{selected.status}</span>
+                  <span className={`text-sm font-black px-3 py-1 rounded-ctl ${statusColor(selected.status)}`}>{selected.status}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                   {[
@@ -186,53 +179,61 @@ export default function CorpRequests() {
                     ['신청일', fmt(selected.created_at)],
                   ].map(([k, v]) => (
                     <div key={k} className="flex flex-col gap-0.5">
-                      <span className="font-bold text-gray-400 text-xs">{k}</span>
-                      <span className="font-bold">{v}</span>
+                      <span className="font-bold text-sand-400 text-xs">{k}</span>
+                      <span className="font-bold text-sand-600">{v}</span>
                     </div>
                   ))}
                   {selected.website && (
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-gray-400 text-xs">웹사이트</span>
-                      <a href={selected.website} target="_blank" rel="noopener noreferrer" className="font-bold text-purple-600 hover:underline flex items-center gap-1">
-                        바로가기 <ExternalLink className="w-3 h-3" />
+                      <span className="font-bold text-sand-400 text-xs">웹사이트</span>
+                      <a href={selected.website} target="_blank" rel="noopener noreferrer" className="font-bold text-brand hover:underline flex items-center gap-1">
+                        바로가기 <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
                       </a>
                     </div>
                   )}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-bold text-sand-400 text-xs">B2B 약관 동의</span>
+                    {selected.b2b_terms_agreed_at ? (
+                      <span className="font-black text-ok-fg">✓ 동의 ({fmt(selected.b2b_terms_agreed_at)})</span>
+                    ) : (
+                      <span className="font-bold text-sand-400">미동의 (약관 도입 전 신청)</span>
+                    )}
+                  </div>
                 </div>
                 {selected.description && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-xs font-bold text-gray-400 mb-1">기업 소개</p>
-                    <p className="font-bold text-sm whitespace-pre-line">{selected.description}</p>
+                  <div className="mt-4 pt-4 border-t border-sand-200">
+                    <p className="text-xs font-bold text-sand-400 mb-1">기업 소개</p>
+                    <p className="font-bold text-sm text-sand-600 whitespace-pre-line">{selected.description}</p>
                   </div>
                 )}
               </div>
 
-              <div className="bg-white border-2 border-black p-6">
-                <h3 className="font-black mb-4 flex items-center gap-2"><FileText className="w-4 h-4" /> 제출 서류</h3>
-                <div className="border-2 border-black p-3 flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold truncate">사업자등록증</span>
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
+                <h3 className="font-black text-ink mb-4 flex items-center gap-2"><FileText className="w-4 h-4" strokeWidth={2.5} /> 제출 서류</h3>
+                <div className="border border-sand-200 rounded-ctl p-3 flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-sand-600 truncate">사업자등록증</span>
                   {selected.business_doc_url && docUrl ? (
-                    <a href={docUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-black text-purple-600 hover:underline shrink-0">
-                      열기 <ExternalLink className="w-3 h-3" />
+                    <a href={docUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-black text-brand hover:underline shrink-0">
+                      열기 <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
                     </a>
                   ) : (
-                    <span className="text-xs font-bold text-gray-300">미첨부</span>
+                    <span className="text-xs font-bold text-sand-400">미첨부</span>
                   )}
                 </div>
               </div>
 
-              <div className="bg-white border-2 border-black p-6 flex flex-col gap-4">
-                <h3 className="font-black">심사 처리</h3>
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6 flex flex-col gap-4">
+                <h3 className="font-black text-ink">심사 처리</h3>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-black text-gray-500">상태 변경</label>
+                  <label className="text-xs font-black text-sand-500">상태 변경</label>
                   <div className="flex gap-2 flex-wrap">
                     {['검토중', '보완요청', '거절'].map(s => (
                       <button
                         key={s}
                         type="button"
                         onClick={() => setNewStatus(s)}
-                        className={`px-3 py-2 text-sm font-black border-2 transition-colors ${
-                          newStatus === s ? 'bg-black text-white border-black' : 'border-black hover:bg-gray-100'
+                        className={`px-3 py-2 text-sm font-black rounded-ctl border transition-colors ${
+                          newStatus === s ? 'bg-ink text-white border-ink' : 'bg-white text-sand-600 border-sand-300 hover:bg-sand-50'
                         }`}
                       >
                         {s}
@@ -241,19 +242,19 @@ export default function CorpRequests() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-black text-gray-500">담당자 메모 (신청자에게 표시)</label>
+                  <label className="text-xs font-black text-sand-500">담당자 메모 (신청자에게 표시)</label>
                   <textarea
                     value={reviewerNote}
                     onChange={e => setReviewerNote(e.target.value)}
                     rows={3}
                     placeholder="보완 요청 내용 또는 거절 사유를 작성해주세요."
-                    className="border-2 border-black px-3 py-2 text-sm font-bold outline-none focus:border-purple-500 resize-none"
+                    className="field border border-sand-300 rounded-ctl px-3 py-2 text-sm font-bold resize-none"
                   />
                 </div>
 
                 {actionMsg && (
-                  <p className={`text-sm font-bold px-3 py-2 border-2 ${
-                    actionMsg.startsWith('✅') ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700'
+                  <p className={`text-sm font-bold px-3 py-2 rounded-ctl ${
+                    actionMsg.startsWith('✅') ? 'bg-ok-bg text-ok-fg' : 'bg-bad-bg text-bad-fg'
                   }`}>
                     {actionMsg}
                   </p>
@@ -264,37 +265,37 @@ export default function CorpRequests() {
                     type="button"
                     onClick={handleSaveStatus}
                     disabled={saving}
-                    className="flex-1 py-3 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-40 flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-white border border-sand-300 rounded-ctl text-ink font-black text-sm hover:bg-sand-50 disabled:opacity-40 flex items-center justify-center gap-2"
                   >
-                    {saving && <Loader className="w-4 h-4 animate-spin" />}
+                    {saving && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
                     상태 저장
                   </button>
                   <button
                     type="button"
                     onClick={handleApprove}
                     disabled={approving || selected.status === '승인'}
-                    className="flex-1 py-3 bg-purple-600 border-2 border-black text-white font-black text-sm hover:bg-black disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 py-3 btn-grad text-white rounded-ctl shadow-btn font-black text-sm hover:-translate-y-0.5 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                   >
-                    {approving ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    {approving ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <CheckCircle className="w-4 h-4" strokeWidth={2.5} />}
                     최종 승인 (기업 생성)
                   </button>
                 </div>
 
-                <p className="text-xs font-bold text-gray-400">
+                <p className="text-xs font-bold text-sand-400">
                   * 최종 승인 시 corporations 테이블에 기업이 생성되고, 신청자가 담당자(corp_members)로 등록됩니다.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="flex-1 flex items-center justify-center text-sand-400">
               <div className="text-center">
-                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={2.5} />
                 <p className="font-bold">목록에서 신청서를 선택하세요.</p>
               </div>
             </div>
           )}
         </div>
       </div>
-    </MasterLayout>
+    </>
   );
 }

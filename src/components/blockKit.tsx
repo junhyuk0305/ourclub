@@ -19,15 +19,15 @@ import { MessageSquare, Clock, ChevronLeft, ChevronRight, Plus, X, Bold, AlignLe
 
 /* ── theme / util helpers (단일 소유) ── */
 export const THEME_HEX: Record<string, string> = {
-  'orange-500': '#f97316', 'black': '#000000', 'white': '#ffffff',
+  'orange-500': '#EC6A2C', 'black': '#1F1B18', 'white': '#ffffff',
   'blue-600': '#2563eb', 'green-600': '#16a34a', 'purple-500': '#a855f7',
 };
 export const THEME_BG: Record<string, string> = {
-  'orange-500': 'bg-orange-500', 'black': 'bg-black', 'white': 'bg-white',
+  'orange-500': 'bg-brand', 'black': 'bg-ink', 'white': 'bg-white',
   'blue-600': 'bg-blue-600', 'green-600': 'bg-green-600', 'purple-500': 'bg-purple-500',
 };
 export const resolveThemeHex = (t: string) =>
-  t.startsWith('custom:') ? t.replace('custom:', '') : (THEME_HEX[t] || '#f97316');
+  t.startsWith('custom:') ? t.replace('custom:', '') : (THEME_HEX[t] || '#EC6A2C');
 export const getThemeText = (t: string) => {
   const hex = resolveThemeHex(t);
   return (t === 'white' || hex === '#ffffff') ? 'text-black' : 'text-white';
@@ -54,7 +54,7 @@ export function renderRichText(text: string, highlightColor?: string): React.Rea
   return parts.map((p, i) => {
     if (p.startsWith('==') && p.endsWith('==') && p.length > 4) {
       return (
-        <span key={i} style={{ color: highlightColor || '#f97316', fontWeight: 'inherit' }}>
+        <span key={i} style={{ color: highlightColor || '#EC6A2C', fontWeight: 'inherit' }}>
           {p.slice(2, -2)}
         </span>
       );
@@ -80,13 +80,13 @@ export const WB_STYLE = `
   @keyframes wbBlurIn { from { opacity:0; filter:blur(14px); } to { opacity:1; filter:blur(0); } }
   @keyframes wbPulse { 0% { transform:scale(1); } 20% { transform:scale(1.12); } 40% { transform:scale(1); } 60% { transform:scale(1.08); } 80%,100% { transform:scale(1); } }
   @keyframes wbBounceIn { 0% { opacity:0; transform:translateY(-24px); } 60% { opacity:1; transform:translateY(8px); } 80% { transform:translateY(-4px); } 100% { transform:translateY(0); } }
-  .wb-anim-fadeIn { animation: wbFadeIn var(--wb-dur,0.8s) var(--wb-ease,ease) forwards; }
+  .wb-anim-fadeIn { animation: wbFadeIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-slideUp { animation: wbSlideUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-slideIn { animation: wbSlideIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-slideRight { animation: wbSlideRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-zoomIn { animation: wbZoomIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-clipUp { animation: wbClipUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-blurIn { animation: wbBlurIn var(--wb-dur,0.8s) var(--wb-ease,ease) forwards; }
+  .wb-anim-blurIn { animation: wbBlurIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-pulse { animation: wbPulse var(--wb-dur,1s) var(--wb-ease,ease) forwards; }
   .wb-anim-bounceIn { animation: wbBounceIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   /* ── 신규 등장 효과 10종(드롭다운) — 모두 AnimDiv 메커니즘 재사용(추가만, 회귀 0) ── */
@@ -105,15 +105,15 @@ export const WB_STYLE = `
   .wb-anim-flipUp { animation: wbFlipUp var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-maskRight { animation: wbMaskRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-skewIn { animation: wbSkewIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-driftIn { animation: wbDriftIn var(--wb-dur,0.9s) var(--wb-ease,ease) forwards; }
+  .wb-anim-driftIn { animation: wbDriftIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-revealRight { animation: wbRevealRight var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-unfoldDown { transform-origin: top center; animation: wbUnfoldDown var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
   .wb-anim-tiltIn { animation: wbTiltIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.16,1,0.3,1)) forwards; }
-  .wb-anim-popIn { animation: wbPopIn var(--wb-dur,0.7s) var(--wb-ease,cubic-bezier(0.34,1.56,0.64,1)) forwards; }
+  .wb-anim-popIn { animation: wbPopIn var(--wb-dur,0.8s) var(--wb-ease,cubic-bezier(0.34,1.56,0.64,1)) forwards; }
   /* ── 텍스트 단위 리빌(A5): 단어/글자를 시차(stagger)로 올려 등장 ── */
   @keyframes wbUnitReveal { from { opacity:0; transform: translateY(0.7em); } to { opacity:1; transform: translateY(0); } }
   .wb-reveal-unit { display:inline-block; opacity:0; will-change: transform, opacity; }
-  .wb-reveal-on .wb-reveal-unit { animation: wbUnitReveal var(--wb-rdur,0.75s) cubic-bezier(0.16,1,0.3,1) forwards; }
+  .wb-reveal-on .wb-reveal-unit { animation: wbUnitReveal var(--wb-rdur,0.8s) cubic-bezier(0.16,1,0.3,1) forwards; }
   @media (prefers-reduced-motion: reduce) { .wb-reveal-unit { opacity:1 !important; transform:none !important; animation:none !important; } }
   /* ── Ken Burns 배경(동영상 대체 풀스크린 히어로): 느린 줌/팬 무한 반복 ── */
   @keyframes wbKenZoom { from { transform:scale(1); } to { transform:scale(1.18); } }
@@ -126,7 +126,9 @@ export const WB_STYLE = `
   .wb-ken-panL { animation: wbKenPanL 24s ease-in-out infinite alternate; }
   .wb-ken-panR { animation: wbKenPanR 24s ease-in-out infinite alternate; }
   @media (prefers-reduced-motion: reduce) {
-    .wb-anim-fadeIn, .wb-anim-slideUp, .wb-anim-slideIn, .wb-anim-slideRight, .wb-anim-zoomIn, .wb-anim-clipUp, .wb-anim-blurIn, .wb-anim-pulse, .wb-anim-bounceIn { animation: none; }
+    /* 모든 진입 효과(wb-anim-*) 비활성 — animation 미적용 시 요소는 자연 상태(opacity:1)로 표시된다.
+       와일드카드라 향후 추가되는 효과도 자동 포함(신규 10종 누락 회귀 방지). */
+    [class*="wb-anim-"] { animation: none !important; }
     .wb-kenburns { animation: none; transform: scale(1.05); }
   }
   .wb-content { position: relative; }
@@ -158,7 +160,7 @@ export const WB_STYLE = `
   .wb-gutter { padding-left: clamp(20px, 5vw, 80px); padding-right: clamp(20px, 5vw, 80px); }
   .wb-inner { max-width: 1200px; margin-left: auto; margin-right: auto; }
   /* 리치 텍스트 에디터 placeholder */
-  .wb-rich:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
+  .wb-rich:empty:before { content: attr(data-placeholder); color: #A89E92; pointer-events: none; }
   /* 에디터 전용 — 인라인 편집 가능 텍스트. 외곽선/배경 없이 텍스트 커서만(편집 표시는 위젯 선택 외곽선이 담당). */
   .wb-rich { cursor: text; }
   .wb-rich:focus { outline: none; }
@@ -170,7 +172,7 @@ export const WB_STYLE = `
      애니메이션은 텍스트와 동일하게 AnimDiv(진입 1회 재생 + 편집 시 미리보기)로 처리한다. */
   .wb-btn-sh-hard { box-shadow: 4px 4px 0 0 rgba(0,0,0,0.9); }
   .wb-btn-sh-soft { box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
-  .wb-btn-sh-glow { box-shadow: 0 0 16px 2px var(--wb-btn-c, #f97316); }
+  .wb-btn-sh-glow { box-shadow: 0 0 16px 2px var(--wb-btn-c, #EC6A2C); }
   /* 버튼 호버 마이크로인터랙션(레퍼런스급) — 진입 애니메이션(AnimDiv)과 별개 */
   .wb-btn-arrow .wb-arrow { display:inline-block; transition: transform 0.25s cubic-bezier(0.16,1,0.3,1); }
   .wb-btn-arrow:hover .wb-arrow { transform: translateX(5px); }
@@ -384,33 +386,33 @@ const RichEditable: React.FC<{ value?: string; onChange?: (v: string) => void; c
         {active && createPortal(
           <div ref={toolbarRef}
             style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 2147483000 }}
-            className="flex items-center gap-1.5 px-2.5 py-2 bg-white border border-gray-300 shadow-[0_6px_20px_rgba(0,0,0,0.2)] rounded-lg flex-wrap"
+            className="flex items-center gap-1.5 px-2.5 py-2 bg-white border border-sand-200 shadow-soft-lg rounded-card flex-wrap"
             onClick={e => e.stopPropagation()}>
-            <button onMouseDown={noBlur} onClick={() => exec('bold')} className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400 font-black" title="굵게"><Bold className="w-4 h-4" /></button>
-            <div className="flex items-center border border-gray-200 rounded-md overflow-hidden h-9" title="글자 크기 (선택 영역, 실시간 적용)">
+            <button onMouseDown={noBlur} onClick={() => exec('bold')} className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand font-black" title="굵게"><Bold className="w-4 h-4" /></button>
+            <div className="flex items-center border border-sand-200 rounded-md overflow-hidden h-9" title="글자 크기 (선택 영역, 실시간 적용)">
               <input type="number" value={size} placeholder="px" min={8} max={200}
                 onMouseDown={saveSel}
                 onChange={e => { const v = e.target.value === '' ? '' : Math.min(200, Math.max(8, Number(e.target.value))); setSize(v); if (v !== '') applySize(Number(v)); }}
                 className="w-14 text-sm px-2 py-1 outline-none text-center font-bold h-full" />
-              <span className="px-1.5 text-[11px] font-bold text-gray-400 bg-gray-50 border-l border-gray-200 h-full flex items-center">px</span>
+              <span className="px-1.5 text-[11px] font-bold text-sand-400 bg-sand-50 border-l border-sand-200 h-full flex items-center">px</span>
             </div>
-            <label className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400 cursor-pointer relative" title="글자색">
+            <label className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand cursor-pointer relative" title="글자색">
               <Baseline className="w-4 h-4" />
               <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" onMouseDown={saveSel} onChange={e => exec('foreColor', e.target.value)} />
             </label>
-            <label className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400 cursor-pointer relative" title="글자 배경색">
+            <label className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand cursor-pointer relative" title="글자 배경색">
               <PaintBucket className="w-4 h-4" />
               <input type="color" className="absolute inset-0 opacity-0 cursor-pointer" onMouseDown={saveSel} onChange={e => exec('hiliteColor', e.target.value)} />
             </label>
             <select onMouseDown={saveSel} onChange={e => { exec('fontName', e.target.value); e.currentTarget.selectedIndex = 0; }} title="글꼴"
-              className="h-9 text-sm px-2 outline-none border border-gray-200 rounded-md font-bold bg-white">
+              className="h-9 text-sm px-2 outline-none border border-sand-200 rounded-md font-bold bg-white">
               {RICH_FONTS.map(f => <option key={f.label} value={f.v}>{f.label}</option>)}
             </select>
-            <div className="w-px h-6 bg-gray-200 mx-0.5" />
-            <button onMouseDown={noBlur} onClick={() => exec('justifyLeft')} className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400" title="왼쪽 정렬(문단)"><AlignLeft className="w-4 h-4" /></button>
-            <button onMouseDown={noBlur} onClick={() => exec('justifyCenter')} className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400" title="가운데 정렬(문단)"><AlignCenter className="w-4 h-4" /></button>
-            <button onMouseDown={noBlur} onClick={() => exec('justifyRight')} className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400" title="오른쪽 정렬(문단)"><AlignRight className="w-4 h-4" /></button>
-            <button onMouseDown={noBlur} onClick={() => exec('justifyFull')} className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-gray-400" title="양쪽 정렬(문단)"><AlignJustify className="w-4 h-4" /></button>
+            <div className="w-px h-6 bg-sand-200 mx-0.5" />
+            <button onMouseDown={noBlur} onClick={() => exec('justifyLeft')} className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand" title="왼쪽 정렬(문단)"><AlignLeft className="w-4 h-4" /></button>
+            <button onMouseDown={noBlur} onClick={() => exec('justifyCenter')} className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand" title="가운데 정렬(문단)"><AlignCenter className="w-4 h-4" /></button>
+            <button onMouseDown={noBlur} onClick={() => exec('justifyRight')} className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand" title="오른쪽 정렬(문단)"><AlignRight className="w-4 h-4" /></button>
+            <button onMouseDown={noBlur} onClick={() => exec('justifyFull')} className="w-9 h-9 flex items-center justify-center rounded-md border border-sand-200 hover:border-brand" title="양쪽 정렬(문단)"><AlignJustify className="w-4 h-4" /></button>
           </div>,
           document.body,
         )}
@@ -458,7 +460,7 @@ export const EditText: React.FC<{
         value={value || ''} placeholder={placeholder}
         onChange={e => onChange?.(e.target.value)}
         onClick={stop} onPointerDown={stop}
-        className={`${className} focus:border-orange-300`} style={editStyle}
+        className={`${className} focus:border-brand`} style={editStyle}
       />
     );
   }
@@ -475,7 +477,7 @@ export const AddBtn: React.FC<{ ctx: BlockCtx; label: string; onClick: () => voi
         onClick={e => { stop(e); onClick(); }}
         className={`inline-flex items-center gap-1 px-3 py-1.5 border border-dashed text-[11px] font-bold transition-colors rounded ${
           dark ? 'border-white/30 text-white/60 hover:text-white hover:border-white/60'
-               : 'border-gray-300 text-gray-400 hover:text-black hover:border-black'
+               : 'border-sand-300 text-sand-400 hover:text-brand hover:border-brand'
         } ${className}`}>
         <Plus className="w-3 h-3" /> {label}
       </button>
@@ -520,8 +522,11 @@ export const AnimDiv: React.FC<{
     if (disabled) return;
     const el = ref.current;
     if (!el) return;
+    /* IO 미지원(구형/SSR) → 즉시 노출 폴백. 진입 시 1회만 재생하고 관찰을 끊는다
+       (스크롤로 재진입할 때마다 다시 애니메이션되던 동작 제거 — RevealText/StatsBlock 과 통일). */
+    if (typeof IntersectionObserver === 'undefined') { setInView(true); return; }
     const obs = new IntersectionObserver(
-      ([entry]) => setInView(entry.isIntersecting),
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
       REVEAL_IO
     );
     obs.observe(el);
@@ -593,7 +598,7 @@ export const RevealText: React.FC<{
         const i = idx++;
         nodes.push(
           <span key={`u-${si}-${li}-${ui}`} className="wb-reveal-unit"
-            style={{ animationDelay: `${(i * stagger).toFixed(3)}s`, color: seg.hl ? (highlightColor || '#f97316') : undefined, fontWeight: seg.hl ? 'inherit' : undefined }}>
+            style={{ animationDelay: `${(i * stagger).toFixed(3)}s`, color: seg.hl ? (highlightColor || '#EC6A2C') : undefined, fontWeight: seg.hl ? 'inherit' : undefined }}>
             {u}
           </span>
         );
@@ -614,7 +619,7 @@ const HOVER_CLASS: Record<string, string> = {
 };
 
 const ImgPlaceholder: React.FC<{ label: string; style?: React.CSSProperties; className?: string }> = ({ label, style, className = '' }) => (
-  <div className={`w-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400 ${className}`} style={style}>
+  <div className={`w-full bg-sand-100 border border-dashed border-sand-300 rounded-ctl flex flex-col items-center justify-center gap-2 text-sand-400 ${className}`} style={style}>
     <span className="text-xs font-bold">{label}</span>
   </div>
 );
@@ -631,7 +636,7 @@ const TextBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const baseStyle: React.CSSProperties = {
     fontSize: `${block.fontSize || 16}px`,
     fontWeight: block.fontWeight || 400,
-    color: block.textColor || '#111827',
+    color: block.textColor || '#1F1B18',
     lineHeight: block.lineHeight || 1.7,
     letterSpacing: block.letterSpacing ? `${block.letterSpacing}em` : undefined,
     whiteSpace: 'pre-wrap',
@@ -763,11 +768,11 @@ const ImageBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
 const SpacerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => (
   <div className="w-full relative flex items-center justify-center group/sp" style={{ height: `${block.height || 64}px`, backgroundColor: block.bgColor || 'transparent' }}>
     {ctx.edit && (
-      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover/sp:opacity-100 transition-opacity border-y border-dashed border-gray-200">
+      <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover/sp:opacity-100 transition-opacity border-y border-dashed border-sand-200">
         <input type="range" min={8} max={640} step={8} value={block.height || 64}
           onClick={stop} onPointerDown={stop} onChange={e => ctx.upd?.('height', Number(e.target.value))}
-          className="w-40 accent-orange-500 cursor-ew-resize" />
-        <span className="text-xs font-bold text-gray-400 w-12">{block.height || 64}px</span>
+          className="w-40 accent-brand cursor-ew-resize" />
+        <span className="text-xs font-bold text-sand-400 w-12">{block.height || 64}px</span>
       </div>
     )}
   </div>
@@ -820,7 +825,7 @@ const TickerView: React.FC<{ block: any }> = ({ block }) => {
     ? { WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)', maskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)' }
     : {};
   return (
-    <div ref={containerRef} className={`w-full overflow-hidden select-none ${block.tickerPause ? 'wb-ticker-pause' : ''}`.trim()} style={{ backgroundColor: block.bgColor || '#f97316', paddingTop: `${block.paddingY ?? 14}px`, paddingBottom: `${block.paddingY ?? 14}px`, ...fadeMask }}>
+    <div ref={containerRef} className={`w-full overflow-hidden select-none ${block.tickerPause ? 'wb-ticker-pause' : ''}`.trim()} style={{ backgroundColor: block.bgColor || '#EC6A2C', paddingTop: `${block.paddingY ?? 14}px`, paddingBottom: `${block.paddingY ?? 14}px`, ...fadeMask }}>
       <div className="wb-ticker-track" style={{ color: block.textColor || '#ffffff', fontSize: `${block.tickerFontSize || 13}px`, fontWeight: 800, letterSpacing: '0.08em', animationDuration: `${speed * repeat}s`, animationDirection: block.tickerReverse ? 'reverse' : 'normal' }}>
         {half(true)}<span aria-hidden>{half(false)}</span>
       </div>
@@ -831,8 +836,8 @@ const TickerView: React.FC<{ block: any }> = ({ block }) => {
 const DividerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   /* 흐르는 띠(ticker) 변형 — 구분 요소에 편입 */
   const inner = block.variant === 'ticker' ? <TickerView block={block} /> : (
-    <div className="w-full wb-gutter" style={{ paddingTop: `${block.paddingY || 24}px`, paddingBottom: `${block.paddingY || 24}px`, backgroundColor: block.bgColor || 'transparent' }}>
-      <hr style={{ borderStyle: block.style || 'solid', borderTopWidth: `${block.thickness || 1}px`, borderColor: block.color || '#e5e7eb', width: `${block.width || 100}%`, margin: '0 auto' }} />
+    <div className="w-full wb-gutter" style={{ paddingTop: `${block.paddingY ?? 24}px`, paddingBottom: `${block.paddingY ?? 24}px`, backgroundColor: block.bgColor || 'transparent' }}>
+      <hr style={{ borderStyle: block.style || 'solid', borderTopWidth: `${block.thickness || 1}px`, borderColor: block.color || '#EBE6DF', width: `${block.width || 100}%`, margin: '0 auto' }} />
     </div>
   );
   return <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">{inner}</AnimDiv>;
@@ -878,8 +883,8 @@ const StatItemView: React.FC<{ item: any; block: any; animate: boolean }> = ({ i
   return (
     <>
       {item.icon && <div className="text-3xl leading-none mb-1">{item.icon}</div>}
-      <div className="font-black leading-none tabular-nums" style={{ fontSize: `${block.valueSize || 48}px`, color: block.valueColor || '#111827' }}>{display}</div>
-      <div className="font-semibold" style={{ fontSize: `${block.labelSize || 14}px`, color: block.labelColor || '#6b7280' }}>{item.label}</div>
+      <div className="font-black leading-none tabular-nums" style={{ fontSize: `${block.valueSize || 48}px`, color: block.valueColor || '#1F1B18' }}>{display}</div>
+      <div className="font-semibold" style={{ fontSize: `${block.labelSize || 14}px`, color: block.labelColor || '#7A7066' }}>{item.label}</div>
     </>
   );
 };
@@ -894,28 +899,28 @@ const StatsBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => 
     obs.observe(el); return () => obs.disconnect();
   }, [ctx.edit]);
   const isCards = block.layout === 'cards';
-  const accentColor = block.accentLineColor || ctx.themeColor;
+  const accentColor = ctx.themeColor;
   const ops = listOps(ctx, block, 'items');
   return (
     <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
-    <div ref={ref} className="wbr-grid-wrap" style={{ backgroundColor: block.bgColor || '#ffffff', paddingTop: `${block.paddingY || 56}px`, paddingBottom: `${block.paddingY || 56}px` }}>
+    <div ref={ref} className="wbr-grid-wrap" style={{ backgroundColor: block.bgColor || '#ffffff', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
       <div className="wb-gutter wb-inner wbr-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${block.cols || 3}, 1fr)`, gap: isCards ? '20px' : '24px' }}>
         {ops.arr.map((item: any, i: number) => {
           const inner = ctx.edit ? (
             <>
               <input value={item.value ?? ''} onChange={e => ops.update(i, { value: e.target.value })} onClick={stop} onPointerDown={stop}
-                className="bg-transparent outline-none border-b-2 border-transparent focus:border-orange-400 text-center font-black w-full tabular-nums"
-                style={{ fontSize: `${block.valueSize || 48}px`, color: block.valueColor || '#111827', lineHeight: 1 }} />
+                className="bg-transparent outline-none border-b-2 border-transparent focus:border-brand text-center font-black w-full tabular-nums"
+                style={{ fontSize: `${block.valueSize || 48}px`, color: block.valueColor || '#1F1B18', lineHeight: 1 }} />
               <input value={item.label ?? ''} onChange={e => ops.update(i, { label: e.target.value })} onClick={stop} onPointerDown={stop}
-                className="bg-transparent outline-none border-b border-transparent focus:border-orange-300 text-center font-semibold w-full"
-                style={{ fontSize: `${block.labelSize || 14}px`, color: block.labelColor || '#6b7280' }} />
+                className="bg-transparent outline-none border-b border-transparent focus:border-brand text-center font-semibold w-full"
+                style={{ fontSize: `${block.labelSize || 14}px`, color: block.labelColor || '#7A7066' }} />
             </>
           ) : <StatItemView item={item} block={block} animate={seen && block.animate !== false} />;
           return (
             <div key={item.id} className="relative flex flex-col items-center gap-2 text-center" style={isCards ? {
               backgroundColor: block.cardBg || '#f9fafb', borderRadius: `${block.cardRadius ?? 12}px`, padding: 28,
-              border: `1px solid ${block.borderColor || '#e5e7eb'}`,
-              borderTop: block.accentLine !== false ? `4px solid ${accentColor}` : `1px solid ${block.borderColor || '#e5e7eb'}`,
+              border: `1px solid ${block.borderColor || '#EBE6DF'}`,
+              borderTop: block.accentLine !== false ? `4px solid ${accentColor}` : `1px solid ${block.borderColor || '#EBE6DF'}`,
             } : undefined}>
               {inner}
               {ctx.edit && ops.arr.length > 1 && <RemoveBtn ctx={ctx} onClick={() => ops.removeAt(i)} className="absolute top-1 right-1" />}
@@ -941,9 +946,9 @@ const faqLook = (block: any) => {
   return {
     v, boxed, big,
     qSize: block.qSize ?? (boxed ? 15 : big ? 22 : 18),
-    qColor: block.qColor || '#111827',
-    aColor: block.aColor || '#6b7280',
-    lineColor: block.faqLineColor || (boxed ? '#000000' : '#e5e7eb'),
+    qColor: block.qColor || '#1F1B18',
+    aColor: block.aColor || '#7A7066',
+    lineColor: block.faqLineColor || '#EBE6DF',
     pad: boxed ? 'px-5 py-4' : (big ? 'py-7' : 'py-5'),
     aPad: boxed ? 'px-5 py-4' : (big ? 'pb-7' : 'pb-5'),
   };
@@ -960,14 +965,14 @@ const FaqRow: React.FC<{ item: any; idx: number; block: any; ctx: BlockCtx; onUp
     return (
       <div style={rowBorder}>
         <div className={`flex items-center gap-3 ${L.pad} ${L.boxed ? 'bg-white' : ''}`}>
-          {numbered ? numTag : <button onClick={e => { stop(e); setOpen(o => !o); }} className="font-black text-xs text-gray-400 shrink-0 w-5 text-left">{idx + 1}</button>}
+          {numbered ? numTag : <button onClick={e => { stop(e); setOpen(o => !o); }} className="font-black text-xs text-sand-400 shrink-0 w-5 text-left">{idx + 1}</button>}
           <input value={item.question || ''} onChange={e => onUpdate('question', e.target.value)} onClick={stop} onPointerDown={stop}
             className="flex-1 font-bold outline-none bg-transparent" style={{ fontSize: L.qSize, color: L.qColor }} placeholder="질문을 입력하세요" />
-          <button onClick={e => { stop(e); setOpen(o => !o); }} className="text-gray-400 text-sm shrink-0">{isArrow ? (open ? '↑' : '↓') : (open ? '−' : '+')}</button>
+          <button onClick={e => { stop(e); setOpen(o => !o); }} className="text-sand-400 text-sm shrink-0">{isArrow ? (open ? '↑' : '↓') : (open ? '−' : '+')}</button>
           <button onClick={e => { stop(e); onDelete(); }} className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 ml-1">✕</button>
         </div>
         {open && (
-          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-gray-100' : ''}`} style={{ backgroundColor: L.boxed ? (block.openBg || '#fff7ed') : 'transparent' }}>
+          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-sand-100' : ''}`} style={{ backgroundColor: L.boxed ? (block.openBg || '#FDF2E9') : 'transparent' }}>
             <textarea value={item.answer || ''} onChange={e => onUpdate('answer', e.target.value)} onClick={stop} onPointerDown={stop} ref={autosize}
               className="w-full bg-transparent outline-none font-medium resize-none leading-relaxed" style={{ overflow: 'hidden', minHeight: '1.5em', fontSize: Math.max(13, L.qSize - 4), color: L.aColor }} placeholder="답변을 입력하세요" />
           </div>
@@ -977,14 +982,14 @@ const FaqRow: React.FC<{ item: any; idx: number; block: any; ctx: BlockCtx; onUp
   }
   return (
     <div style={rowBorder}>
-      <button onClick={() => setOpen(o => !o)} className={`w-full flex items-center gap-4 ${L.pad} ${L.boxed ? 'bg-white hover:bg-gray-50' : ''} text-left transition-colors`}>
+      <button onClick={() => setOpen(o => !o)} className={`w-full flex items-center gap-4 ${L.pad} ${L.boxed ? 'bg-white hover:bg-sand-50' : ''} text-left transition-colors`}>
         {numTag}
         <span className="font-bold flex-1" style={{ fontSize: L.qSize, color: L.qColor }}>{item.question}</span>
         <span className="shrink-0 font-black leading-none transition-transform duration-300" style={{ color: ctx.themeColor, fontSize: Math.round(L.qSize * 1.2), transform: open ? (isArrow ? 'rotate(180deg)' : 'rotate(45deg)') : 'rotate(0deg)', display: 'inline-block' }}>{isArrow ? '↓' : '+'}</span>
       </button>
       <div style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s cubic-bezier(0.4,0,0.2,1)' }}>
         <div style={{ overflow: 'hidden' }}>
-          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-gray-100' : ''} ${numbered && !L.boxed ? 'pl-10' : ''} font-medium leading-relaxed`} style={{ backgroundColor: L.boxed ? (block.openBg || '#fff7ed') : 'transparent', color: L.aColor, fontSize: Math.max(13, L.qSize - 4) }}>{item.answer}</div>
+          <div className={`${L.aPad} ${L.boxed ? 'px-5 border-t border-sand-100' : ''} ${numbered && !L.boxed ? 'pl-10' : ''} font-medium leading-relaxed`} style={{ backgroundColor: L.boxed ? (block.openBg || '#FDF2E9') : 'transparent', color: L.aColor, fontSize: Math.max(13, L.qSize - 4) }}>{item.answer}</div>
         </div>
       </div>
     </div>
@@ -1003,7 +1008,7 @@ const FaqBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
           <EditText ctx={ctx} tag="h2" multiline={false} value={block.title} onChange={v => ctx.upd?.('title', v)} className={`font-black w-full ${L.big ? 'text-4xl' : 'text-2xl'}`} style={{ color: L.qColor }} placeholder="자주 묻는 질문" />
         </div>
       )}
-      <div className={L.boxed ? 'border-2 border-black divide-y divide-black overflow-hidden' : (L.v === 'line' ? 'border-t' : '')} style={L.boxed ? { borderRadius: `${block.borderRadius || 0}px` } : (L.v === 'line' ? { borderColor: L.lineColor } : undefined)}>
+      <div className={L.boxed ? 'border border-sand-200 divide-y divide-sand-200 overflow-hidden' : (L.v === 'line' ? 'border-t' : '')} style={L.boxed ? { borderRadius: `${block.borderRadius || 12}px` } : (L.v === 'line' ? { borderColor: L.lineColor } : undefined)}>
         {ops.arr.map((item: any, i: number) => (
           <FaqRow key={item.id} item={item} idx={i} block={block} ctx={ctx} onUpdate={(f, v) => ops.update(i, { [f]: v })} onDelete={() => ops.removeAt(i)} />
         ))}
@@ -1025,31 +1030,31 @@ const TlDot: React.FC<{ idx: number; activeColor: string; block?: any }> = ({ id
   if (style === 'bigNum') return <div className="shrink-0 z-10 font-black tabular-nums leading-none" style={{ fontSize: 40, color: activeColor, letterSpacing: -0.02 }}>{String(idx + 1).padStart(2, '0')}</div>;
   return (
     <div className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-sm shrink-0 z-10"
-      style={on ? { backgroundColor: activeColor, color: '#fff', borderColor: activeColor } : { backgroundColor: block?.nodeBg || '#fff', color: block?.nodeNumColor || '#111', borderColor: block?.nodeBorderColor || '#000' }}>{idx + 1}</div>
+      style={on ? { backgroundColor: activeColor, color: '#fff', borderColor: activeColor } : { backgroundColor: block?.nodeBg || '#fff', color: block?.nodeNumColor || '#1F1B18', borderColor: block?.nodeBorderColor || '#1F1B18' }}>{idx + 1}</div>
   );
 };
 
 const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const layout = block.layout || 'vertical-left';
   const ops = listOps(ctx, block, 'nodes');
-  const active = block.activeColor || '#f97316';
-  const line = block.lineColor || '#111827';
+  const active = block.activeColor || '#EC6A2C';
+  const line = block.lineColor || '#1F1B18';
   const NodeContent: React.FC<{ node: any; i: number; right?: boolean; small?: boolean }> = ({ node, i, right, small }) => (
     <div className={right ? 'text-right' : (small ? 'text-center w-full' : '')}>
       {ctx.edit ? (
         <>
           <div className={`flex items-start gap-1 ${right ? 'flex-row-reverse' : small ? 'justify-center' : ''}`}>
             <input value={node.title || ''} onChange={e => ops.update(i, { title: e.target.value })} onClick={stop} onPointerDown={stop}
-              className={`font-black bg-transparent outline-none border-b border-transparent focus:border-orange-500 ${small ? 'text-sm text-center min-w-0 flex-1' : 'text-base flex-1'} ${right ? 'text-right' : ''}`} placeholder="단계 제목" />
+              className={`font-black bg-transparent outline-none border-b border-transparent focus:border-brand ${small ? 'text-sm text-center min-w-0 flex-1' : 'text-base flex-1'} ${right ? 'text-right' : ''}`} placeholder="단계 제목" />
             <RemoveBtn ctx={ctx} onClick={() => ops.removeAt(i)} className="mt-1.5" />
           </div>
           <textarea value={node.desc || ''} onChange={e => ops.update(i, { desc: e.target.value })} onClick={stop} onPointerDown={stop} ref={autosize}
-            className={`text-gray-500 w-full bg-transparent outline-none mt-1.5 resize-none border border-transparent focus:border-gray-300 leading-relaxed ${small ? 'text-xs text-center' : 'text-sm'} ${right ? 'text-right' : ''}`} style={{ overflow: 'hidden', minHeight: '1.5em' }} placeholder="설명" />
+            className={`text-sand-500 w-full bg-transparent outline-none mt-1.5 resize-none border border-transparent focus:border-sand-300 leading-relaxed ${small ? 'text-xs text-center' : 'text-sm'} ${right ? 'text-right' : ''}`} style={{ overflow: 'hidden', minHeight: '1.5em' }} placeholder="설명" />
         </>
       ) : (
         <>
           <h3 className={`font-black ${small ? 'text-sm' : 'text-base'}`}>{node.title}</h3>
-          <p className={`text-gray-500 mt-1 leading-relaxed ${small ? 'text-xs' : 'text-sm mt-1.5'}`}>{node.desc}</p>
+          <p className={`text-sand-500 mt-1 leading-relaxed ${small ? 'text-xs' : 'text-sm mt-1.5'}`}>{node.desc}</p>
         </>
       )}
     </div>
@@ -1076,16 +1081,16 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
                   <>
                     <div className="flex items-start gap-1">
                       <input value={node.title || ''} onChange={e => ops.update(i, { title: e.target.value })} onClick={stop} onPointerDown={stop}
-                        className="font-bold flex-1 min-w-0 bg-transparent outline-none border-b border-transparent focus:border-orange-300" placeholder="항목" />
+                        className="font-bold flex-1 min-w-0 bg-transparent outline-none border-b border-transparent focus:border-brand" placeholder="항목" />
                       <RemoveBtn ctx={ctx} onClick={() => ops.removeAt(i)} className="mt-1 opacity-0 group-hover/fli:opacity-100 transition-opacity" />
                     </div>
                     <input value={node.desc || ''} onChange={e => ops.update(i, { desc: e.target.value })} onClick={stop} onPointerDown={stop}
-                      className="text-sm mt-0.5 w-full bg-transparent outline-none border-b border-transparent focus:border-gray-300 text-gray-400" placeholder="보조 설명 (선택)" />
+                      className="text-sm mt-0.5 w-full bg-transparent outline-none border-b border-transparent focus:border-sand-300 text-sand-400" placeholder="보조 설명 (선택)" />
                   </>
                 ) : (
                   <>
                     <div className="font-bold leading-relaxed">{node.title}</div>
-                    {node.desc && <div className="text-sm mt-1 text-gray-400">{node.desc}</div>}
+                    {node.desc && <div className="text-sm mt-1 text-sand-400">{node.desc}</div>}
                   </>
                 )}
               </div>
@@ -1095,7 +1100,8 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
       )}
       {layout === 'vertical-left' && (
         <div className="relative">
-          {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute left-4 top-5 bottom-5 w-0.5" style={{ backgroundColor: line }} />}
+          {/* 마커 슬롯 폭 36px → 중심 x=18px. 선을 18px 에 -translate-x-1/2 로 두어 원 정중앙을 지나게 한다(선 두께 무관). */}
+          {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute left-[18px] top-5 bottom-5 w-0.5 -translate-x-1/2" style={{ backgroundColor: line }} />}
           <div className="flex flex-col">
             {ops.arr.map((node: any, i: number) => (
               <AnimDiv key={node.id} animation={block.nodeAnim} disabled={ctx.edit} delay={i * (block.nodeStagger ?? 0.12)} className="flex gap-6 pb-10 last:pb-0"><TlDot idx={i} activeColor={active} block={block} /><div className="flex-1 pt-1 min-w-0"><NodeContent node={node} i={i} /></div></AnimDiv>
@@ -1123,7 +1129,8 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
       {layout === 'horizontal' && (
         <div className="overflow-x-auto pb-2">
           <div className="relative flex" style={{ minWidth: `${Math.max(ops.arr.length * 140, 300)}px` }}>
-            {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute top-4 h-0.5 z-0" style={{ backgroundColor: line, left: '36px', right: '36px' }} />}
+            {/* 마커 슬롯 36px → 중심 y=18px. 가로선을 18px 에 -translate-y-1/2 로 두어 원 정중앙을 지나게 한다. */}
+            {ops.arr.length > 1 && block.nodeStyle !== 'bigNum' && <div className="absolute top-[18px] -translate-y-1/2 h-0.5 z-0" style={{ backgroundColor: line, left: '36px', right: '36px' }} />}
             {ops.arr.map((node: any, i: number) => (
               <AnimDiv key={node.id} animation={block.nodeAnim} disabled={ctx.edit} delay={i * (block.nodeStagger ?? 0.12)} className="flex-1 flex flex-col items-center gap-3 relative z-10 px-1"><TlDot idx={i} activeColor={active} block={block} /><NodeContent node={node} i={i} small /></AnimDiv>
             ))}
@@ -1139,7 +1146,7 @@ const TimelineBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) 
    Container widgets
 ───────────────────────────────────────────── */
 const mkSlide = () => ({ id: genId(), bgType: 'color', bgValue: '#111111', overlayOpacity: 0, h1: '메인 카피를\n입력하세요', subtitle: '서브 카피를 입력하세요', href: '', align: 'center' });
-const mkCell = (n: number) => ({ id: genId(), title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#374151', titleColor: '#111827', titleSize: 18, textSize: 14, padding: 24, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '', imgPosition: 'top', imgHeight: 180 });
+const mkCell = (n: number) => ({ id: genId(), title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#6B6259', titleColor: '#1F1B18', titleSize: 18, textSize: 14, padding: 24, borderRadius: 12, borderWidth: 1, borderColor: '#EBE6DF', imgSrc: '', imgPosition: 'top', imgHeight: 180 });
 
 const HeroSliderBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx }) => {
   const slides: any[] = block.slides && block.slides.length ? block.slides : [mkSlide()];
@@ -1241,11 +1248,11 @@ const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell:
   const cellImg = cell.imgSrc ? <img src={cell.imgSrc} alt="" loading="lazy" className="w-full object-cover shrink-0" style={{ height: `${imgH}px`, borderRadius: pos === 'top' || pos === 'bottom' ? '4px' : undefined }} /> : null;
   const titleEl = (ctx.edit || cell.title) ? (
     <EditText ctx={ctx} tag="h3" multiline={false} value={cell.title} onChange={v => onCell('title', v)}
-      className="font-black mb-2 max-w-full" style={{ fontSize: `clamp(14px, 1.6vw, ${cell.titleSize || 18}px)`, color: onBg ? '#ffffff' : (cell.titleColor || '#111827'), textAlign: cell.align || 'left' }} placeholder="카드 제목" />
+      className="font-black mb-2 max-w-full" style={{ fontSize: `clamp(14px, 1.6vw, ${cell.titleSize || 18}px)`, color: onBg ? '#ffffff' : (cell.titleColor || '#1F1B18'), textAlign: cell.align || 'left' }} placeholder="카드 제목" />
   ) : null;
   const textEl = (ctx.edit || cell.text) ? (
     <EditText ctx={ctx} tag="p" value={cell.text} onChange={v => onCell('text', v)}
-      className="leading-relaxed max-w-full" style={{ fontSize: `clamp(12px, 1.1vw, ${cell.textSize || 14}px)`, color: onBg ? 'rgba(255,255,255,0.8)' : (cell.textColor || '#374151'), textAlign: cell.align || 'left', whiteSpace: 'pre-wrap' }} placeholder="카드 내용" />
+      className="leading-relaxed max-w-full" style={{ fontSize: `clamp(12px, 1.1vw, ${cell.textSize || 14}px)`, color: onBg ? 'rgba(255,255,255,0.8)' : (cell.textColor || '#6B6259'), textAlign: cell.align || 'left', whiteSpace: 'pre-wrap' }} placeholder="카드 내용" />
   ) : null;
   const arrow = cell.showArrow ? (
     <div className="mt-3 flex items-center" style={{ color: cell.titleColor || ctx.themeColor, justifyContent: cell.align === 'right' ? 'flex-end' : cell.align === 'center' ? 'center' : 'flex-start' }}>
@@ -1255,17 +1262,17 @@ const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell:
 
   if (onBg) {
     return (
-      <div className="relative w-full h-full overflow-hidden" style={{ backgroundImage: `url(${cell.imgSrc})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: `${cell.borderRadius || 8}px`, border: `${cell.borderWidth || 1}px solid ${cell.borderColor || '#e5e7eb'}`, minHeight: `${imgH}px` }}>
+      <div className="relative w-full h-full overflow-hidden" style={{ backgroundImage: `url(${cell.imgSrc})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: `${cell.borderRadius ?? 8}px`, border: `${cell.borderWidth ?? 1}px solid ${cell.borderColor || '#EBE6DF'}`, minHeight: `${imgH}px` }}>
         <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${(cell.bgOverlay ?? 40) / 100})` }} />
-        <div className="relative z-10" style={{ padding: `${cell.padding || 24}px` }}>{titleEl}{textEl}{arrow}</div>
+        <div className="relative z-10" style={{ padding: `${cell.padding ?? 24}px` }}>{titleEl}{textEl}{arrow}</div>
       </div>
     );
   }
   if ((pos === 'left' || pos === 'right') && cell.imgSrc) {
     return (
-      <div className="wbr-cell-lr overflow-hidden w-full h-full" style={{ backgroundColor: cell.bgColor || '#fff', borderRadius: `${cell.borderRadius || 8}px`, border: `${cell.borderWidth || 1}px solid ${cell.borderColor || '#e5e7eb'}`, display: 'flex', flexDirection: pos === 'left' ? 'row' : 'row-reverse' }}>
+      <div className="wbr-cell-lr overflow-hidden w-full h-full" style={{ backgroundColor: cell.bgColor || '#fff', borderRadius: `${cell.borderRadius ?? 8}px`, border: `${cell.borderWidth ?? 1}px solid ${cell.borderColor || '#EBE6DF'}`, display: 'flex', flexDirection: pos === 'left' ? 'row' : 'row-reverse' }}>
         <img src={cell.imgSrc} alt="" loading="lazy" className="object-cover shrink-0 wbr-cell-lr-img" style={{ width: `${cell.imgWidth || 40}%`, maxHeight: '240px' }} />
-        <div style={{ padding: `${cell.padding || 24}px`, flex: 1 }}>{titleEl}{textEl}{arrow}</div>
+        <div style={{ padding: `${cell.padding ?? 24}px`, flex: 1 }}>{titleEl}{textEl}{arrow}</div>
       </div>
     );
   }
@@ -1281,8 +1288,8 @@ const LayoutCellInner: React.FC<{ cell: any; block?: any; ctx: BlockCtx; onCell:
   return (
     <div className="w-full h-full" style={{
       backgroundColor: cardStyle === 'minimal' ? 'transparent' : (cell.bgColor || '#fff'),
-      padding: `${cell.padding || 24}px`, borderRadius: `${cell.borderRadius || 8}px`,
-      border: noBorder ? 'none' : `${cell.borderWidth ?? 1}px solid ${cell.borderColor || '#e5e7eb'}`,
+      padding: `${cell.padding ?? 24}px`, borderRadius: `${cell.borderRadius ?? 8}px`,
+      border: noBorder ? 'none' : `${cell.borderWidth ?? 1}px solid ${cell.borderColor || '#EBE6DF'}`,
       borderTop: cardStyle === 'accentTop' ? `3px solid ${accent}` : undefined,
     }}>
       {pos !== 'bottom' && cellImg && <div className="mb-4">{cellImg}</div>}
@@ -1348,14 +1355,14 @@ const LayoutContainerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, 
     const accent = block.activeTabBg || themeColor;
     const active = Math.min(tabIdx, cells.length - 1);
     const tabBar = (
-      <div className={`flex ${tabPos === 'left' ? 'flex-col' : 'overflow-x-auto'} ${tStyle === 'filled' ? 'gap-1.5' : 'gap-6'}`} style={{ borderBottom: tabPos === 'top' && tStyle !== 'minimal' ? `1px solid ${block.tabBorderColor || '#e5e7eb'}` : undefined, marginBottom: tabPos === 'top' ? '28px' : 0 }}>
+      <div className={`flex ${tabPos === 'left' ? 'flex-col' : 'overflow-x-auto'} ${tStyle === 'filled' ? 'gap-1.5' : 'gap-6'}`} style={{ borderBottom: tabPos === 'top' && tStyle !== 'minimal' ? `1px solid ${block.tabBorderColor || '#EBE6DF'}` : undefined, marginBottom: tabPos === 'top' ? '28px' : 0 }}>
         {cells.map((cell: any, i: number) => {
           const isActive = i === active;
           const tStyleCss: React.CSSProperties = tStyle === 'filled'
-            ? { backgroundColor: isActive ? accent : 'transparent', color: isActive ? (block.activeTabText || '#ffffff') : (block.tabText || '#6b7280'), borderRadius: `${block.tabRadius ?? 6}px`, padding: '8px 16px' }
+            ? { backgroundColor: isActive ? accent : 'transparent', color: isActive ? (block.activeTabText || '#ffffff') : (block.tabText || '#7A7066'), borderRadius: `${block.tabRadius ?? 6}px`, padding: '8px 16px' }
             : tStyle === 'underline'
-            ? { color: isActive ? accent : (block.tabText || '#6b7280'), borderBottom: `2px solid ${isActive ? accent : 'transparent'}`, marginBottom: '-1px', padding: '6px 2px 12px' }
-            : { color: isActive ? accent : (block.tabText || '#9ca3af'), padding: '6px 2px', opacity: isActive ? 1 : 0.85 };
+            ? { color: isActive ? accent : (block.tabText || '#7A7066'), borderBottom: `2px solid ${isActive ? accent : 'transparent'}`, marginBottom: '-1px', padding: '6px 2px 12px' }
+            : { color: isActive ? accent : (block.tabText || '#A89E92'), padding: '6px 2px', opacity: isActive ? 1 : 0.85 };
           return (
             <button key={cell.id} onClick={e => { stop(e); setTabIdx(i); }} className={`font-black transition-colors text-left shrink-0 ${tStyle === 'minimal' && !isActive ? '' : ''} ${block.tabSize === 'lg' ? 'text-base' : 'text-sm'}`}
               style={{ ...tStyleCss, whiteSpace: 'nowrap' }}>
@@ -1400,9 +1407,9 @@ const LayoutContainerBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, 
             <div className="flex items-center justify-between mt-6">
               <div className="flex gap-1.5">{Array.from({ length: maxIdx + 1 }, (_, i) => <button key={i} onClick={() => setCarIdx(i)} className="w-6 h-1 rounded transition-colors" style={{ backgroundColor: i === cur ? (block.activeTabBg || themeColor) : '#d1d5db' }} />)}</div>
               <div className="flex gap-2">
-                {block.autoplay && <button onClick={() => setPaused(p => !p)} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center text-xs font-black hover:bg-gray-100">{paused ? '▶' : '❚❚'}</button>}
-                <button onClick={() => setCarIdx(i => (i <= 0 ? maxIdx : i - 1))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center font-black hover:bg-gray-100">‹</button>
-                <button onClick={() => setCarIdx(i => (i >= maxIdx ? 0 : i + 1))} className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center font-black hover:bg-gray-100">›</button>
+                {block.autoplay && <button onClick={() => setPaused(p => !p)} className="w-8 h-8 rounded-full border border-sand-300 flex items-center justify-center text-xs font-black hover:bg-sand-100">{paused ? '▶' : '❚❚'}</button>}
+                <button onClick={() => setCarIdx(i => (i <= 0 ? maxIdx : i - 1))} className="w-8 h-8 rounded-full border border-sand-300 flex items-center justify-center font-black hover:bg-sand-100">‹</button>
+                <button onClick={() => setCarIdx(i => (i >= maxIdx ? 0 : i + 1))} className="w-8 h-8 rounded-full border border-sand-300 flex items-center justify-center font-black hover:bg-sand-100">›</button>
               </div>
             </div>
           )}
@@ -1470,7 +1477,7 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
       <div className="flex items-end justify-center gap-3 flex-wrap">
         {items.map(([unit, val]) => (
           <div key={unit} className="flex flex-col items-center gap-1.5">
-            <div className={`font-black tabular-nums leading-none ${cdStyle === 'boxed' ? 'px-3 py-3 border-2 border-black' : ''}`}
+            <div className={`font-black tabular-nums leading-none ${cdStyle === 'boxed' ? 'px-3 py-3 rounded-ctl border border-white/15' : ''}`}
               style={{ backgroundColor: cdStyle === 'boxed' ? acc : 'transparent', color: digitColor, fontSize: edit ? (cdStyle === 'plain' ? '56px' : '34px') : (cdStyle === 'plain' ? 'clamp(40px, 9vw, 80px)' : 'clamp(24px, 5vw, 34px)'), minWidth: cdStyle === 'boxed' ? '64px' : undefined, letterSpacing: cdStyle === 'plain' ? -0.02 : 0 }}>{pad(val)}</div>
             <span className="text-[11px] font-bold" style={{ color: block.textColor || '#ffffff', opacity: 0.6 }}>{unit}</span>
           </div>
@@ -1484,7 +1491,7 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
     const sampleMs = 7 * 86400000 + 12 * 3600000 + 34 * 60000 + 56 * 1000;
     return (
       <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
-      <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#0a0a0a', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
+      <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#1F1B18', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
         <input value={block.label || ''} placeholder="라벨 (예: 마감까지)" onChange={e => ctx.upd?.('label', e.target.value)} onClick={stop} onPointerDown={stop}
           className="block mx-auto mb-5 text-center bg-transparent outline-none border-b border-transparent focus:border-current font-black tracking-widest text-sm" style={{ color: block.textColor || '#ffffff' }} />
         <UnitBoxes items={breakdown(sampleMs)} edit />
@@ -1498,7 +1505,7 @@ const CountdownBlock: React.FC<{ block: any; ctx: BlockCtx }> = ({ block, ctx })
 
   return (
     <AnimDiv animation={block.animation} duration={block.animDuration} easing={block.animEasing} disabled={ctx.edit} className="w-full">
-    <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#0a0a0a', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
+    <div className="w-full text-center" style={{ backgroundColor: block.bgColor || '#1F1B18', paddingTop: `${block.paddingY ?? 56}px`, paddingBottom: `${block.paddingY ?? 56}px` }}>
       {diff && diff > 0 ? (
         <>
           {block.label && <div className="font-black tracking-widest text-sm mb-5" style={{ color: block.textColor || '#ffffff' }}>{block.label}</div>}
@@ -1529,7 +1536,7 @@ export function resolveSectionBg(block: any): React.CSSProperties {
   const t = block.bgType || 'color';
   if (t === 'gradient' && block.bgGradient) {
     const g = block.bgGradient;
-    return { background: `linear-gradient(${g.angle ?? 135}deg, ${g.from || '#111827'}, ${g.to || '#1f2937'})` };
+    return { background: `linear-gradient(${g.angle ?? 135}deg, ${g.from || '#1F1B18'}, ${g.to || '#2A2420'})` };
   }
   if (t === 'image' && block.bgImage) {
     /* Ken Burns/패럴랙스가 켜진 경우 배경은 별도 레이어(.wb-kenburns / 패럴랙스 레이어)가 그린다 → 여기선 비워둠. */
@@ -1553,7 +1560,7 @@ export const rowCardWrapStyle = (row: any, accent: string): React.CSSProperties 
   const noBorder = v === 'minimal' || v === 'numbered';
   return {
     backgroundColor: v === 'minimal' ? 'transparent' : (row.cardBg || '#ffffff'),
-    border: noBorder ? 'none' : `1px solid ${row.cardBorderColor || '#e5e7eb'}`,
+    border: noBorder ? 'none' : `1px solid ${row.cardBorderColor || '#EBE6DF'}`,
     borderTop: v === 'accentTop' ? `3px solid ${row.cardAccent || accent}` : undefined,
     borderRadius: `${row.cardRadius ?? 12}px`,
     padding: `${row.cardPadding ?? 28}px`,
@@ -1598,7 +1605,7 @@ export const SectionDecor: React.FC<{ block: any }> = ({ block }) => {
           position: 'absolute',
           left: `${sh.x ?? 80}%`, top: `${sh.y ?? 20}%`, transform: 'translate(-50%, -50%)',
           width: `${sh.size ?? 360}px`, height: `${sh.size ?? 360}px`,
-          background: sh.color || '#f97316',
+          background: sh.color || '#EC6A2C',
           borderRadius: isTri ? 0 : (SHAPE_RADIUS[sh.type] ?? '50%'),
           clipPath: isTri ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined,
           opacity: (sh.opacity ?? 12) / 100,
@@ -1608,7 +1615,7 @@ export const SectionDecor: React.FC<{ block: any }> = ({ block }) => {
         const useXY = wm.x != null || wm.y != null;   // X/Y 지정 시 자유 배치, 아니면 기존 프리셋
         const spanStyle: React.CSSProperties = {
           fontSize: `${wm.fontSize ?? 200}px`, lineHeight: 0.9, fontWeight: 900,
-          color: wm.color || '#111827', opacity: (wm.opacity ?? 6) / 100,
+          color: wm.color || '#1F1B18', opacity: (wm.opacity ?? 6) / 100,
           whiteSpace: 'nowrap', userSelect: 'none', letterSpacing: '-0.03em',
         };
         return useXY ? (

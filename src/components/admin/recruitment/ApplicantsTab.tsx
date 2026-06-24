@@ -126,6 +126,16 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
     updateLocal(id, { tags });
   };
 
+  const deleteApplicant = async (id: string) => {
+    // 쓰기 성공 확인 후에만 로컬 반영 — RLS 거부(0행) 시 사라진 것처럼 보이는 거짓상태 방지.
+    const { data, error } = await supabase.from('recruitment_applications').delete().eq('id', id).select('id');
+    if (error || !data || data.length === 0) { showToast('지원자 삭제에 실패했습니다.'); return; }
+    setApplicants(prev => prev.filter(a => a.id !== id));
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    setSelectedApplicant(null);
+    showToast('지원자를 삭제했습니다.');
+  };
+
   const exportToCSV = (targets?: Applicant[]) => {
     const list = targets ?? applicants;
     if (list.length === 0) return;
@@ -296,51 +306,51 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 pt-6 pb-4 border-b border-gray-200 bg-white flex items-center justify-between gap-4 shrink-0 flex-wrap">
-        <p className="text-gray-500 font-bold text-sm">
+      <div className="px-8 pt-6 pb-4 border-b border-sand-200 bg-white flex items-center justify-between gap-4 shrink-0 flex-wrap">
+        <p className="text-sand-500 font-bold text-sm">
           {viewMode === 'kanban' ? '지원자 카드를 드래그하여 단계를 이동하세요.' : '지원자 전체를 표 형태로 관리합니다.'}
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sand-400" strokeWidth={2.5} />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="이름·전공·태그 검색"
-              className="pl-9 pr-4 py-2 border border-black font-bold outline-none focus:border-orange-500 w-52 text-sm"
+              className="field pl-9 pr-4 py-2 border border-sand-300 rounded-ctl font-bold outline-none w-52 text-sm"
             />
           </div>
-          <div className="flex border-2 border-black overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <button onClick={() => setViewMode('kanban')} title="칸반 뷰" className={`p-2 transition-colors ${viewMode === 'kanban' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}>
-              <LayoutGrid className="w-4 h-4" />
+          <div className="flex gap-1 p-1 bg-sand-100 rounded-ctl">
+            <button onClick={() => setViewMode('kanban')} title="칸반 뷰" className={`p-2 rounded-ctl transition-all ${viewMode === 'kanban' ? 'bg-white text-ink shadow-soft' : 'text-sand-500 hover:text-ink'}`}>
+              <LayoutGrid className="w-4 h-4" strokeWidth={2.5} />
             </button>
-            <button onClick={() => setViewMode('list')} title="리스트 뷰" className={`p-2 transition-colors border-l border-black ${viewMode === 'list' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}>
-              <List className="w-4 h-4" />
+            <button onClick={() => setViewMode('list')} title="리스트 뷰" className={`p-2 rounded-ctl transition-all ${viewMode === 'list' ? 'bg-white text-ink shadow-soft' : 'text-sand-500 hover:text-ink'}`}>
+              <List className="w-4 h-4" strokeWidth={2.5} />
             </button>
           </div>
           <button
             onClick={() => exportToCSV(selectedIds.size > 0 ? sorted.filter(a => selectedIds.has(a.id)) : undefined)}
             disabled={applicants.length === 0}
-            className="px-4 py-2 border border-black font-bold text-sm bg-white hover:bg-green-500 transition-colors flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-ctl border border-sand-300 font-bold text-sm bg-white text-ink hover:bg-sand-50 transition-colors flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4" strokeWidth={2.5} />
             {selectedIds.size > 0 ? `CSV (${selectedIds.size}명)` : 'CSV'}
           </button>
-          <span className="text-sm font-bold text-gray-500 border border-gray-200 px-3 py-2 bg-white">
+          <span className="text-sm font-bold text-sand-500 border border-sand-200 rounded-ctl px-3 py-2 bg-white">
             총 {applicants.length}명
           </span>
         </div>
       </div>
 
       {fetching ? (
-        <div className="flex-1 flex items-center justify-center"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>
+        <div className="flex-1 flex items-center justify-center"><Loader className="w-8 h-8 animate-spin text-brand" /></div>
       ) : stages.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-200" />
-            <h3 className="text-lg font-black text-gray-400 mb-2">프로세스 단계가 설정되지 않았습니다</h3>
-            <p className="text-sm font-bold text-gray-400">
-              상단의 <span className="text-orange-500">'채용 프로세스'</span> 탭에서 단계를 추가하세요.
+            <Users className="w-12 h-12 mx-auto mb-4 text-sand-300" strokeWidth={2.5} />
+            <h3 className="text-lg font-black text-sand-400 mb-2">프로세스 단계가 설정되지 않았습니다</h3>
+            <p className="text-sm font-bold text-sand-400">
+              상단의 <span className="text-brand">'모집 프로세스'</span> 탭에서 단계를 추가하세요.
             </p>
           </div>
         </div>
@@ -354,21 +364,21 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
               return (
                 <div
                   key={stage}
-                  className={`flex flex-col border-r border-black transition-colors ${isDropTarget ? 'bg-orange-50' : 'bg-gray-50'}`}
+                  className={`flex flex-col border-r border-sand-200 transition-colors ${isDropTarget ? 'bg-brand-tint' : 'bg-sand-50'}`}
                   style={{ width: '280px', minWidth: '280px' }}
                   onDragOver={e => handleDragOver(e, stage)}
                   onDrop={e => handleDrop(e, stage)}
                   onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverStage(null); }}
                 >
-                  <div className={`px-4 py-3 border-b-2 border-black flex items-center justify-between shrink-0 ${isLast ? 'bg-green-500' : 'bg-white'}`}>
-                    <h3 className={`font-black text-sm ${isLast ? 'text-white' : 'text-black'}`}>{stage}</h3>
-                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${isLast ? 'bg-white text-green-700' : 'bg-black text-white'}`}>
+                  <div className={`px-4 py-3 border-b border-sand-200 flex items-center justify-between shrink-0 ${isLast ? 'bg-ok-fg' : 'bg-white'}`}>
+                    <h3 className={`font-black text-sm ${isLast ? 'text-white' : 'text-ink'}`}>{stage}</h3>
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${isLast ? 'bg-white text-ok-fg' : 'bg-ink text-white'}`}>
                       {stageCards.length}
                     </span>
                   </div>
-                  <div className={`flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 ${isDropTarget ? 'outline-2 outline-dashed outline-orange-400 outline-offset-[-4px]' : ''}`}>
+                  <div className={`flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 ${isDropTarget ? 'outline-2 outline-dashed outline-brand outline-offset-[-4px]' : ''}`}>
                     {stageCards.length === 0 && (
-                      <div className={`border-2 border-dashed rounded p-6 text-center text-xs font-bold leading-relaxed ${isDropTarget ? 'border-orange-400 text-orange-500 bg-orange-50' : 'border-gray-200 text-gray-300'}`}>
+                      <div className={`border border-dashed rounded-card p-6 text-center text-xs font-bold leading-relaxed ${isDropTarget ? 'border-brand text-brand bg-brand-tint' : 'border-sand-200 text-sand-300'}`}>
                         {isDropTarget ? '여기에 놓기' : isLast ? '최종 합격자\n없음' : idx === 0 ? '새 지원이\n없습니다' : `${stage} 단계\n없음`}
                       </div>
                     )}
@@ -391,92 +401,92 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
       ) : (
         <div className="flex-1 overflow-auto bg-white">
           {selectedIds.size > 0 && (
-            <div className="px-8 py-3 bg-orange-50 border-b border-orange-200 flex items-center gap-4 shrink-0">
-              <span className="text-sm font-black text-orange-700">{selectedIds.size}명 선택됨</span>
+            <div className="px-8 py-3 bg-brand-tint border-b border-sand-200 flex items-center gap-4 shrink-0">
+              <span className="text-sm font-black text-brand">{selectedIds.size}명 선택됨</span>
               <div className="flex items-center gap-2">
-                <select value={bulkStage} onChange={e => setBulkStage(e.target.value)} className="px-3 py-1.5 border border-black font-bold text-sm outline-none focus:border-orange-500 bg-white">
+                <select value={bulkStage} onChange={e => setBulkStage(e.target.value)} className="field px-3 py-1.5 border border-sand-300 rounded-ctl font-bold text-sm outline-none bg-white">
                   <option value="">단계 선택...</option>
                   {stages.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={bulkChangeStatus} disabled={!bulkStage} className="px-4 py-1.5 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-40">
+                <button onClick={bulkChangeStatus} disabled={!bulkStage} className="px-4 py-1.5 rounded-ctl btn-grad text-white shadow-btn font-bold text-sm transition-all disabled:opacity-40">
                   일괄 이동
                 </button>
               </div>
-              <button onClick={() => exportToCSV(sorted.filter(a => selectedIds.has(a.id)))} className="flex items-center gap-1.5 px-4 py-1.5 border border-black font-bold text-sm bg-white hover:bg-green-500 transition-colors">
-                <Download className="w-3.5 h-3.5" /> 선택 CSV
+              <button onClick={() => exportToCSV(sorted.filter(a => selectedIds.has(a.id)))} className="flex items-center gap-1.5 px-4 py-1.5 rounded-ctl border border-sand-300 font-bold text-sm bg-white text-ink hover:bg-sand-50 transition-colors">
+                <Download className="w-3.5 h-3.5" strokeWidth={2.5} /> 선택 CSV
               </button>
-              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-500 font-bold hover:text-black ml-auto">선택 해제</button>
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-sand-500 font-bold hover:text-ink ml-auto">선택 해제</button>
             </div>
           )}
           <table className="w-full min-w-[800px] border-collapse">
-            <thead className="sticky top-0 bg-white z-10 border-b-2 border-black">
+            <thead className="sticky top-0 bg-sand-50 z-10 border-b border-sand-200">
               <tr>
                 <th className="w-12 px-4 py-3">
                   <button onClick={toggleAll}>
-                    {allSelected ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-400" />}
+                    {allSelected ? <CheckSquare className="w-4 h-4 text-brand" strokeWidth={2.5} /> : <Square className="w-4 h-4 text-sand-400" strokeWidth={2.5} />}
                   </button>
                 </th>
                 <SortTh label="이름" sortKey="name" current={sortKey} dir={sortDir} onToggle={toggleSort} />
-                <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">학교·전공</th>
-                <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">태그</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-sand-500 uppercase tracking-wider">학교·전공</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-sand-500 uppercase tracking-wider">태그</th>
                 <SortTh label="지원일" sortKey="submitted_at" current={sortKey} dir={sortDir} onToggle={toggleSort} />
                 <SortTh label="단계" sortKey="status" current={sortKey} dir={sortDir} onToggle={toggleSort} />
                 <SortTh label="점수" sortKey="score" current={sortKey} dir={sortDir} onToggle={toggleSort} />
-                <th className="px-4 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-wider">액션</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-sand-500 uppercase tracking-wider">액션</th>
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-16 text-gray-400 font-bold">
-                  <Inbox className="w-10 h-10 mx-auto mb-2 text-gray-200" />지원자가 없습니다.
+                <tr><td colSpan={8} className="text-center py-16 text-sand-400 font-bold">
+                  <Inbox className="w-10 h-10 mx-auto mb-2 text-sand-300" strokeWidth={2.5} />지원자가 없습니다.
                 </td></tr>
               )}
               {sorted.slice(0, shownCount).map((app, i) => {
                 const isSelected = selectedIds.has(app.id);
                 const isLast = app.status === stages[stages.length - 1];
                 return (
-                  <tr key={app.id} className={`border-b border-gray-100 transition-colors cursor-pointer ${isSelected ? 'bg-orange-50' : i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-orange-50`}>
+                  <tr key={app.id} className={`border-b border-sand-200 transition-colors cursor-pointer ${isSelected ? 'bg-brand-tint' : i % 2 === 0 ? 'bg-white' : 'bg-sand-50/50'} hover:bg-sand-50`}>
                     <td className="px-4 py-3" onClick={e => { e.stopPropagation(); toggleOne(app.id); }}>
-                      {isSelected ? <CheckSquare className="w-4 h-4 text-orange-500" /> : <Square className="w-4 h-4 text-gray-300" />}
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-brand" strokeWidth={2.5} /> : <Square className="w-4 h-4 text-sand-300" strokeWidth={2.5} />}
                     </td>
                     <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-sm">{app.profiles?.name ?? '—'}</span>
-                        {app.score != null && <span className="text-xs font-black text-orange-500">{app.score}점</span>}
-                        {app.interviewer_note && <MessageSquare className="w-3 h-3 text-orange-400" />}
+                        <span className="font-black text-sm text-ink">{app.profiles?.name ?? '—'}</span>
+                        {app.score != null && <span className="text-xs font-black text-brand">{app.score}점</span>}
+                        {app.interviewer_note && <MessageSquare className="w-3 h-3 text-brand-accent" strokeWidth={2.5} />}
                       </div>
-                      <p className="text-xs text-gray-400 font-medium">{app.profiles?.email}</p>
+                      <p className="text-xs text-sand-400 font-medium">{app.profiles?.email}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 font-medium" onClick={() => setSelectedApplicant(app)}>
+                    <td className="px-4 py-3 text-sm text-sand-600 font-medium" onClick={() => setSelectedApplicant(app)}>
                       {[app.profiles?.university, app.profiles?.major].filter(Boolean).join(' · ') || '—'}
                     </td>
                     <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
                       <div className="flex flex-wrap gap-1 max-w-[160px]">
                         {(app.tags ?? []).slice(0, 3).map((t, idx) => (
-                          <span key={idx} className="text-[10px] font-bold px-1.5 py-0.5 bg-orange-100 text-orange-700 border border-orange-200">
+                          <span key={idx} className="text-[10px] font-bold px-1.5 py-0.5 rounded-ctl bg-brand-tint text-brand">
                             #{t}
                           </span>
                         ))}
-                        {(app.tags?.length ?? 0) > 3 && <span className="text-[10px] text-gray-400 font-bold">+{(app.tags?.length ?? 0) - 3}</span>}
+                        {(app.tags?.length ?? 0) > 3 && <span className="text-[10px] text-sand-400 font-bold">+{(app.tags?.length ?? 0) - 3}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-500" onClick={() => setSelectedApplicant(app)}>
+                    <td className="px-4 py-3 text-sm font-bold text-sand-500" onClick={() => setSelectedApplicant(app)}>
                       {formatDate(app.submitted_at, 'monthDay')}
                     </td>
                     <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
-                      <span className={`inline-block text-xs font-black px-2.5 py-1 border ${isLast ? 'bg-green-100 border-green-400 text-green-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
+                      <span className={`inline-block text-xs font-bold px-2.5 py-1 rounded-ctl ${isLast ? 'bg-ok-bg text-ok-fg' : 'bg-sand-100 text-sand-600'}`}>
                         {app.status}
                       </span>
                     </td>
                     <td className="px-4 py-3" onClick={() => setSelectedApplicant(app)}>
                       {app.score != null ? (
                         <div className="flex items-center gap-1">
-                          <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-orange-500 rounded-full" style={{ width: `${app.score}%` }} />
+                          <div className="w-16 h-1.5 bg-sand-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-brand rounded-full" style={{ width: `${app.score}%` }} />
                           </div>
-                          <span className="text-xs font-black text-gray-600">{app.score}</span>
+                          <span className="text-xs font-black text-sand-600">{app.score}</span>
                         </div>
-                      ) : <span className="text-xs text-gray-300 font-bold">—</span>}
+                      ) : <span className="text-xs text-sand-300 font-bold">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5">
@@ -487,7 +497,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
                             title={s}
                             className="p-1.5 group/dot"
                           >
-                            <span className={`block w-2.5 h-2.5 rounded-full border transition-all ${app.status === s ? 'bg-orange-500 border-orange-500 scale-125' : 'bg-gray-200 border-gray-300 group-hover/dot:bg-orange-300'}`} />
+                            <span className={`block w-2.5 h-2.5 rounded-full transition-all ${app.status === s ? 'bg-brand scale-125' : 'bg-sand-200 group-hover/dot:bg-brand-peach'}`} />
                           </button>
                         ))}
                       </div>
@@ -497,7 +507,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
               })}
               {shownCount < sorted.length && (
                 <tr ref={sentinelRef}>
-                  <td colSpan={8} className="text-center py-4 text-gray-400 font-bold text-sm">
+                  <td colSpan={8} className="text-center py-4 text-sand-400 font-bold text-sm">
                     <Loader className="w-4 h-4 animate-spin inline-block mr-2" />
                     {sorted.length - shownCount}명 더 불러오는 중…
                   </td>
@@ -523,6 +533,7 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
           onAddMemo={addMemo}
           onSaveQuestions={saveInterviewQuestions}
           onSaveTags={saveTags}
+          onDelete={deleteApplicant}
         />
       )}
 
@@ -538,8 +549,8 @@ export function ApplicantsTab({ recruitmentId, pipelineStages, recruitmentTitle 
       )}
 
       {toast && (
-        <div className="fixed bottom-8 right-8 z-[70] bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(255,165,0,0.5)]">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className="fixed bottom-8 right-8 z-[70] bg-ink text-white px-6 py-4 rounded-card font-bold flex items-center gap-3 shadow-soft-lg">
+          <div className="w-2 h-2 bg-ok-fg rounded-full animate-pulse" />
           {toast}
         </div>
       )}

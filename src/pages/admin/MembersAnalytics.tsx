@@ -3,9 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { Users, Loader, GraduationCap, TrendingDown, Activity, Flame, BarChart3 } from 'lucide-react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { AdminHeader } from '../../components/admin/AdminHeader';
+import { Users, GraduationCap, TrendingDown, Activity, Flame, BarChart3 } from 'lucide-react';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
 import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
@@ -27,7 +26,7 @@ interface Pair { member_id: string; session_id: string; }
 
 const STATUSES = ['활동중', '수료', '탈퇴', '활동정지'] as const;
 const STATUS_COLOR: Record<string, string> = {
-  '활동중': '#22c55e', '수료': '#3b82f6', '탈퇴': '#9ca3af', '활동정지': '#ef4444',
+  '활동중': '#2F7D4F', '수료': '#2D5FA6', '탈퇴': '#7A7066', '활동정지': '#B23B2E',
 };
 const memberName = (m: MemberRow) => m.profiles?.name ?? m.display_name ?? '—';
 const genDesc = (a: string, b: string) => {
@@ -201,26 +200,19 @@ export default function MembersAnalytics() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
-        </aside>
-
-        <main className="flex-1 bg-gray-100 p-8 overflow-y-auto">
+        <main className="flex-1 bg-sand-50 p-8 overflow-y-auto">
           <div className="max-w-5xl flex flex-col gap-6">
             <div>
-              <h2 className="text-4xl font-black mb-2 flex items-center gap-2">
-                <BarChart3 className="w-8 h-8 text-orange-500" /> 명단 분석
+              <h2 className="text-4xl font-black text-ink mb-2 flex items-center gap-2">
+                <BarChart3 className="w-8 h-8 text-brand" strokeWidth={2.5} /> 명단 분석
               </h2>
-              <p className="text-gray-500 font-bold">부원 구성·출석·이탈 지표를 한눈에 봅니다.</p>
+              <p className="text-sand-500 font-medium">부원 구성·출석·이탈 지표를 한눈에 봅니다.</p>
             </div>
 
             {loading ? (
-              <div className="flex justify-center py-24"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>
+              <LoadingScreen />
             ) : members.length === 0 ? (
-              <div className="py-24 text-center font-bold text-gray-400 border-2 border-dashed border-gray-300 bg-white">
+              <div className="py-24 text-center font-bold text-sand-400 border border-dashed border-sand-300 rounded-card bg-white">
                 등록된 부원이 없습니다.
               </div>
             ) : (
@@ -230,12 +222,12 @@ export default function MembersAnalytics() {
                   {KPIS.map(k => {
                     const Icon = k.icon;
                     return (
-                      <div key={k.label} className="bg-white border-2 border-black p-4 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-                        <div className="flex items-center gap-1.5 text-gray-400 font-black text-xs mb-2">
-                          <Icon className="w-4 h-4" /> {k.label}
+                      <div key={k.label} className="bg-white border border-sand-200 rounded-card p-4 shadow-soft">
+                        <div className="flex items-center gap-1.5 text-sand-400 font-black text-xs mb-2">
+                          <Icon className="w-4 h-4" strokeWidth={2.5} /> {k.label}
                         </div>
-                        <div className="text-3xl font-black">{k.value}</div>
-                        <div className="text-[11px] font-bold text-gray-400 mt-1">{k.sub}</div>
+                        <div className="text-3xl font-black text-ink">{k.value}</div>
+                        <div className="text-[11px] font-bold text-sand-400 mt-1">{k.sub}</div>
                       </div>
                     );
                   })}
@@ -243,26 +235,26 @@ export default function MembersAnalytics() {
 
                 {/* 상태 분포 + 출석률 구간 분포 */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                    <h3 className="font-black text-sm mb-3">상태 분포</h3>
+                  <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                    <h3 className="font-black text-ink text-sm mb-3">상태 분포</h3>
                     <ResponsiveContainer width="100%" height={240}>
                       <PieChart>
                         <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e: { name?: string; value?: number }) => `${e.name} ${e.value}`}>
-                          {statusData.map(d => <Cell key={d.name} fill={STATUS_COLOR[d.name] ?? '#999'} />)}
+                          {statusData.map(d => <Cell key={d.name} fill={STATUS_COLOR[d.name] ?? '#A8A095'} />)}
                         </Pie>
                         <Tooltip />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                    <h3 className="font-black text-sm mb-3">출석률 구간 분포 (명)</h3>
+                  <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                    <h3 className="font-black text-ink text-sm mb-3">출석률 구간 분포 (명)</h3>
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={histData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
                         <XAxis dataKey="name" tick={{ fontWeight: 700, fontSize: 11 }} />
                         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                         <Tooltip formatter={(v: number) => [`${v}명`, '인원']} />
-                        <Bar dataKey="count" fill="#f97316">
+                        <Bar dataKey="count" fill="#EC6A2C">
                           <LabelList dataKey="count" position="top" style={{ fontWeight: 700, fontSize: 11 }} />
                         </Bar>
                       </BarChart>
@@ -271,21 +263,21 @@ export default function MembersAnalytics() {
                 </div>
 
                 {/* 회차별 출석률 추이 */}
-                <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                  <h3 className="font-black text-sm mb-3">회차별 출석률 추이</h3>
+                <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                  <h3 className="font-black text-ink text-sm mb-3">회차별 출석률 추이</h3>
                   {trendData.length === 0 ? (
-                    <p className="text-xs font-bold text-gray-400 py-8 text-center">대상자가 지정된 세션이 없습니다.</p>
+                    <p className="text-xs font-bold text-sand-400 py-8 text-center">대상자가 지정된 세션이 없습니다.</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={240}>
                       <LineChart data={trendData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#EBE6DF" />
                         <XAxis dataKey="label" tick={{ fontWeight: 700, fontSize: 11 }} />
                         <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
                         <Tooltip
                           formatter={(v: number) => [`${v}%`, '출석률']}
                           labelFormatter={(label: string, p) => (p?.[0]?.payload?.title ?? label)}
                         />
-                        <Line type="monotone" dataKey="rate" stroke="#f97316" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="rate" stroke="#EC6A2C" strokeWidth={2} dot={{ r: 3 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   )}
@@ -293,29 +285,29 @@ export default function MembersAnalytics() {
 
                 {/* 기수별 요약 + 연속 출석 */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                    <h3 className="font-black text-sm mb-3">기수별 요약</h3>
+                  <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                    <h3 className="font-black text-ink text-sm mb-3">기수별 요약</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse text-sm">
                         <thead>
-                          <tr className="border-b-2 border-black text-xs">
-                            <th className="py-2 pr-2 font-black">기수</th>
-                            <th className="py-2 px-2 font-black text-right">인원</th>
-                            <th className="py-2 px-2 font-black text-right">활동중</th>
-                            <th className="py-2 px-2 font-black text-right">수료</th>
-                            <th className="py-2 px-2 font-black text-right">탈퇴</th>
-                            <th className="py-2 pl-2 font-black text-right">평균출석</th>
+                          <tr className="border-b border-sand-200 text-xs text-sand-500">
+                            <th className="py-2 pr-2 font-bold">기수</th>
+                            <th className="py-2 px-2 font-bold text-right">인원</th>
+                            <th className="py-2 px-2 font-bold text-right">활동중</th>
+                            <th className="py-2 px-2 font-bold text-right">수료</th>
+                            <th className="py-2 px-2 font-bold text-right">탈퇴</th>
+                            <th className="py-2 pl-2 font-bold text-right">평균출석</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-sand-200">
                           {genSummary.map(g => (
                             <tr key={g.gen}>
-                              <td className="py-2 pr-2 font-bold">{g.gen}</td>
-                              <td className="py-2 px-2 text-right font-bold">{g.total}</td>
-                              <td className="py-2 px-2 text-right font-bold text-green-600">{g.active}</td>
-                              <td className="py-2 px-2 text-right font-bold text-blue-600">{g.completed}</td>
-                              <td className="py-2 px-2 text-right font-bold text-gray-400">{g.withdrawn}</td>
-                              <td className="py-2 pl-2 text-right font-black">{g.avgRate != null ? `${g.avgRate}%` : '—'}</td>
+                              <td className="py-2 pr-2 font-bold text-ink">{g.gen}</td>
+                              <td className="py-2 px-2 text-right font-bold text-ink">{g.total}</td>
+                              <td className="py-2 px-2 text-right font-bold text-ok-fg">{g.active}</td>
+                              <td className="py-2 px-2 text-right font-bold text-info-fg">{g.completed}</td>
+                              <td className="py-2 px-2 text-right font-bold text-sand-400">{g.withdrawn}</td>
+                              <td className="py-2 pl-2 text-right font-black text-ink">{g.avgRate != null ? `${g.avgRate}%` : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -323,22 +315,22 @@ export default function MembersAnalytics() {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] p-5">
-                    <h3 className="font-black text-sm mb-3 flex items-center gap-1.5">
-                      <Flame className="w-4 h-4 text-orange-500" /> 연속 출석 Top
+                  <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                    <h3 className="font-black text-ink text-sm mb-3 flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-brand" strokeWidth={2.5} /> 연속 출석 Top
                     </h3>
                     {streakTop.length === 0 ? (
-                      <p className="text-xs font-bold text-gray-400 py-8 text-center">연속 출석 기록이 없습니다.</p>
+                      <p className="text-xs font-bold text-sand-400 py-8 text-center">연속 출석 기록이 없습니다.</p>
                     ) : (
                       <div className="flex flex-col gap-1.5">
                         {streakTop.map((s, i) => (
-                          <div key={`${s.name}-${i}`} className="flex items-center justify-between px-3 py-2 border border-gray-200 bg-gray-50">
+                          <div key={`${s.name}-${i}`} className="flex items-center justify-between px-3 py-2 border border-sand-200 rounded-ctl bg-sand-50">
                             <div className="flex items-center gap-2">
-                              <span className={`w-5 h-5 flex items-center justify-center font-black text-xs ${i < 3 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{i + 1}</span>
-                              <span className="font-bold text-sm">{s.name}</span>
-                              {s.gen && <span className="text-xs font-bold text-gray-400">{s.gen}</span>}
+                              <span className={`w-5 h-5 flex items-center justify-center rounded-md font-black text-xs ${i < 3 ? 'bg-brand text-white' : 'bg-sand-200 text-sand-500'}`}>{i + 1}</span>
+                              <span className="font-bold text-sm text-ink">{s.name}</span>
+                              {s.gen && <span className="text-xs font-bold text-sand-400">{s.gen}</span>}
                             </div>
-                            <span className="font-black text-sm text-orange-600">{s.streak}회 연속</span>
+                            <span className="font-black text-sm text-brand-dark">{s.streak}회 연속</span>
                           </div>
                         ))}
                       </div>
@@ -346,14 +338,12 @@ export default function MembersAnalytics() {
                   </div>
                 </div>
 
-                <p className="text-[11px] font-bold text-gray-400">
+                <p className="text-[11px] font-bold text-sand-400">
                   ※ 휴식→복귀 전환율·기수간 리텐션은 상태 변경 이력을 별도 기록해야 산출 가능하여 추후 제공됩니다.
                 </p>
               </>
             )}
           </div>
         </main>
-      </div>
-    </div>
   );
 }

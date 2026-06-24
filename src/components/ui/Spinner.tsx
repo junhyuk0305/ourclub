@@ -9,7 +9,7 @@ export interface SpinnerProps {
 }
 
 export function Spinner({ className = 'w-8 h-8', center = false }: SpinnerProps) {
-  const icon = <Loader className={`${className} animate-spin text-orange-500`} />;
+  const icon = <Loader className={`${className} animate-spin text-brand`} strokeWidth={2.5} />;
   if (!center) return icon;
   return <div className="flex-1 flex items-center justify-center py-10">{icon}</div>;
 }

@@ -94,31 +94,31 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
     <div className="p-8 max-w-4xl mx-auto flex flex-col gap-6 pb-16">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black">공고 수정</h2>
-          <p className="text-sm text-gray-500 font-bold mt-1">제목, 마감일, 본문 내용 등 공고 정보를 편집합니다.</p>
+          <h2 className="text-2xl font-black text-ink">공고 수정</h2>
+          <p className="text-sm text-sand-500 font-bold mt-1">제목, 마감일, 본문 내용 등 공고 정보를 편집합니다.</p>
         </div>
         <button
           onClick={save}
           disabled={saving || !isDirty}
-          className="px-5 py-2.5 bg-black text-white font-black text-sm hover:bg-orange-500 hover:text-black transition-colors flex items-center gap-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 transition-all font-bold text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" strokeWidth={2.5} />}
           저장
         </button>
       </div>
 
       {/* 기본 정보 카드 */}
-      <div className="bg-white border-2 border-black p-6 flex flex-col gap-5">
-        <h3 className="font-black text-base flex items-center gap-2">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6 flex flex-col gap-5">
+        <h3 className="font-black text-base text-ink flex items-center gap-2">
           📋 기본 정보
         </h3>
 
-        <Field label="채용 제목 *">
+        <Field label="모집 제목 *">
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="예) 25기 정기 모집"
-            className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+            className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
           />
         </Field>
 
@@ -128,7 +128,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               value={generation}
               onChange={e => setGeneration(e.target.value)}
               placeholder="예) 25기"
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
           <Field label="분야 / 카테고리">
@@ -136,7 +136,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               value={category}
               onChange={e => setCategory(e.target.value)}
               placeholder="예) 개발 / 기획 / 디자인"
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
         </div>
@@ -146,7 +146,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
             value={shortDesc}
             onChange={e => setShortDesc(e.target.value)}
             placeholder="한 줄로 매력적인 소개를 적어주세요"
-            className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+            className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
           />
         </Field>
 
@@ -155,7 +155,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
             value={targets}
             onChange={e => setTargets(e.target.value)}
             placeholder="예) 대학생 누구나 / 25학번 이상"
-            className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+            className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
           />
         </Field>
 
@@ -165,7 +165,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="예) 서울 신촌"
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
           <Field label="정기 활동일">
@@ -173,7 +173,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               value={regularMeeting}
               onChange={e => setRegularMeeting(e.target.value)}
               placeholder="예) 매주 수 19:00"
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
         </div>
@@ -184,7 +184,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               type="datetime-local"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
           <Field label="모집 마감일시">
@@ -192,7 +192,7 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
               type="datetime-local"
               value={deadline}
               onChange={e => setDeadline(e.target.value)}
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+              className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
             />
           </Field>
         </div>
@@ -202,18 +202,18 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
             value={hashtagsText}
             onChange={e => setHashtagsText(e.target.value)}
             placeholder="#개발 #기획 #신촌"
-            className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 text-sm"
+            className="field w-full p-3 border border-sand-300 rounded-ctl font-bold outline-none text-sm"
           />
         </Field>
       </div>
 
       {/* 본문 카드 */}
-      <div className="bg-white border-2 border-black p-6 flex flex-col gap-3">
+      <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6 flex flex-col gap-3">
         <div>
-          <h3 className="font-black text-base flex items-center gap-2 mb-1">
+          <h3 className="font-black text-base text-ink flex items-center gap-2 mb-1">
             📝 공고 본문
           </h3>
-          <p className="text-xs text-gray-500 font-bold">
+          <p className="text-xs text-sand-500 font-bold">
             마크다운 문법으로 제목, 인용, 구분선, 이미지를 추가할 수 있습니다.
           </p>
         </div>
@@ -227,11 +227,11 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
 
       {toast && (
         <div
-          className={`fixed bottom-8 right-8 z-50 px-6 py-4 border-2 font-black flex items-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] ${
-            toast.ok ? 'bg-green-500 text-white border-black' : 'bg-red-500 text-white border-black'
+          className={`fixed bottom-8 right-8 z-50 px-6 py-4 rounded-card font-bold flex items-center gap-3 shadow-soft-lg ${
+            toast.ok ? 'bg-ink text-white' : 'bg-red-500 text-white'
           }`}
         >
-          {toast.ok ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          {toast.ok ? <CheckCircle2 className="w-5 h-5" strokeWidth={2.5} /> : <AlertCircle className="w-5 h-5" strokeWidth={2.5} />}
           {toast.msg}
         </div>
       )}
@@ -242,9 +242,9 @@ export function JobInfoTab({ recruitment, onUpdate }: Props) {
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div>
-      <label className="font-black text-xs block mb-1.5 text-gray-700">{label}</label>
+      <label className="font-bold text-xs block mb-1.5 text-sand-600">{label}</label>
       {children}
-      {hint && <p className="text-xs text-gray-400 font-bold mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-sand-400 font-bold mt-1">{hint}</p>}
     </div>
   );
 }

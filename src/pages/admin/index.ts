@@ -1,7 +1,7 @@
 export { default as Workspace } from './Workspace';
 export { default as RecruitmentsList } from './RecruitmentsList';
 export { default as RecruitmentDetail } from './RecruitmentDetail';
-export { default as RecruitPageBuilder } from './RecruitPageBuilder';
+export { default as RecruitInsights } from './RecruitInsights';
 export { default as RecruitDashboard } from './RecruitDashboard';
 export { default as RecruitAnalytics } from './RecruitAnalytics';
 export { default as AttendanceCreate } from './AttendanceCreate';

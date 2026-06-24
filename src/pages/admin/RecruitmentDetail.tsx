@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, Users, FileText, ClipboardList, GitBranch, Loader, ChevronRight, Eye, Trash2,
+  Users, FileText, ClipboardList, GitBranch, ChevronRight, Eye, Trash2,
   CheckCircle2, AlertCircle,
 } from 'lucide-react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { AdminHeaderPortal } from './AdminLayout';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAdmin } from '../../contexts/AdminContext';
 import { useToast } from '../../hooks/useToast';
 import { supabase } from '../../lib/supabaseClient';
@@ -28,10 +29,10 @@ type Recruitment = RecruitmentSummary
 type Tab = 'applicants' | 'info' | 'form' | 'pipeline';
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: 'applicants', label: '지원자 관리', icon: <Users className="w-4 h-4" /> },
-  { key: 'info', label: '공고 수정', icon: <FileText className="w-4 h-4" /> },
-  { key: 'form', label: '지원서 수정', icon: <ClipboardList className="w-4 h-4" /> },
-  { key: 'pipeline', label: '채용 프로세스', icon: <GitBranch className="w-4 h-4" /> },
+  { key: 'applicants', label: '지원자 관리', icon: <Users className="w-4 h-4" strokeWidth={2.5} /> },
+  { key: 'info', label: '공고 수정', icon: <FileText className="w-4 h-4" strokeWidth={2.5} /> },
+  { key: 'form', label: '지원서 수정', icon: <ClipboardList className="w-4 h-4" strokeWidth={2.5} /> },
+  { key: 'pipeline', label: '모집 프로세스', icon: <GitBranch className="w-4 h-4" strokeWidth={2.5} /> },
 ];
 
 export default function RecruitmentDetail() {
@@ -104,121 +105,81 @@ export default function RecruitmentDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-orange-500" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!recruitment) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50">
-        <div className="flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <p className="font-black text-lg mb-3">공고를 찾을 수 없습니다.</p>
-            <Link to="/admin/recruitments" className="text-orange-500 font-bold hover:underline">
-              ← 전체 채용으로 돌아가기
-            </Link>
-          </div>
+      <main className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="font-black text-lg mb-3">공고를 찾을 수 없습니다.</p>
+          <Link to="/admin/recruitments" className="text-brand font-bold hover:underline">
+            ← 전체 모집으로 돌아가기
+          </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   const derivedStatus = deriveRecruitStatus(recruitment);
   const statusStyle = derivedStatus === '진행중'
-    ? 'bg-green-500 text-white'
+    ? 'bg-ok-bg text-ok-fg'
     : derivedStatus === '마감'
-      ? 'bg-gray-400 text-white'
-      : 'bg-yellow-400 text-black';
+      ? 'bg-off-bg text-off-fg'
+      : 'bg-warn-bg text-warn-fg';
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      {/* 헤더 */}
-      <header className="h-14 border-b border-black bg-white flex items-center justify-between px-6 flex-shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <Link to="/admin/recruitments" className="p-2 hover:bg-gray-100 transition-colors rounded-full border border-transparent hover:border-black shrink-0">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="flex items-center gap-2 min-w-0">
-            <Link to="/admin/recruitments" className="text-sm font-bold text-gray-500 hover:text-black shrink-0">
-              전체 채용
+    <>
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* 브레드크럼 + 제목 */}
+          <div className="h-14 border-b border-sand-200 bg-white flex items-center px-6 flex-shrink-0 min-w-0">
+            <Link to="/admin/recruitments" className="text-sm font-bold text-sand-500 hover:text-ink shrink-0">
+              전체 모집
             </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
-            <h1 className="font-black text-base truncate">
+            <ChevronRight className="w-3.5 h-3.5 text-sand-300 shrink-0 mx-2" strokeWidth={2.5} />
+            <h1 className="font-black text-base truncate text-ink">
               {recruitment.title}
-              {recruitment.generation && <span className="text-gray-500 ml-2 text-sm">{recruitment.generation}</span>}
+              {recruitment.generation && <span className="text-sand-500 ml-2 text-sm">{recruitment.generation}</span>}
             </h1>
-            <span className={`shrink-0 px-2 py-0.5 text-xs font-black ${statusStyle}`}>
+            <span className={`shrink-0 px-2 py-0.5 text-xs font-bold rounded-ctl ml-2 ${statusStyle}`}>
               {derivedStatus}
             </span>
           </div>
-        </div>
-        <div className="flex items-center gap-3 text-sm">
-          {adminClub?.slug && (
-            <Link
-              to={`/clubs/${adminClub.slug}/recruit${recruitment.status === '진행중' ? '' : '?preview=1'}`}
-              target="_blank"
-              className="px-4 py-2 border border-black bg-white hover:bg-gray-100 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none font-bold flex items-center gap-2"
-              title={recruitment.status === '진행중' ? '실제 채용 페이지' : '임시저장 미리보기 (운영진만 보임)'}
-            >
-              <Eye className="w-4 h-4" />
-              {recruitment.status === '진행중' ? '라이브 프리뷰' : '임시저장 미리보기'}
-            </Link>
-          )}
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="px-4 py-2 border border-black bg-white text-red-600 hover:bg-red-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none font-bold flex items-center gap-2"
-            title="공고 삭제"
-          >
-            <Trash2 className="w-4 h-4" />
-            공고 삭제
-          </button>
-        </div>
-      </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* 사이드바 + 공고 빠른이동 */}
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
+          {/* 공고 빠른이동 */}
           {siblings.length > 1 && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+            <div className="border-b border-sand-200 bg-white px-6 py-2 flex items-center gap-1.5 flex-wrap shrink-0">
+              <span className="text-xs font-black text-sand-400 uppercase tracking-widest mr-1">
                 다른 공고
-              </p>
-              <div className="flex flex-col gap-0.5">
-                {siblings.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => navigate(`/admin/recruitments/${s.id}?tab=${tab}`)}
-                    className={`text-left px-2 py-1.5 text-xs font-bold transition-colors truncate ${
-                      s.id === recruitment.id
-                        ? 'bg-orange-100 text-orange-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                    title={s.title}
-                  >
-                    {s.title}
-                    {s.generation && <span className="text-gray-400 ml-1">{s.generation}</span>}
-                  </button>
-                ))}
-              </div>
+              </span>
+              {siblings.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => navigate(`/admin/recruitments/${s.id}?tab=${tab}`)}
+                  className={`px-2 py-1 text-xs font-bold rounded-ctl transition-colors truncate max-w-[160px] ${
+                    s.id === recruitment.id
+                      ? 'bg-brand-tint text-brand'
+                      : 'text-sand-600 hover:bg-sand-100'
+                  }`}
+                  title={s.title}
+                >
+                  {s.title}
+                  {s.generation && <span className="text-sand-400 ml-1">{s.generation}</span>}
+                </button>
+              ))}
             </div>
           )}
-        </aside>
 
-        <main className="flex-1 flex flex-col overflow-hidden">
           {/* 탭 네비게이션 */}
-          <div className="flex border-b-2 border-black bg-white shrink-0">
+          <div className="flex border-b border-sand-200 bg-white shrink-0">
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-2 px-6 py-3.5 text-sm font-black border-r border-gray-200 transition-colors ${
+                className={`flex items-center gap-2 px-6 py-3.5 text-sm font-bold border-b-2 -mb-px transition-colors ${
                   tab === t.key
-                    ? 'bg-orange-500 text-black border-b-2 border-black -mb-0.5'
-                    : 'text-gray-500 hover:bg-gray-50'
+                    ? 'border-brand text-brand'
+                    : 'border-transparent text-sand-400 hover:text-ink'
                 }`}
               >
                 {t.icon} {t.label}
@@ -227,7 +188,7 @@ export default function RecruitmentDetail() {
           </div>
 
           {/* 탭 콘텐츠 */}
-          <div className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="flex-1 overflow-y-auto bg-sand-50">
             {tab === 'applicants' && (
               <ApplicantsTab
                 recruitmentId={recruitment.id}
@@ -256,28 +217,49 @@ export default function RecruitmentDetail() {
             )}
           </div>
         </main>
-      </div>
+
+      <AdminHeaderPortal>
+        {adminClub?.slug && (
+          <Link
+            to={`/clubs/${adminClub.slug}/recruit${recruitment.status === '진행중' ? '' : '?preview=1'}`}
+            target="_blank"
+            className="px-4 py-2 rounded-ctl border border-sand-300 bg-white text-ink hover:bg-sand-50 transition-colors font-bold flex items-center gap-2"
+            title={recruitment.status === '진행중' ? '실제 모집 페이지' : '임시저장 미리보기 (운영진만 보임)'}
+          >
+            <Eye className="w-4 h-4" strokeWidth={2.5} />
+            {recruitment.status === '진행중' ? '라이브 프리뷰' : '임시저장 미리보기'}
+          </Link>
+        )}
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="px-4 py-2 rounded-ctl border border-sand-300 bg-white text-red-600 hover:bg-red-50 transition-colors font-bold flex items-center gap-2"
+          title="공고 삭제"
+        >
+          <Trash2 className="w-4 h-4" strokeWidth={2.5} />
+          공고 삭제
+        </button>
+      </AdminHeaderPortal>
 
       {/* 삭제 확인 */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm mx-4 p-8 flex flex-col gap-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-sm mx-4 p-8 flex flex-col gap-5">
             <h2 className="text-xl font-black text-red-600">정말로 삭제하시겠어요?</h2>
-            <p className="font-bold text-gray-700">
+            <p className="font-bold text-sand-600">
               이 공고와 관련된 모든 지원 데이터도 함께 삭제됩니다.
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleting}
-                className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100 disabled:opacity-50"
+                className="flex-1 py-3 rounded-ctl border border-sand-300 font-bold text-ink hover:bg-sand-50 disabled:opacity-50"
               >
                 취소
               </button>
               <button
                 onClick={handleDeleteRecruitment}
                 disabled={deleting}
-                className="flex-1 py-3 bg-red-600 text-white font-black hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 py-3 rounded-ctl bg-red-500 text-white font-bold hover:bg-red-600 disabled:opacity-50"
               >
                 {deleting ? '삭제 중…' : '삭제하기'}
               </button>
@@ -289,14 +271,14 @@ export default function RecruitmentDetail() {
       {/* 토스트 */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
-          <div className={`flex items-center gap-2 px-5 py-3 border-2 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
-            toast.ok ? 'bg-green-500 text-white border-black' : 'bg-red-500 text-white border-black'
+          <div className={`flex items-center gap-2 px-5 py-3 rounded-card font-bold shadow-soft-lg ${
+            toast.ok ? 'bg-ink text-white' : 'bg-red-500 text-white'
           }`}>
-            {toast.ok ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {toast.ok ? <CheckCircle2 className="w-5 h-5" strokeWidth={2.5} /> : <AlertCircle className="w-5 h-5" strokeWidth={2.5} />}
             {toast.msg}
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

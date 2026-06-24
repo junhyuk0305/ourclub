@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Heart, Share2, Eye, ChevronLeft, ChevronRight, Loader, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 
@@ -36,7 +37,7 @@ function ImageGallery({ images }: { images: string[] }) {
 
   return (
     <div className="mb-10">
-      <div className="relative w-full border border-black overflow-hidden bg-gray-100">
+      <div className="relative w-full border border-sand-200 rounded-card overflow-hidden bg-sand-100">
         <img
           src={valid[safeIdx]}
           alt={`이미지 ${safeIdx + 1}`}
@@ -173,21 +174,17 @@ export default function StoryDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader className="w-8 h-8 animate-spin text-orange-500" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (notFound || !post) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="min-h-screen flex items-center justify-center bg-sand-50 px-6">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-black mb-3">스토리를 찾을 수 없습니다.</h2>
-          <p className="text-gray-500 font-medium mb-6">삭제되었거나 비공개 처리된 게시글입니다.</p>
-          <Link to={backTo} className="font-black text-orange-500 hover:underline">← {backLabel}으로</Link>
+          <AlertCircle className="w-12 h-12 text-brand mx-auto mb-4" strokeWidth={2.5} />
+          <h2 className="text-2xl font-black text-ink mb-3">스토리를 찾을 수 없습니다.</h2>
+          <p className="text-sand-500 font-medium mb-6">삭제되었거나 비공개 처리된 게시글입니다.</p>
+          <Link to={backTo} className="font-black text-brand hover:underline">← {backLabel}으로</Link>
         </div>
       </div>
     );
@@ -196,34 +193,34 @@ export default function StoryDetail() {
   return (
     <div className="bg-white min-h-screen">
       {/* 헤더 바 */}
-      <div className="border-b border-black bg-white sticky top-16 z-40">
+      <div className="border-b border-sand-200 bg-white sticky top-16 z-40">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
           <Link
             to={backTo}
-            className="inline-flex items-center gap-2 font-bold text-sm text-gray-600 hover:text-black transition-colors"
+            className="inline-flex items-center gap-2 font-bold text-sm text-sand-600 hover:text-ink transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> {backLabel}
+            <ArrowLeft className="w-4 h-4" strokeWidth={2.5} /> {backLabel}
           </Link>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-gray-400 text-xs font-bold mr-2">
-              <Eye className="w-4 h-4" />
+            <div className="flex items-center gap-1 text-sand-400 text-xs font-bold mr-2">
+              <Eye className="w-4 h-4" strokeWidth={2.5} />
               {(post.view_count ?? 0).toLocaleString()}
             </div>
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-2 border border-black text-xs font-bold hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 border border-sand-300 rounded-ctl text-xs font-bold text-sand-600 hover:bg-sand-50 transition-colors"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4" strokeWidth={2.5} />
               {shared ? '복사됨!' : '공유'}
             </button>
             <button
               onClick={handleLike}
               disabled={likeLoading}
-              className={`flex items-center gap-1.5 px-3 py-2 border border-black text-xs font-bold transition-colors ${
-                liked ? 'bg-orange-500 border-orange-500 text-white' : 'hover:bg-gray-100'
+              className={`flex items-center gap-1.5 px-3 py-2 border rounded-ctl text-xs font-bold transition-colors ${
+                liked ? 'bg-brand border-brand text-white' : 'border-sand-300 text-sand-600 hover:bg-sand-50'
               }`}
             >
-              <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+              <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} strokeWidth={2.5} />
               {likeCount}
             </button>
           </div>
@@ -243,32 +240,32 @@ export default function StoryDetail() {
               <img
                 src={post.clubs.logo_url}
                 alt={post.clubs.name}
-                className="w-10 h-10 rounded-full object-cover border-2 border-black"
+                className="w-10 h-10 rounded-full object-cover border border-sand-200"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-orange-500 border-2 border-black flex items-center justify-center font-black text-black shrink-0">
+              <div className="w-10 h-10 rounded-full thumb-grad flex items-center justify-center font-black text-white shrink-0">
                 {post.clubs.name[0]}
               </div>
             )}
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-sm group-hover:text-orange-500 transition-colors">{post.clubs.name}</span>
+                <span className="font-black text-sm text-ink group-hover:text-brand transition-colors">{post.clubs.name}</span>
                 {post.clubs.is_certified && (
-                  <CheckCircle className="w-4 h-4 text-orange-500" />
+                  <CheckCircle className="w-4 h-4 text-brand-accent" strokeWidth={2.5} />
                 )}
               </div>
-              <span className="text-xs font-bold text-gray-400">{post.clubs.type}</span>
+              <span className="text-xs font-bold text-sand-400">{post.clubs.type}</span>
             </div>
           </Link>
         )}
 
         {/* 제목 */}
-        <h1 className="text-3xl md:text-4xl font-black leading-tight mb-4 tracking-tight">
+        <h1 className="text-3xl md:text-4xl font-black text-ink leading-tight mb-4 tracking-tight">
           {post.title}
         </h1>
 
         {/* 메타 */}
-        <div className="flex items-center gap-4 text-sm font-bold text-gray-400 mb-10 pb-6 border-b border-black">
+        <div className="flex items-center gap-4 text-sm font-bold text-sand-400 mb-10 pb-6 border-b border-sand-200">
           {post.author && <span>{post.author}</span>}
           <span>{formatDate(post.created_at, 'medium')}</span>
         </div>
@@ -284,28 +281,28 @@ export default function StoryDetail() {
             <MarkdownViewer content={post.content} />
           </div>
         ) : (
-          <div className="bg-gray-50 border border-dashed border-gray-300 p-12 text-center text-gray-400 font-bold">
+          <div className="bg-sand-50 border border-dashed border-sand-300 rounded-card p-12 text-center text-sand-400 font-bold">
             본문 내용이 없습니다.
           </div>
         )}
 
         {/* 하단 좋아요 */}
-        <div className="mt-16 pt-8 border-t border-black flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="mt-16 pt-8 border-t border-sand-200 flex flex-col sm:flex-row items-center justify-between gap-6">
           <button
             onClick={handleLike}
             disabled={likeLoading}
-            className={`flex items-center gap-3 px-8 py-4 border-2 border-black font-black text-lg transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] ${
-              liked ? 'bg-orange-500 text-black' : 'bg-white hover:bg-gray-50'
+            className={`flex items-center gap-3 px-8 py-4 rounded-ctl font-black text-lg transition-all hover:-translate-y-0.5 ${
+              liked ? 'bg-brand text-white shadow-btn' : 'bg-white border border-sand-300 text-sand-600 shadow-soft hover:shadow-soft-lg'
             }`}
           >
-            <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
+            <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} strokeWidth={2.5} />
             {liked ? '좋아요 취소' : '좋아요'} · {likeCount}
           </button>
 
           {post.clubs && (
             <Link
               to={`/clubs/${post.clubs.slug}/recruit`}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+              className="inline-flex items-center gap-2 px-8 py-4 btn-grad text-white rounded-ctl font-black transition-all shadow-btn hover:-translate-y-0.5 hover:shadow-soft-lg"
             >
               이 동아리 지원하기 →
             </Link>
@@ -315,7 +312,7 @@ export default function StoryDetail() {
 
       {/* 토스트 알림 */}
       {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-8 right-8 z-50 bg-ink text-white px-6 py-3 rounded-ctl font-bold text-sm shadow-soft-lg animate-in fade-in slide-in-from-bottom-4">
           {toast}
         </div>
       )}

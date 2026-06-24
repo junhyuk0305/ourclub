@@ -31,7 +31,7 @@ interface Props {
 /* 항목 라벨(2단 위계) — 그룹 헤더보다 한 단계 약하게: 작은 캡션톤(연회색·약한 굵기)으로 후퇴시켜
    그룹 헤더(진한 굵은 글씨)와 명확히 구분한다. 컨트롤이 시각적 주인공이 되도록. */
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{children}</div>
+  <div className="text-[11px] font-bold uppercase tracking-widest text-sand-400 mb-1.5">{children}</div>
 );
 
 const Row = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -42,8 +42,8 @@ const Seg = ({ options, value, onChange }: { options: { v: string; label: string
   <div className="flex w-full">
     {options.map(({ v, label }) => (
       <button key={v} onClick={() => onChange(v)}
-        className={`flex-1 py-1.5 text-[12px] font-black border-y border-r first:border-l first:rounded-l last:rounded-r transition-colors
-          ${value === v ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-gray-400 text-gray-500'}`}>
+        className={`flex-1 py-1.5 text-[12px] font-black border-y border-r first:border-l first:rounded-l-ctl last:rounded-r-ctl transition-colors
+          ${value === v ? 'bg-brand text-white border-brand' : 'border-sand-200 hover:border-brand text-sand-500'}`}>
         {label}
       </button>
     ))}
@@ -77,7 +77,7 @@ const AnimSelect = ({ value, onChange }: { value: string; onChange: (v: string) 
   <select
     value={value || 'none'}
     onChange={e => onChange(e.target.value)}
-    className="w-full py-1.5 px-2 text-[12px] font-black border border-gray-200 rounded bg-white cursor-pointer outline-none focus:border-black"
+    className="w-full py-1.5 px-2 text-[12px] font-black border border-sand-300 rounded-ctl bg-white cursor-pointer outline-none focus:border-brand"
   >
     {ANIM_OPTIONS.map(({ v, label }) => <option key={v} value={v}>{label}</option>)}
   </select>
@@ -90,14 +90,14 @@ const ColorPicker = ({ value, onChange, label, allowNone }: { value: string; onC
   return (
     <div className="flex flex-col gap-1">
       {label && <Label>{label}</Label>}
-      <div className="flex items-center gap-1.5 border border-gray-200 rounded p-1.5">
+      <div className="flex items-center gap-1.5 border border-sand-300 rounded-ctl p-1.5">
         <input type="color" value={none ? '#ffffff' : (value || '#000000')} onChange={e => onChange(e.target.value)}
-          className="w-7 h-7 cursor-pointer border-0 bg-transparent shrink-0" style={{ borderRadius: '3px' }} />
+          className="w-7 h-7 cursor-pointer border-0 bg-transparent shrink-0" style={{ borderRadius: '6px' }} />
         <input type="text" value={none ? '' : (value || '')} onChange={e => onChange(e.target.value)}
           className="flex-1 min-w-0 font-mono text-[13px] outline-none bg-transparent uppercase" placeholder={allowNone ? '없음' : '#000000'} />
         {allowNone && (
           <button type="button" onClick={() => onChange('')} title="색상 없음 (투명)"
-            className={`shrink-0 whitespace-nowrap text-[11px] font-black px-1.5 py-1 rounded border transition-colors ${none ? 'bg-black text-white border-black' : 'border-gray-200 text-gray-400 hover:border-black'}`}>없음</button>
+            className={`shrink-0 whitespace-nowrap text-[11px] font-black px-1.5 py-1 rounded-ctl border transition-colors ${none ? 'bg-brand text-white border-brand' : 'border-sand-300 text-sand-400 hover:border-brand'}`}>없음</button>
         )}
       </div>
     </div>
@@ -117,11 +117,11 @@ const Slider = ({ label, value, min, max, step = 1, unit = 'px', onChange }: {
   <div>
     <Row className="mb-1 justify-between">
       <Label>{label}</Label>
-      <span className="text-[12px] font-black text-gray-500">{value}{unit}</span>
+      <span className="text-[12px] font-black text-sand-500">{value}{unit}</span>
     </Row>
     <input type="range" min={min} max={max} step={step} value={clampVal(value, min, max)}
       onChange={e => onChange(clampVal(Number(e.target.value), min, max))}
-      className="w-full accent-orange-500 cursor-pointer" />
+      className="w-full accent-brand cursor-pointer" />
   </div>
 );
 
@@ -133,12 +133,12 @@ const NumInput = ({ label, value, onChange, unit = 'px', min, max }: {
 }) => (
   <div>
     <Label>{label}</Label>
-    <div className="flex items-center border border-gray-200 rounded overflow-hidden">
+    <div className="flex items-center border border-sand-300 rounded-ctl overflow-hidden focus-within:border-brand transition-colors">
       <input type="number" value={value || 0} min={min} max={max}
         onChange={e => onChange(clampVal(Number(e.target.value), min, max))}
         onBlur={e => onChange(clampVal(Number(e.target.value) || 0, min, max))}
         className="flex-1 text-[14px] font-bold outline-none px-2 py-1.5 bg-white" />
-      <span className="px-2 text-[12px] font-bold text-gray-400 bg-gray-50 border-l border-gray-200 shrink-0">{unit}</span>
+      <span className="px-2 text-[12px] font-bold text-sand-400 bg-sand-50 border-l border-sand-200 shrink-0">{unit}</span>
     </div>
   </div>
 );
@@ -153,10 +153,10 @@ const Tip = ({ text }: { text: string }) => {
   const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setPos({ left: r.left + r.width / 2, top: r.top }); };
   return (
     <span ref={ref} className="inline-flex items-center cursor-help" onMouseEnter={show} onMouseLeave={() => setPos(null)} onClick={e => e.stopPropagation()}>
-      <Info className="w-3.5 h-3.5 text-gray-300 hover:text-black transition-colors" />
+      <Info className="w-3.5 h-3.5 text-sand-400 hover:text-brand transition-colors" />
       {pos && createPortal(
         <span style={{ position: 'fixed', left: pos.left, top: pos.top - 8, transform: 'translate(-50%, -100%)', zIndex: 200 }}
-          className="w-max max-w-[220px] bg-black text-white text-[11px] leading-snug font-bold p-2 rounded pointer-events-none text-left normal-case tracking-normal">
+          className="w-max max-w-[220px] bg-ink text-white text-[11px] leading-snug font-bold p-2 rounded-ctl shadow-soft-lg pointer-events-none text-left normal-case tracking-normal">
           {text}
         </span>,
         document.body
@@ -178,14 +178,14 @@ const Section = ({ title, children, tab = 'design', defaultOpen = false, tip }: 
      한국어 타이틀엔 uppercase 가 무의미하므로(과거엔 색 차이만 남아 라벨과 구분 안 됨) 굵기·색·액센트로 위계를 만든다. */
   const Heading = () => (
     <>
-      <span aria-hidden className="w-[3px] h-3.5 rounded-full bg-orange-500/80 shrink-0" />
-      <span className="text-[12px] font-black text-gray-900 group-hover:text-black transition-colors">{title}</span>
+      <span aria-hidden className="w-[3px] h-3.5 rounded-full bg-brand shrink-0" />
+      <span className="text-[12px] font-black text-ink group-hover:text-brand transition-colors">{title}</span>
       {tip && <Tip text={tip} />}
     </>
   );
   if (flat) {
     return (
-      <div className="border-b border-gray-100 last:border-0 py-3">
+      <div className="border-b border-sand-100 last:border-0 py-3">
         <div className="flex items-center gap-2 mb-3">
           <Heading />
         </div>
@@ -194,13 +194,13 @@ const Section = ({ title, children, tab = 'design', defaultOpen = false, tip }: 
     );
   }
   return (
-    <div className="border-b border-gray-100 last:border-0">
+    <div className="border-b border-sand-100 last:border-0">
       {/* 접이식 항목은 우측에 '토글 버튼 박스'를 둬서 일반(펼쳐진) 항목과 한눈에 구분되게 한다. */}
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between py-3 text-left group">
         <span className="flex items-center gap-2">
           <Heading />
         </span>
-        <span className={`flex items-center justify-center w-5 h-5 rounded border transition-colors shrink-0 ${open ? 'bg-black text-white border-black' : 'border-gray-300 text-gray-500 group-hover:border-black group-hover:text-black'}`}>
+        <span className={`flex items-center justify-center w-5 h-5 rounded-ctl border transition-colors shrink-0 ${open ? 'bg-brand text-white border-brand' : 'border-sand-300 text-sand-500 group-hover:border-brand group-hover:text-brand'}`}>
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </span>
       </button>
@@ -222,19 +222,19 @@ const MotionModal: React.FC<{ block: any; onUpdate: (f: string, v: any) => void;
     const isCells = block.type === 'layoutContainer';
     return createPortal(
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-        <div className="bg-white w-full max-w-lg max-h-[88vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white z-10">
-            <h3 className="font-black text-base">모션 설정</h3>
+        <div className="bg-white w-full max-w-lg max-h-[88vh] overflow-y-auto hide-scrollbar rounded-card border border-sand-200 shadow-soft-lg" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-sand-200 cta-grad sticky top-0 z-10">
+            <h3 className="font-black text-base text-ink">모션 설정</h3>
             <div className="flex items-center gap-2">
-              <button onClick={() => setDark(d => !d)} title="배경 전환" className="px-2 py-1 text-[11px] font-black border border-gray-200 rounded hover:border-black">{dark ? '🌙 다크' : '☀️ 라이트'}</button>
-              <button onClick={() => setReplay(r => r + 1)} title="다시 재생" className="px-2 py-1 text-[11px] font-black border border-gray-200 rounded hover:border-black">▶ 재생</button>
-              <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
+              <button onClick={() => setDark(d => !d)} title="배경 전환" className="px-2 py-1 text-[11px] font-black bg-white border border-sand-200 rounded-ctl hover:border-brand transition-colors">{dark ? '🌙 다크' : '☀️ 라이트'}</button>
+              <button onClick={() => setReplay(r => r + 1)} title="다시 재생" className="px-2 py-1 text-[11px] font-black bg-white border border-sand-200 rounded-ctl hover:border-brand transition-colors">▶ 재생</button>
+              <button onClick={onClose} className="p-1.5 bg-white border border-sand-200 hover:border-brand rounded-ctl transition-colors"><X className="w-4 h-4" /></button>
             </div>
           </div>
           {/* 라이브 프리뷰 */}
           <div className="px-5 pt-4">
-            <div className="text-[11px] font-bold text-gray-400 mb-1.5">미리보기 · 마우스를 올리면 호버 효과가 보입니다</div>
-            <div className="rounded border border-gray-200 overflow-auto hide-scrollbar flex items-center justify-center" style={{ minHeight: 120, maxHeight: 240, background: dark ? '#0f0f14' : '#ffffff' }}>
+            <div className="text-[11px] font-bold text-sand-400 mb-1.5">미리보기 · 마우스를 올리면 호버 효과가 보입니다</div>
+            <div className="rounded-ctl border border-sand-200 overflow-auto hide-scrollbar flex items-center justify-center" style={{ minHeight: 120, maxHeight: 240, background: dark ? '#0f0f14' : '#ffffff' }}>
               <div key={replay} className="w-full">
                 <BlockBody block={block} ctx={ctx} />
               </div>
@@ -261,7 +261,7 @@ const MotionModal: React.FC<{ block: any; onUpdate: (f: string, v: any) => void;
               </div>
             )}
             {isText && (
-              <div className="flex flex-col gap-3 border-t border-gray-100 pt-3">
+              <div className="flex flex-col gap-3 border-t border-sand-100 pt-3">
                 <div><Label>글자 리빌 (헤드라인)</Label>
                   <Seg options={[{v:'none',label:'없음'},{v:'word',label:'단어'},{v:'char',label:'글자'}]} value={block.textReveal||'none'} onChange={v => upd('textReveal', v === 'none' ? undefined : v)} />
                 </div>
@@ -271,7 +271,7 @@ const MotionModal: React.FC<{ block: any; onUpdate: (f: string, v: any) => void;
               </div>
             )}
             {isBtn && (
-              <div className="flex flex-col gap-3 border-t border-gray-100 pt-3">
+              <div className="flex flex-col gap-3 border-t border-sand-100 pt-3">
                 <div><Label>마우스 호버 효과</Label>
                   <Seg options={[{v:'none',label:'없음'},{v:'arrow',label:'화살표 →'},{v:'lift',label:'리프트'},{v:'underline',label:'밑줄'}]} value={block.btnHover||'none'} onChange={v => upd('btnHover', v === 'none' ? undefined : v)} />
                 </div>
@@ -315,22 +315,22 @@ const RATIO_PRESETS: Record<number, { label: string; ratios: number[] | null }[]
 const WidgetPresetModal: React.FC<{ presets: WidgetPreset[]; accent: string; onPick: (p: WidgetPreset) => void; onClose: () => void }> =
   ({ presets, accent, onPick, onClose }) => createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white">
-          <h3 className="font-black text-base flex items-center gap-2"><Sparkles className="w-4 h-4 text-orange-500" /> 디자인 프리셋</h3>
-          <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
+      <div className="bg-white w-full max-w-lg max-h-[85vh] overflow-y-auto hide-scrollbar rounded-card border border-sand-200 shadow-soft-lg" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-sand-200 cta-grad sticky top-0">
+          <h3 className="font-black text-base text-ink flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand" /> 디자인 프리셋</h3>
+          <button onClick={onClose} className="p-1.5 bg-white border border-sand-200 hover:border-brand rounded-ctl transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-5 grid grid-cols-2 gap-3">
           {presets.map(p => (
             <button key={p.id} onClick={() => { onPick(p); onClose(); }}
-              className="flex flex-col items-start gap-1.5 border-2 border-gray-200 rounded-lg p-4 text-left hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all">
+              className="flex flex-col items-start gap-1.5 border border-sand-200 rounded-card p-4 text-left hover:border-brand hover:shadow-soft-lg hover:-translate-y-0.5 transition-all">
               {p.chip && <span className="font-black inline-flex items-center justify-center mb-0.5" style={{ padding: '8px 18px', fontSize: 12, ...p.chip(accent) }}>버튼</span>}
-              <span className="text-[14px] font-black text-gray-800">{p.label}</span>
-              <span className="text-[11px] font-bold text-gray-400 leading-tight">{p.desc}</span>
+              <span className="text-[14px] font-black text-ink">{p.label}</span>
+              <span className="text-[11px] font-bold text-sand-400 leading-tight">{p.desc}</span>
             </button>
           ))}
         </div>
-        <div className="px-5 pb-4 -mt-1 text-[11px] font-bold text-gray-400">프리셋은 <b className="text-gray-600">디자인만</b> 바꿉니다. 입력한 내용·항목은 그대로 유지됩니다.</div>
+        <div className="px-5 pb-4 -mt-1 text-[11px] font-bold text-sand-400">프리셋은 <b className="text-sand-600">디자인만</b> 바꿉니다. 입력한 내용·항목은 그대로 유지됩니다.</div>
       </div>
     </div>,
     document.body
@@ -340,11 +340,11 @@ const WidgetPresetModal: React.FC<{ presets: WidgetPreset[]; accent: string; onP
 const WidgetPresetRow: React.FC<{ presets: WidgetPreset[]; accent: string; onApply: (p: WidgetPreset) => void }> = ({ presets, accent, onApply }) => {
   const [open, setOpen] = useState(false);
   return (
-    <div className="-mx-4 px-4 pb-3 mb-1 border-b border-gray-100">
+    <div className="-mx-4 px-4 pb-3 mb-1 border-b border-sand-100">
       <button onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] transition-all bg-gradient-to-r from-orange-50/60 to-transparent">
-        <span className="flex items-center gap-2 text-[13px] font-black text-gray-800"><Sparkles className="w-4 h-4 text-orange-500" /> 디자인 프리셋</span>
-        <span className="text-[12px] font-black text-orange-500">선택 →</span>
+        className="w-full flex items-center justify-between gap-2 border border-sand-200 rounded-ctl px-3 py-2.5 hover:border-brand hover:shadow-soft transition-all cta-grad">
+        <span className="flex items-center gap-2 text-[13px] font-black text-ink"><Sparkles className="w-4 h-4 text-brand" /> 디자인 프리셋</span>
+        <span className="text-[12px] font-black text-brand">선택 →</span>
       </button>
       {open && <WidgetPresetModal presets={presets} accent={accent} onPick={onApply} onClose={() => setOpen(false)} />}
     </div>
@@ -401,7 +401,7 @@ const SectionDesignControls: React.FC<{ block: any; onUpdate: (f: string, v: any
         <input type="text" value={block.bgWatermark?.text || ''}
           onChange={e => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), text: e.target.value })}
           placeholder="예: DESIGN (비우면 없음)"
-          className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+          className="w-full border border-sand-300 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand transition-colors" />
       </div>
       {(block.bgWatermark?.text ?? '').trim() !== '' && (<>
         <Slider label="배경 글씨 크기" value={block.bgWatermark?.fontSize ?? 200} min={60} max={400} step={10} onChange={v => onUpdate('bgWatermark', { ...(block.bgWatermark || {}), fontSize: v })} />
@@ -446,14 +446,14 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
     const rows: any[] = block.rows || [];
     return createPortal(
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-        <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto hide-scrollbar border-2 border-black shadow-[6px_6px_0_0_rgba(0,0,0,0.85)]" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-5 py-3.5 border-b-2 border-black sticky top-0 bg-white z-10">
-            <h3 className="font-black text-base">섹션 레이아웃</h3>
-            <button onClick={onClose} className="p-1.5 border border-gray-200 hover:border-black rounded"><X className="w-4 h-4" /></button>
+        <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto hide-scrollbar rounded-card border border-sand-200 shadow-soft-lg" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-sand-200 cta-grad sticky top-0 z-10">
+            <h3 className="font-black text-base text-ink">섹션 레이아웃</h3>
+            <button onClick={onClose} className="p-1.5 bg-white border border-sand-200 hover:border-brand rounded-ctl transition-colors"><X className="w-4 h-4" /></button>
           </div>
 
           {/* 섹션 여백 — 레이아웃 관련 설정은 모두 여기서 */}
-          <div className="px-5 py-4 border-b border-gray-100 grid grid-cols-3 gap-5">
+          <div className="px-5 py-4 border-b border-sand-100 grid grid-cols-3 gap-5">
             <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
             <Slider label="가로 여백" value={block.paddingX ?? 32} min={0} max={120} step={4} onChange={v => onUpdate('paddingX', v)} />
             <Slider label="행 간격" value={block.gap ?? 32} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
@@ -461,19 +461,19 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
 
           {/* 매트릭스 — 한 프레임 안에 행을 얇은 구분선으로 쌓고, 각 행 컬럼은 실제 비율대로 표시 */}
           <div className="p-5">
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              {rows.length === 0 && <div className="text-center text-gray-400 font-bold text-[13px] py-10">행이 없습니다. 아래에서 행을 추가하세요.</div>}
+            <div className="border border-sand-200 rounded-card overflow-hidden">
+              {rows.length === 0 && <div className="text-center text-sand-400 font-bold text-[13px] py-10">행이 없습니다. 아래에서 행을 추가하세요.</div>}
               {rows.map((row: any, ri: number) => {
                 const cols = row.cols || 1;
                 return (
-                  <div key={row.id} className="border-b border-gray-200 last:border-0">
+                  <div key={row.id} className="border-b border-sand-200 last:border-0">
                     {/* 행 툴바 (열 수 · 비율 · 이동/삭제) */}
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5 px-2.5 py-1.5 bg-gray-50 border-b border-gray-100">
-                      <span className="text-[11px] font-black text-gray-400 shrink-0">행 {ri + 1}</span>
-                      <div className="inline-flex border border-gray-200 rounded overflow-hidden shrink-0">
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1.5 px-2.5 py-1.5 bg-sand-50 border-b border-sand-100">
+                      <span className="text-[11px] font-black text-sand-400 shrink-0">행 {ri + 1}</span>
+                      <div className="inline-flex border border-sand-200 rounded-ctl overflow-hidden shrink-0">
                         {[1, 2, 3, 4].map(n => (
                           <button key={n} onClick={() => onOp({ op: 'setCols', rowId: row.id, n })}
-                            className={`px-2 py-0.5 text-[11px] font-black ${cols === n ? 'bg-black text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>{n}</button>
+                            className={`px-2 py-0.5 text-[11px] font-black ${cols === n ? 'bg-brand text-white' : 'bg-white text-sand-500 hover:bg-sand-100'}`}>{n}</button>
                         ))}
                       </div>
                       {cols >= 2 && (
@@ -482,15 +482,15 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
                             const active = JSON.stringify(row.colRatios ?? null) === JSON.stringify(p.ratios);
                             return (
                               <button key={p.label} onClick={() => onOp({ op: 'setRatio', rowId: row.id, ratios: p.ratios })}
-                                className={`px-1.5 py-0.5 text-[10px] font-black border rounded transition-colors ${active ? 'bg-black text-white border-black' : 'border-gray-200 text-gray-400 hover:border-gray-400'}`}>{p.label}</button>
+                                className={`px-1.5 py-0.5 text-[10px] font-black border rounded-ctl transition-colors ${active ? 'bg-brand text-white border-brand' : 'border-sand-200 text-sand-400 hover:border-brand'}`}>{p.label}</button>
                             );
                           })}
                         </div>
                       )}
                       <div className="flex items-center gap-0.5 ml-auto shrink-0">
-                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'up' })} disabled={ri === 0} title="위로" className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
-                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'down' })} disabled={ri === rows.length - 1} title="아래로" className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
-                        <button onClick={() => onOp({ op: 'delNode', id: row.id })} title="행 삭제" className="p-1 rounded text-red-400 hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
+                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'up' })} disabled={ri === 0} title="위로" className="p-1 rounded-ctl text-sand-500 hover:bg-sand-100 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => onOp({ op: 'moveRow', rowId: row.id, dir: 'down' })} disabled={ri === rows.length - 1} title="아래로" className="p-1 rounded-ctl text-sand-500 hover:bg-sand-100 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                        <button onClick={() => onOp({ op: 'delNode', id: row.id })} title="행 삭제" className="p-1 rounded-ctl text-bad-fg hover:bg-bad-bg"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     </div>
                     {/* 컬럼 — 실제 비율(colRatios)대로 폭 분배 → 레이아웃 그대로 보임 */}
@@ -498,17 +498,17 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
                       {(row.columns || []).map((col: any) => {
                         const ws: any[] = col.widgets || [];
                         return (
-                          <div key={col.id} className="border-r border-gray-100 last:border-0 p-1.5 flex flex-col gap-1 min-h-[76px]">
+                          <div key={col.id} className="border-r border-sand-100 last:border-0 p-1.5 flex flex-col gap-1 min-h-[76px]">
                             {ws.map((w: any, wi: number) => (
-                              <div key={w.id} className="flex items-center gap-1 bg-white border border-gray-200 rounded px-1.5 py-1">
-                                <span className="text-[11px] font-bold text-gray-700 flex-1 min-w-0 truncate">{WIDGET_LABELS[w.type] ?? w.type}</span>
-                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'up' })} disabled={wi === 0} title="위로" className="text-gray-300 hover:text-black disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
-                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'down' })} disabled={wi === ws.length - 1} title="아래로" className="text-gray-300 hover:text-black disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
-                                <button onClick={() => onOp({ op: 'delNode', id: w.id })} title="삭제" className="text-red-300 hover:text-red-600"><X className="w-3 h-3" /></button>
+                              <div key={w.id} className="flex items-center gap-1 bg-white border border-sand-200 rounded-ctl px-1.5 py-1">
+                                <span className="text-[11px] font-bold text-sand-600 flex-1 min-w-0 truncate">{WIDGET_LABELS[w.type] ?? w.type}</span>
+                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'up' })} disabled={wi === 0} title="위로" className="text-sand-400 hover:text-brand disabled:opacity-20"><ChevronUp className="w-3 h-3" /></button>
+                                <button onClick={() => onOp({ op: 'moveWidget', id: w.id, dir: 'down' })} disabled={wi === ws.length - 1} title="아래로" className="text-sand-400 hover:text-brand disabled:opacity-20"><ChevronDown className="w-3 h-3" /></button>
+                                <button onClick={() => onOp({ op: 'delNode', id: w.id })} title="삭제" className="text-sand-400 hover:text-bad-fg"><X className="w-3 h-3" /></button>
                               </div>
                             ))}
                             <button onClick={() => setPickFor({ rowId: row.id, colId: col.id })}
-                              className="mt-auto flex items-center justify-center gap-1 py-1 border border-dashed border-gray-200 rounded text-gray-300 hover:border-black hover:text-black text-[11px] font-bold transition-colors">
+                              className="mt-auto flex items-center justify-center gap-1 py-1 border border-dashed border-sand-300 rounded-ctl text-sand-400 hover:border-brand hover:text-brand text-[11px] font-bold transition-colors">
                               <Plus className="w-3 h-3" /> 위젯
                             </button>
                           </div>
@@ -520,7 +520,7 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
               })}
             </div>
             <button onClick={() => onOp({ op: 'addRow', cols: 1 })}
-              className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 rounded text-gray-500 hover:border-black hover:text-black text-[12px] font-black flex items-center justify-center gap-1 transition-colors">
+              className="mt-3 w-full py-2.5 border border-dashed border-sand-300 rounded-ctl text-sand-500 hover:border-brand hover:text-brand hover:bg-brand-tint text-[12px] font-black flex items-center justify-center gap-1 transition-colors">
               <Plus className="w-3.5 h-3.5" /> 행 추가
             </button>
           </div>
@@ -528,12 +528,12 @@ const SectionLayoutModal: React.FC<{ block: any; onOp: (p: any) => void; onUpdat
 
         {pickFor && (
           <div className="fixed inset-0 z-[130] bg-black/40 flex items-center justify-center" onClick={e => { e.stopPropagation(); setPickFor(null); }}>
-            <div className="bg-white border-2 border-black rounded-lg p-4 w-[320px] shadow-[6px_6px_0_0_rgba(0,0,0,1)]" onClick={e => e.stopPropagation()}>
-              <div className="text-[12px] font-black mb-3">추가할 위젯</div>
+            <div className="bg-white border border-sand-200 rounded-card p-4 w-[320px] shadow-soft-lg" onClick={e => e.stopPropagation()}>
+              <div className="text-[12px] font-black mb-3 text-ink">추가할 위젯</div>
               <div className="grid grid-cols-3 gap-1.5">
                 {SECTION_ADD_WIDGETS.map(w => (
                   <button key={w.type} onClick={() => { onOp({ op: 'addWidget', rowId: pickFor.rowId, colId: pickFor.colId, type: w.type }); setPickFor(null); }}
-                    className="p-2.5 border border-gray-200 rounded hover:border-black hover:bg-rose-50 text-[12px] font-bold text-gray-600 transition-colors">{w.label}</button>
+                    className="p-2.5 border border-sand-200 rounded-ctl hover:border-brand hover:bg-brand-tint text-[12px] font-bold text-sand-600 transition-colors">{w.label}</button>
                 ))}
               </div>
             </div>
@@ -586,26 +586,26 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
   const primary = themeHex[activeTheme] || '#f97316';
 
   return (
-    <aside className="w-72 border-l border-black bg-white flex flex-col overflow-y-auto hide-scrollbar shrink-0 shadow-[-3px_0_0_0_rgba(0,0,0,0.08)] z-10">
+    <aside className="w-72 border-l border-sand-200 bg-white flex flex-col overflow-y-auto hide-scrollbar shrink-0 shadow-soft z-10">
 
       {/* Header */}
-      <div className="px-4 py-3 border-b border-black sticky top-0 bg-white z-20">
+      <div className="px-4 py-3 border-b border-sand-200 sticky top-0 bg-white z-20">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-black text-[14px]">{kind === 'row' ? '행 (Row)' : (WIDGET_LABELS[block.type] ?? block.type)}</div>
-            <div className="text-[12px] font-mono text-gray-300 mt-0.5">{kind === 'row' ? 'row' : kind === 'section' ? 'section' : 'widget'}_{block.id}</div>
+            <div className="font-black text-[14px] text-ink">{kind === 'row' ? '행 (Row)' : (WIDGET_LABELS[block.type] ?? block.type)}</div>
+            <div className="text-[12px] font-mono text-sand-400 mt-0.5">{kind === 'row' ? 'row' : kind === 'section' ? 'section' : 'widget'}_{block.id}</div>
           </div>
-          <button onClick={onDeselect} className="p-1.5 border border-gray-200 hover:border-black rounded transition-colors">
+          <button onClick={onDeselect} className="p-1.5 border border-sand-200 hover:border-brand rounded-ctl transition-colors">
             <X className="w-3 h-3" />
           </button>
         </div>
-        <div className="flex gap-4 mt-2.5 border-b border-gray-200 -mx-4 px-4">
+        <div className="flex gap-4 mt-2.5 border-b border-sand-200 -mx-4 px-4">
           {tabbed
             ? PANEL_TABS.map(t => (
                 <button key={t.v} onClick={() => setPanelTab(t.v)}
-                  className={`py-1.5 text-[12px] font-black transition-colors ${panelTab === t.v ? 'border-b-2 border-orange-500 text-orange-500' : 'text-gray-400 hover:text-black'}`}>{t.label}</button>
+                  className={`py-1.5 text-[12px] font-black transition-colors ${panelTab === t.v ? 'border-b-2 border-brand text-brand' : 'text-sand-400 hover:text-ink'}`}>{t.label}</button>
               ))
-            : <div className="py-1.5 text-[12px] font-black border-b-2 border-orange-500 text-orange-500">디자인</div>}
+            : <div className="py-1.5 text-[12px] font-black border-b-2 border-brand text-brand">디자인</div>}
         </div>
       </div>
 
@@ -633,7 +633,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                     const active = JSON.stringify(block.colRatios ?? null) === JSON.stringify(p.ratios);
                     return (
                       <button key={p.label} onClick={() => onUpdate('colRatios', p.ratios)}
-                        className={`px-2.5 py-1 text-[12px] font-black border rounded transition-colors ${active ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-gray-400 text-gray-500'}`}>{p.label}</button>
+                        className={`px-2.5 py-1 text-[12px] font-black border rounded-ctl transition-colors ${active ? 'bg-brand text-white border-brand' : 'border-sand-200 hover:border-brand text-sand-500'}`}>{p.label}</button>
                     );
                   })}
                 </div>
@@ -674,9 +674,9 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
         {block.type === 'section' && (<>
           {/* 레이아웃 관리 — 모션 설정처럼 모달에서 행/열/위젯 배치를 다이어그램으로 편집 */}
           <Section title="레이아웃 관리" tip="행·열·위젯 배치를 다이어그램으로 한눈에 보고 편집합니다.">
-            <button onClick={() => setLayoutOpen(true)} className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
-              <span className="text-[13px] font-bold text-gray-600">행·열·위젯 배치</span>
-              <span className="text-[12px] font-black text-orange-500">관리 열기 →</span>
+            <button onClick={() => setLayoutOpen(true)} className="w-full flex items-center justify-between gap-2 border border-sand-200 rounded-ctl px-3 py-2.5 hover:border-brand transition-colors">
+              <span className="text-[13px] font-bold text-sand-600">행·열·위젯 배치</span>
+              <span className="text-[12px] font-black text-brand">관리 열기 →</span>
             </button>
           </Section>
           <SectionDesignControls block={block} onUpdate={onUpdate} />
@@ -702,7 +702,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <div>
                 <Label>굵기</Label>
                 <select value={block.fontWeight ?? 400} onChange={e => onUpdate('fontWeight', Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded text-[14px] font-bold py-1.5 px-2 outline-none bg-white">
+                  className="w-full border border-sand-200 rounded-ctl text-[14px] font-bold py-1.5 px-2 outline-none bg-white">
                   {[100,200,300,400,500,600,700,800,900].map(w => <option key={w} value={w}>{w}</option>)}
                 </select>
               </div>
@@ -724,18 +724,18 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
 
           <Section title="배경">
             <ColorPicker label="배경색" value={block.bgColor || ''} onChange={v => onUpdate('bgColor', v)} allowNone />
-            <div className="text-[12px] text-gray-400 font-bold">정렬은 텍스트를 드래그한 뒤 상단 툴바에서 문단 단위로 조정합니다.</div>
+            <div className="text-[12px] text-sand-400 font-bold">정렬은 텍스트를 드래그한 뒤 상단 툴바에서 문단 단위로 조정합니다.</div>
           </Section>
 
           <Section title="모션" tab="motion" tip="모달 미리보기에서 값을 조정하며 즉시 확인합니다.">
-            <button onClick={() => setMotionOpen(true)} className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
-              <span className="text-[13px] font-bold text-gray-600">등장 효과 · 글자 리빌</span>
-              <span className="text-[12px] font-black text-orange-500">설정 열기 →</span>
+            <button onClick={() => setMotionOpen(true)} className="w-full flex items-center justify-between gap-2 border border-sand-200 rounded-ctl px-3 py-2.5 hover:border-brand transition-colors">
+              <span className="text-[13px] font-bold text-sand-600">등장 효과 · 글자 리빌</span>
+              <span className="text-[12px] font-black text-brand">설정 열기 →</span>
             </button>
           </Section>
 
           <Section title="콘텐츠" tab="content">
-            <div className="text-[13px] text-gray-500 font-bold leading-relaxed">텍스트 내용은 <b className="text-black">캔버스에서 직접 클릭</b>해 편집합니다. 드래그로 선택하면 굵게·정렬·강조색을 바꿀 수 있습니다.</div>
+            <div className="text-[13px] text-sand-500 font-bold leading-relaxed">텍스트 내용은 <b className="text-black">캔버스에서 직접 클릭</b>해 편집합니다. 드래그로 선택하면 굵게·정렬·강조색을 바꿀 수 있습니다.</div>
           </Section>
 
         </>)}
@@ -770,7 +770,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <Seg options={[{v:'none',label:'없음'},{v:'zoom',label:'줌인'},{v:'panL',label:'팬←'},{v:'panR',label:'팬→'}]} value={block.slideKen||'none'} onChange={v => onUpdate('slideKen', v === 'none' ? undefined : v)} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={!!block.autoPlay} onChange={e => onUpdate('autoPlay', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
+              <input type="checkbox" checked={!!block.autoPlay} onChange={e => onUpdate('autoPlay', e.target.checked || undefined)} className="accent-brand w-3.5 h-3.5" />
               <span className="text-[14px] font-bold">자동 전환</span>
             </label>
             {block.autoPlay && (
@@ -781,18 +781,18 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           <Section title="슬라이드 관리">
             <div className="flex flex-col gap-1">
               {slides.map((s: any, i: number) => (
-                <div key={s.id} className={`flex items-center gap-1 px-2 py-1.5 border rounded cursor-pointer transition-colors ${i === propSlideIdx ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-400'}`}
+                <div key={s.id} className={`flex items-center gap-1 px-2 py-1.5 border rounded-ctl cursor-pointer transition-colors ${i === propSlideIdx ? 'border-brand bg-brand-tint' : 'border-sand-200 hover:border-brand'}`}
                   onClick={() => setPropSlideIdx(i)}>
-                  <span className="text-[12px] font-black text-gray-400 w-4">{i + 1}</span>
+                  <span className="text-[12px] font-black text-sand-400 w-4">{i + 1}</span>
                   <span className="text-[12px] font-bold flex-1 truncate">{s.h1?.split('\n')[0] || `슬라이드 ${i + 1}`}</span>
-                  <button onClick={e => { e.stopPropagation(); if (i > 0) moveSlide(i, i - 1); }} disabled={i === 0} className="p-0.5 hover:text-orange-500 disabled:opacity-20 transition-colors"><ChevronUp className="w-3 h-3" /></button>
-                  <button onClick={e => { e.stopPropagation(); if (i < slides.length - 1) moveSlide(i, i + 1); }} disabled={i === slides.length - 1} className="p-0.5 hover:text-orange-500 disabled:opacity-20 transition-colors"><ChevronDown className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); if (i > 0) moveSlide(i, i - 1); }} disabled={i === 0} className="p-0.5 hover:text-brand disabled:opacity-20 transition-colors"><ChevronUp className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); if (i < slides.length - 1) moveSlide(i, i + 1); }} disabled={i === slides.length - 1} className="p-0.5 hover:text-brand disabled:opacity-20 transition-colors"><ChevronDown className="w-3 h-3" /></button>
                   {slides.length > 1 && <button onClick={e => { e.stopPropagation(); removeSlide(i); }} className="p-0.5 hover:text-red-500 transition-colors"><X className="w-3 h-3" /></button>}
                 </div>
               ))}
               {slides.length < 4 && (
                 <button onClick={() => { const ns = { id: genId(), bgType: 'color', bgValue: '#111', overlayOpacity: 0, h1: '새 슬라이드', subtitle: '', href: '', align: 'center' }; onUpdate('slides', [...slides, ns]); setPropSlideIdx(slides.length); }}
-                  className="py-1.5 border border-dashed border-gray-200 hover:border-orange-400 text-gray-400 hover:text-orange-500 text-[12px] font-bold flex items-center justify-center gap-1 rounded transition-colors">
+                  className="py-1.5 border border-dashed border-sand-200 hover:border-brand text-sand-400 hover:text-brand text-[12px] font-bold flex items-center justify-center gap-1 rounded-ctl transition-colors">
                   <Plus className="w-3 h-3" /> 슬라이드 추가 (최대 4)
                 </button>
               )}
@@ -821,23 +821,23 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 <Label>텍스트 정렬</Label>
                 <Seg options={[{v:'left',label:'좌'},{v:'center',label:'중'},{v:'right',label:'우'}]} value={slide.align||'center'} onChange={v => updSlide('align', v)} />
               </div>
-              <div className="text-[12px] text-gray-400 font-bold">작은 라벨·메인·서브 카피는 캔버스에서 직접 클릭해 편집합니다.</div>
+              <div className="text-[12px] text-sand-400 font-bold">작은 라벨·메인·서브 카피는 캔버스에서 직접 클릭해 편집합니다.</div>
               <div>
                 <Label>CTA 버튼 문구 (선택)</Label>
                 <input type="text" value={slide.ctaText || ''} onChange={e => updSlide('ctaText', e.target.value)} placeholder="예: 지원하기"
-                  className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                  className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
               </div>
               {slide.ctaText && (
                 <div>
                   <Label>CTA 버튼 링크</Label>
                   <input type="text" value={slide.ctaHref || ''} onChange={e => updSlide('ctaHref', e.target.value)} placeholder="https://..."
-                    className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                    className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
                 </div>
               )}
               <div>
                 <Label>슬라이드 클릭 시 이동 URL (선택)</Label>
                 <input type="text" value={slide.href || ''} onChange={e => updSlide('href', e.target.value)} placeholder="https://..."
-                  className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                  className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
               </div>
             </Section>
           </>)}
@@ -856,7 +856,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <Seg options={[{v:'1',label:'1'},{v:'2',label:'2'},{v:'3',label:'3'},{v:'4',label:'4'}]} value={String(block.cols||2)} onChange={v => onUpdate('cols', Number(v))} />
             </div>
             <Slider label="간격" value={block.gap ?? 20} min={0} max={80} step={4} onChange={v => onUpdate('gap', v)} />
-            <Slider label="세로 여백" value={block.paddingY ?? 40} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
+            <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
             <Slider label="가로 여백" value={block.paddingX ?? 32} min={0} max={120} step={4} onChange={v => onUpdate('paddingX', v)} />
             <NumInput label="행 높이 (선택, 벤토용)" value={block.rowHeight || 0} onChange={v => onUpdate('rowHeight', v || undefined)} unit="px" min={0} max={600} />
             <ColorPicker label="배경색" value={block.bgColor||''} onChange={v => onUpdate('bgColor', v)} allowNone />
@@ -880,7 +880,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 <Seg options={[{v:'top',label:'위'},{v:'left',label:'왼쪽'}]} value={block.tabPosition||'top'} onChange={v => onUpdate('tabPosition', v)} />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!block.tabNumbered} onChange={e => onUpdate('tabNumbered', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={!!block.tabNumbered} onChange={e => onUpdate('tabNumbered', e.target.checked || undefined)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">번호 표시 (01·02)</span>
               </label>
               <ColorPicker label="활성 탭 배경" value={block.activeTabBg || ''} onChange={v => onUpdate('activeTabBg', v)} />
@@ -893,7 +893,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           {block.mode === 'carousel' && (
             <Section title="캐러셀 설정">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!block.autoplay} onChange={e => onUpdate('autoplay', e.target.checked)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={!!block.autoplay} onChange={e => onUpdate('autoplay', e.target.checked)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">자동재생</span>
               </label>
               {block.autoplay && (
@@ -917,7 +917,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <div className="flex gap-1 flex-wrap">
               {cells.map((_: any, i: number) => (
                 <button key={i} onClick={() => setActiveCellIdx(i)}
-                  className={`px-2.5 py-1 text-[12px] font-black border rounded transition-colors ${activeCellIdx === i ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-gray-400 text-gray-500'}`}>
+                  className={`px-2.5 py-1 text-[12px] font-black border rounded-ctl transition-colors ${activeCellIdx === i ? 'bg-brand text-white border-brand' : 'border-sand-200 hover:border-brand text-sand-500'}`}>
                   셀 {i + 1}
                 </button>
               ))}
@@ -933,13 +933,13 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 <div>
                   <Label>탭 라벨 (비우면 셀 제목 사용)</Label>
                   <input type="text" value={cell.tabLabel || ''} onChange={e => updCell('tabLabel', e.target.value)}
-                    placeholder="예: ENVIRONMENTAL" className="w-full border border-gray-200 rounded text-[14px] font-bold px-2 py-1.5 outline-none focus:border-orange-400 uppercase tracking-wider" />
+                    placeholder="예: ENVIRONMENTAL" className="w-full border border-sand-200 rounded-ctl text-[14px] font-bold px-2 py-1.5 outline-none focus:border-brand uppercase tracking-wider" />
                 </div>
               )}
               <div>
                 <Label>셀 클릭 링크 URL (선택, 행 전체 클릭 가능)</Label>
                 <input type="text" value={cell.href || ''} onChange={e => updCell('href', e.target.value)}
-                  placeholder="https://... 또는 #section" className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                  placeholder="https://... 또는 #section" className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
               </div>
               {cell.href && (
                 <div>
@@ -948,7 +948,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 </div>
               )}
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!cell.showArrow} onChange={e => updCell('showArrow', e.target.checked)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={!!cell.showArrow} onChange={e => updCell('showArrow', e.target.checked)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">→ 화살표 아이콘 표시 (링크 행)</span>
               </label>
               <div>
@@ -1010,11 +1010,11 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
         {block.type === 'button' && (<>
           <Section title="콘텐츠 · 링크" tab="content">
             <div>
-              <div className="text-[13px] text-gray-500 font-bold leading-relaxed mb-2">버튼 문구는 <b className="text-black">캔버스에서 직접</b> 입력합니다.</div>
+              <div className="text-[13px] text-sand-500 font-bold leading-relaxed mb-2">버튼 문구는 <b className="text-black">캔버스에서 직접</b> 입력합니다.</div>
               <Label>이동할 URL</Label>
               <input type="text" value={block.actionUrl||''} onChange={e => onUpdate('actionUrl', e.target.value)} placeholder="https://..."
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
-              <div className="text-[12px] text-gray-400 mt-1 font-bold">버튼 클릭 시 이 주소를 새 탭으로 엽니다.</div>
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
+              <div className="text-[12px] text-sand-400 mt-1 font-bold">버튼 클릭 시 이 주소를 새 탭으로 엽니다.</div>
             </div>
           </Section>
 
@@ -1044,9 +1044,9 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           </Section>
 
           <Section title="모션" tab="motion" tip="모달 미리보기에 마우스를 올려 호버 효과까지 확인합니다.">
-            <button onClick={() => setMotionOpen(true)} className="w-full flex items-center justify-between gap-2 border border-gray-200 rounded px-3 py-2.5 hover:border-black transition-colors">
-              <span className="text-[13px] font-bold text-gray-600">등장 효과 · 호버</span>
-              <span className="text-[12px] font-black text-orange-500">설정 열기 →</span>
+            <button onClick={() => setMotionOpen(true)} className="w-full flex items-center justify-between gap-2 border border-sand-200 rounded-ctl px-3 py-2.5 hover:border-brand transition-colors">
+              <span className="text-[13px] font-bold text-sand-600">등장 효과 · 호버</span>
+              <span className="text-[12px] font-black text-brand">설정 열기 →</span>
             </button>
           </Section>
         </>)}
@@ -1063,7 +1063,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <div>
               <Label>종료 일시</Label>
               <input type="datetime-local" value={block.endAt || ''} onChange={e => onUpdate('endAt', e.target.value)}
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
               {block.endAt && <button onClick={() => onUpdate('endAt', '')} className="text-[12px] font-bold text-red-400 hover:text-red-600 mt-1">종료 시간 지우기</button>}
             </div>
           </Section>
@@ -1071,12 +1071,12 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <div>
               <Label>라벨 (마감 전)</Label>
               <input type="text" value={block.label||''} onChange={e => onUpdate('label', e.target.value)} placeholder="예: 마감까지"
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
             </div>
             <div>
               <Label>마감 후 문구</Label>
               <input type="text" value={block.expiredText||''} onChange={e => onUpdate('expiredText', e.target.value)} placeholder="예: 마감되었습니다"
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
             </div>
           </Section>
           <Section title="색상">
@@ -1099,7 +1099,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <Seg options={[{v:'plus',label:'＋ / −'},{v:'arrow',label:'↑ / ↓'}]} value={block.iconStyle||'plus'} onChange={v => onUpdate('iconStyle', v)} />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={!!block.faqNumbered} onChange={e => onUpdate('faqNumbered', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
+              <input type="checkbox" checked={!!block.faqNumbered} onChange={e => onUpdate('faqNumbered', e.target.checked || undefined)} className="accent-brand w-3.5 h-3.5" />
               <span className="text-[14px] font-bold">번호 표시 (01·02)</span>
             </label>
             <Slider label="질문 글자 크기" value={block.qSize ?? ((block.faqStyle||'boxed')==='boxed'?15:(block.faqStyle==='plain'?22:18))} min={13} max={32} onChange={v => onUpdate('qSize', v)} />
@@ -1111,6 +1111,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <ColorPicker label="열림 배경색" value={block.openBg||'#fff7ed'} onChange={v => onUpdate('openBg', v)} />
               <Slider label="모서리 둥글기" value={block.borderRadius ?? 0} min={0} max={20} onChange={v => onUpdate('borderRadius', v)} />
             </>)}
+            <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
           </Section>
         </>)}
 
@@ -1121,7 +1122,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <Label>표시 방식</Label>
               {([['vertical-left','단계 · 수직 좌측'],['vertical-center','단계 · 수직 교차'],['horizontal','단계 · 수평'],['checklist','체크리스트']] as [string,string][]).map(([l,label]) => (
                 <button key={l} onClick={() => onUpdate('layout', l)}
-                  className={`w-full mt-1 py-2 px-3 text-left text-[12px] font-bold border rounded transition-colors ${(block.layout||'vertical-left')===l ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-gray-400 text-gray-500'}`}>
+                  className={`w-full mt-1 py-2 px-3 text-left text-[12px] font-bold border rounded-ctl transition-colors ${(block.layout||'vertical-left')===l ? 'bg-brand text-white border-brand' : 'border-sand-200 hover:border-brand text-sand-500'}`}>
                   {label}
                 </button>
               ))}
@@ -1149,6 +1150,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             {block.nodeAnim && block.nodeAnim !== 'none' && (
               <Slider label="단계 간 지연" value={block.nodeStagger ?? 0.12} min={0} max={0.5} step={0.02} unit="s" onChange={v => onUpdate('nodeStagger', v)} />
             )}
+            <Slider label="세로 여백" value={block.paddingY ?? 80} min={0} max={200} step={8} onChange={v => onUpdate('paddingY', v)} />
           </Section>
           <Section title="색상">
             <ColorPicker label={block.layout === 'checklist' ? '아이콘 색상' : '활성 노드 색상'} value={block.activeColor||'#f97316'} onChange={v => onUpdate('activeColor', v)} />
@@ -1170,12 +1172,12 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
             <div>
               <Label>Alt 텍스트 (접근성)</Label>
               <input type="text" value={block.alt||''} onChange={e => onUpdate('alt', e.target.value)} placeholder="이미지 설명"
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
             </div>
             <div>
               <Label>클릭 링크 URL</Label>
               <input type="text" value={block.href||''} onChange={e => onUpdate('href', e.target.value)} placeholder="https://..."
-                className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400" />
+                className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand" />
             </div>
             {block.href && (
               <div>
@@ -1208,7 +1210,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <div>
                 <Label>Object Fit (채우기 방식)</Label>
                 <Seg options={[{v:'cover',label:'Cover'},{v:'contain',label:'Contain'},{v:'fill',label:'Fill'}]} value={block.objectFit||'cover'} onChange={v => onUpdate('objectFit', v)} />
-                <div className="text-[12px] text-gray-400 font-bold leading-relaxed mt-1">비율 틀에 이미지를 채우는 방식 — Cover(꽉 채움·가장자리 잘림) / Contain(전체 보임·여백 생김) / Fill(강제로 늘림)</div>
+                <div className="text-[12px] text-sand-400 font-bold leading-relaxed mt-1">비율 틀에 이미지를 채우는 방식 — Cover(꽉 채움·가장자리 잘림) / Contain(전체 보임·여백 생김) / Fill(강제로 늘림)</div>
               </div>
             )}
           </Section>
@@ -1236,12 +1238,12 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <div>
                 <Label>항목 (한 줄에 하나)</Label>
                 <textarea value={(block.tickerItems || []).join('\n')} onChange={e => onUpdate('tickerItems', e.target.value.split('\n'))}
-                  rows={4} placeholder={'브랜드 전략 동아리\n2019년 창립'} className="w-full border border-gray-200 rounded text-[14px] px-2 py-1.5 outline-none focus:border-orange-400 resize-none" />
+                  rows={4} placeholder={'브랜드 전략 동아리\n2019년 창립'} className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1.5 outline-none focus:border-brand resize-none" />
               </div>
               <div>
                 <Label>구분 기호</Label>
                 <input type="text" value={block.separator ?? '✦'} onChange={e => onUpdate('separator', e.target.value)}
-                  className="w-full border border-gray-200 rounded text-[14px] text-center px-2 py-1.5 outline-none focus:border-orange-400" />
+                  className="w-full border border-sand-200 rounded-ctl text-[14px] text-center px-2 py-1.5 outline-none focus:border-brand" />
               </div>
               <Slider label="속도 (값 클수록 느림)" value={block.speed ?? 24} min={8} max={80} step={2} unit="s" onChange={v => onUpdate('speed', v)} />
               <NumInput label="글자 크기" value={block.tickerFontSize ?? 13} onChange={v => onUpdate('tickerFontSize', v)} unit="px" min={10} max={32} />
@@ -1254,11 +1256,11 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
                 <Seg options={[{v:'normal',label:'왼쪽 ←'},{v:'reverse',label:'오른쪽 →'}]} value={block.tickerReverse?'reverse':'normal'} onChange={v => onUpdate('tickerReverse', v === 'reverse' || undefined)} />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!block.tickerFade} onChange={e => onUpdate('tickerFade', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={!!block.tickerFade} onChange={e => onUpdate('tickerFade', e.target.checked || undefined)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">가장자리 페이드</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!block.tickerPause} onChange={e => onUpdate('tickerPause', e.target.checked || undefined)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={!!block.tickerPause} onChange={e => onUpdate('tickerPause', e.target.checked || undefined)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">마우스 올리면 정지</span>
               </label>
             </Section>
@@ -1301,9 +1303,10 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
               <ColorPicker label="카드 배경색" value={block.cardBg||'#f9fafb'} onChange={v => onUpdate('cardBg', v)} />
               <ColorPicker label="카드 테두리색" value={block.borderColor||'#e5e7eb'} onChange={v => onUpdate('borderColor', v)} />
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={block.accentLine !== false} onChange={e => onUpdate('accentLine', e.target.checked)} className="accent-orange-500 w-3.5 h-3.5" />
+                <input type="checkbox" checked={block.accentLine !== false} onChange={e => onUpdate('accentLine', e.target.checked)} className="accent-brand w-3.5 h-3.5" />
                 <span className="text-[14px] font-bold">상단 강조 라인 (테마 색상)</span>
               </label>
+              <Slider label="카드 모서리 둥글기" value={block.cardRadius ?? 12} min={0} max={32} onChange={v => onUpdate('cardRadius', v)} />
             </>)}
           </Section>
           <Section title="타이포그래피">
@@ -1314,7 +1317,7 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           </Section>
           <Section title="애니메이션" tip="에디터 캔버스에선 최종값으로 정적 표시됩니다. 공개 페이지·미리보기에서 스크롤 진입 시 0부터 카운트업됩니다.">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={block.animate !== false} onChange={e => onUpdate('animate', e.target.checked)} className="accent-orange-500 w-3.5 h-3.5" />
+              <input type="checkbox" checked={block.animate !== false} onChange={e => onUpdate('animate', e.target.checked)} className="accent-brand w-3.5 h-3.5" />
               <span className="text-[14px] font-bold">스크롤 인뷰 카운트업 애니메이션</span>
             </label>
             {block.animate !== false && (
@@ -1324,22 +1327,22 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
           <Section title="통계 항목">
             <div className="flex flex-col gap-2">
               {statsItems.map((item: any, i: number) => (
-                <div key={item.id} className="border border-gray-200 rounded p-2 flex flex-col gap-1.5">
+                <div key={item.id} className="border border-sand-200 rounded-ctl p-2 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-black text-gray-400">항목 {i + 1}</span>
+                    <span className="text-[12px] font-black text-sand-400">항목 {i + 1}</span>
                     {statsItems.length > 1 && (
                       <button onClick={() => onUpdate('items', statsItems.filter((_: any, j: number) => j !== i))}
                         className="text-red-400 hover:text-red-600 text-[12px]">✕</button>
                     )}
                   </div>
                   <input value={item.icon||''} onChange={e => { const its = statsItems.map((it: any) => it.id === item.id ? { ...it, icon: e.target.value } : it); onUpdate('items', its); }}
-                    className="w-full border border-gray-200 rounded text-[14px] px-2 py-1 outline-none focus:border-orange-400" placeholder="아이콘 이모지 (선택, 예: 🎓)" />
-                  <div className="text-[12px] text-gray-400 font-bold">숫자·라벨은 중앙 미리보기에서 편집</div>
+                    className="w-full border border-sand-200 rounded-ctl text-[14px] px-2 py-1 outline-none focus:border-brand" placeholder="아이콘 이모지 (선택, 예: 🎓)" />
+                  <div className="text-[12px] text-sand-400 font-bold">숫자·라벨은 중앙 미리보기에서 편집</div>
                 </div>
               ))}
               {statsItems.length < 6 && (
                 <button onClick={() => onUpdate('items', [...statsItems, { id: genId(), icon: '', value: '0+', label: '새 통계' }])}
-                  className="py-1.5 border border-dashed border-gray-200 hover:border-orange-400 text-gray-400 hover:text-orange-500 text-[12px] font-bold flex items-center justify-center gap-1 rounded transition-colors">
+                  className="py-1.5 border border-dashed border-sand-200 hover:border-brand text-sand-400 hover:text-brand text-[12px] font-bold flex items-center justify-center gap-1 rounded-ctl transition-colors">
                   <Plus className="w-3 h-3" /> 항목 추가
                 </button>
               )}
@@ -1359,9 +1362,9 @@ export const BlockPropertiesPanel: React.FC<Props> = ({ block, onUpdate, onDesel
         )}
 
         {/* ── Delete ── */}
-        <div className="pt-4 mt-2 border-t border-gray-100">
+        <div className="pt-4 mt-2 border-t border-sand-100">
           <button onClick={onDelete}
-            className="w-full py-2 border border-red-200 text-red-400 hover:border-red-500 hover:bg-red-50 hover:text-red-600 font-bold text-[14px] transition-colors rounded flex items-center justify-center gap-1.5">
+            className="w-full py-2 border border-red-200 text-red-400 hover:border-red-500 hover:bg-red-50 hover:text-red-600 font-bold text-[14px] transition-colors rounded-ctl flex items-center justify-center gap-1.5">
             <Trash2 className="w-3.5 h-3.5" /> 위젯 삭제
           </button>
         </div>
