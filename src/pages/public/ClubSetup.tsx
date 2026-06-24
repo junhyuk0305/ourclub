@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, Loader, ArrowRight, Search } from 'lucide-react';
+import { Users, PlusCircle, Clock, CheckCircle, AlertTriangle, ArrowRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { formatDate } from '../../lib/format';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../contexts/AdminContext';
 
@@ -27,6 +28,8 @@ export default function ClubSetup() {
   const { refreshClub } = useAdmin();
   const navigate = useNavigate();
   const [state, setState] = useState<SetupState>({ kind: 'loading' });
+  // 거절된 최근 등록 신청(분기 선택 화면에서 사유 안내 + 재신청 유도)
+  const [rejected, setRejected] = useState<{ clubName: string; note: string | null; createdAt: string } | null>(null);
 
   const check = useCallback(async () => {
     if (!user) return;
@@ -77,6 +80,17 @@ export default function ClubSetup() {
         return;
       }
 
+      // 4. 거절된 최근 신청이 있으면 분기 선택 화면에서 사유를 안내(차단하지 않고 재신청 유도)
+      const { data: rej } = await supabase
+        .from('club_registration_requests')
+        .select('club_name, reviewer_note, created_at')
+        .eq('user_id', user.id)
+        .eq('status', '거절')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setRejected(rej ? { clubName: rej.club_name, note: rej.reviewer_note, createdAt: rej.created_at } : null);
+
       setState({ kind: 'select' });
     }
   }, [user, navigate, refreshClub]);
@@ -93,11 +107,7 @@ export default function ClubSetup() {
 
   // ── 로딩 ────────────────────────────────────────────────────
   if (state.kind === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-orange-500" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // ── 등록 신청 대기 중 ────────────────────────────────────────
@@ -226,6 +236,24 @@ export default function ClubSetup() {
       </div>
 
       <div className="w-full max-w-3xl flex flex-col gap-8">
+        {/* 거절된 최근 신청 안내 — 사유 표시 + 새 동아리 등록으로 재신청 유도 */}
+        {rejected && (
+          <div className="bg-red-50 border-2 border-red-300 p-5 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="font-black text-red-700">
+                <span className="text-red-800">{rejected.clubName}</span> 등록 신청이 반려되었어요
+              </p>
+            </div>
+            {rejected.note && (
+              <p className="font-bold text-sm text-red-600">반려 사유: {rejected.note}</p>
+            )}
+            <p className="font-bold text-xs text-red-500">
+              내용을 보완해 아래 ‘새 동아리 등록’에서 다시 신청할 수 있어요. (신청일 {fmt(rejected.createdAt)})
+            </p>
+          </div>
+        )}
+
         {/* 부원으로 가입 (가장 일반적인 경로 — 강조) */}
         <div
           onClick={() => navigate('/clubs')}

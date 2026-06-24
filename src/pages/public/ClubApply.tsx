@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CheckCircle, Loader, AlertCircle, LogIn, Lock, ChevronRight, Upload, Paperclip, X } from 'lucide-react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, Loader, AlertCircle, LogIn, Lock, ChevronRight, Upload, Paperclip, X, UserCircle } from 'lucide-react';
+import { Link, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { Question, validateAnswer, type RecruitmentRow } from '../../types/recruitment';
 import { useToast } from '../../hooks/useToast';
@@ -20,15 +21,17 @@ interface Club {
 
 export default function ClubApply() {
   const { id: slug } = useParams<{ id: string }>();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const rid = searchParams.get('rid');
-  const { user, profile, session } = useAuth();
+  const { user, profile, session, isProfileComplete, isMaster } = useAuth();
 
   const [club, setClub] = useState<Club | null>(null);
   const [recruitment, setRecruitment] = useState<Recruitment | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  const [isMember, setIsMember] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -91,6 +94,15 @@ export default function ClubApply() {
       .maybeSingle().then(({ data }) => setAlreadyApplied(!!data));
   }, [recruitment, user]);
 
+  // 이미 활동중인 부원은 재지원할 수 없음(안내 후 차단).
+  useEffect(() => {
+    if (!club || !user) return;
+    supabase
+      .from('club_members').select('id')
+      .eq('club_id', club.id).eq('user_id', user.id).eq('status', '활동중')
+      .maybeSingle().then(({ data }) => setIsMember(!!data));
+  }, [club, user]);
+
   const setAnswer = (id: string, value: string) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
     if (errors[id]) setErrors(prev => { const next = { ...prev }; delete next[id]; return next; });
@@ -98,6 +110,12 @@ export default function ClubApply() {
 
   const handleSubmit = async () => {
     if (!recruitment || !user) return;
+
+    // 폼 작성 중 마감 시각이 지났을 수 있어 제출 직전 재확인(렌더 시점 isExpired만으로는 누락).
+    if (recruitment.deadline && new Date(recruitment.deadline) < new Date()) {
+      showToast('모집이 마감되어 지원할 수 없습니다.', false);
+      return;
+    }
 
     if (!name.trim() || !phone.trim()) {
       showToast('이름과 연락처는 필수 입력 항목입니다.', false);
@@ -147,6 +165,12 @@ export default function ClubApply() {
 
     setSubmitting(false);
     if (error) {
+      // DB UNIQUE 제약 위반(동시 제출 레이스) → 이미 지원한 것으로 처리
+      if ((error as { code?: string }).code === '23505') {
+        showToast('이미 지원하셨습니다.', false);
+        setAlreadyApplied(true);
+        return;
+      }
       showToast(`제출 중 오류가 발생했습니다: ${error.message}`, false);
       return;
     }
@@ -154,7 +178,7 @@ export default function ClubApply() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>;
+    return <LoadingScreen />;
   }
   if (loadError) {
     return (
@@ -190,6 +214,35 @@ export default function ClubApply() {
           <p className="text-gray-600 font-bold mb-8">지원서를 작성하려면 먼저 로그인해주세요.</p>
           <Link to="/login" className="px-8 py-3 bg-orange-500 border border-black font-black hover:bg-black hover:text-white transition-colors inline-block">
             로그인하기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  // 프로필 미완성 시 지원 차단 — 안내문서 정책과 일치(학교·전공·연락처 등 필수). 마스터는 학생 프로필이 없어 예외.
+  if (!isMaster && !isProfileComplete) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+        <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-12 text-center max-w-md w-full">
+          <UserCircle className="w-12 h-12 text-orange-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-black mb-3">프로필을 완성해주세요</h2>
+          <p className="text-gray-600 font-bold mb-8">동아리에 지원하려면 먼저 기본 프로필(학교·전공·연락처 등)을 완성해야 합니다.</p>
+          <Link to="/profile-setup" state={{ from: location }} className="px-8 py-3 bg-orange-500 border border-black font-black hover:bg-black hover:text-white transition-colors inline-block">
+            프로필 완성하러 가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  if (isMember) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+        <div className="bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-12 text-center max-w-md w-full">
+          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-black mb-3">이미 이 동아리의 부원입니다</h2>
+          <p className="text-gray-600 font-bold mb-8">이미 <span className="text-orange-500">{club?.name}</span>에서 활동 중이라 추가 지원이 필요하지 않아요.</p>
+          <Link to="/mypage" className="px-8 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors inline-block border border-black">
+            마이페이지로 가기
           </Link>
         </div>
       </div>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, Briefcase, Loader, AlertCircle, ChevronRight, Edit3 } from 'lucide-react';
+import { ArrowLeft, Calendar, Briefcase, AlertCircle, ChevronRight, Edit3 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { formatDate } from '../../lib/format';
 import { useAdmin } from '../../contexts/AdminContext';
 import { ClubPageRenderer } from '../../components/ClubPageRenderer';
+import { STORY_ENABLED } from '../../lib/features';
 
 interface Club {
   id: string;
@@ -110,11 +112,7 @@ export default function ClubDetail() {
   }, [slug]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader className="w-8 h-8 animate-spin text-orange-500" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (notFound || !club) {
@@ -153,13 +151,15 @@ export default function ClubDetail() {
         className="flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors border-b-2 border-black bg-white text-black hover:bg-orange-50"
         style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
       >채용</button>
-      <button
-        onClick={() => { setActiveTab('posts'); window.scrollTo(0, 0); }}
-        className={`flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors ${
-          activeTab === 'posts' ? 'bg-orange-500 text-black' : 'bg-white text-black hover:bg-orange-50'
-        }`}
-        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
-      >스토리</button>
+      {STORY_ENABLED && (
+        <button
+          onClick={() => { setActiveTab('posts'); window.scrollTo(0, 0); }}
+          className={`flex items-center justify-center px-3 font-black text-xs md:text-sm transition-colors ${
+            activeTab === 'posts' ? 'bg-orange-500 text-black' : 'bg-white text-black hover:bg-orange-50'
+          }`}
+          style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: '72px' }}
+        >스토리</button>
+      )}
     </div>
   );
 
@@ -383,10 +383,10 @@ export default function ClubDetail() {
             className={`px-10 py-3 text-lg font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all ${
               activeRecruit
                 ? 'bg-orange-500 text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none'
-                : 'bg-gray-100 text-gray-400 pointer-events-none'
+                : 'bg-white text-black hover:bg-black hover:text-white hover:translate-y-1 hover:shadow-none'
             }`}
           >
-            {activeRecruit ? `${activeRecruit.generation ?? ''} 지원서 작성하기` : '모집 마감'}
+            {activeRecruit ? `${activeRecruit.generation ?? ''} 지원서 작성하기` : '채용 페이지 보기'}
           </Link>
         </div>
       </div>

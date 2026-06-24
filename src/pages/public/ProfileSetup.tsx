@@ -66,6 +66,11 @@ export default function ProfileSetup() {
           <p className="text-gray-500 font-bold">
             동아리 지원·활동에 필요한 정보예요. 한 번만 입력하면 됩니다.
           </p>
+          {(location.state as { from?: unknown } | null)?.from && (
+            <p className="mt-3 inline-block bg-orange-100 border border-orange-300 text-orange-700 font-bold text-xs px-3 py-1.5">
+              이어서 진행하려면 먼저 프로필을 완성해주세요. 완료하면 가던 곳으로 돌아갑니다.
+            </p>
+          )}
         </div>
 
         <form

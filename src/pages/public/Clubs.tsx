@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Heart, CheckCircle, Bell, RefreshCcw, Filter, Loader, AlertCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useClubAlert } from '../../hooks/useClubAlert';
@@ -53,14 +53,13 @@ function toDisplay(row: ClubRow): ClubDisplay {
 const CATEGORIES = ['전체', 'IT/개발', '마케팅/기획', '창업', '문화/예술'];
 
 // 카드마다 useClubAlert hook 호출이 필요해 별도 컴포넌트로 분리
-const ClubCard = ({ club }: { club: ClubDisplay }) => {
-  const navigate = useNavigate();
+const ClubCard = ({ club, onLoginRequired }: { club: ClubDisplay; onLoginRequired: () => void }) => {
   const { active, toggle, loading: alertLoading } = useClubAlert(club.id);
 
   const handleAlert = async (e: React.MouseEvent) => {
     e.preventDefault();
     const result = await toggle();
-    if (result === 'login_required') navigate('/login');
+    if (result === 'login_required') onLoginRequired();
   };
 
   return (
@@ -97,7 +96,7 @@ const ClubCard = ({ club }: { club: ClubDisplay }) => {
           }`}
           onClick={handleAlert}
           disabled={alertLoading}
-          title={active ? '알림 해제' : '알림 설정'}
+          title={active ? '관심 해제 (스크랩·알림)' : '관심 등록 (스크랩·알림)'}
         >
           <Heart className={`w-4 h-4 ${active ? 'fill-current' : ''}`} />
         </button>
@@ -174,6 +173,12 @@ export default function Clubs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('전체');
   const [onlyRecruiting, setOnlyRecruiting] = useState(false);
+  const [toast, setToast] = useState('');
+
+  const showLoginToast = () => {
+    setToast('관심 등록은 로그인 후 이용할 수 있어요.');
+    setTimeout(() => setToast(''), 2500);
+  };
 
   useEffect(() => {
     (async () => {
@@ -280,7 +285,7 @@ export default function Clubs() {
             ) : filtered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filtered.map(club => (
-                  <ClubCard key={club.id} club={club} />
+                  <ClubCard key={club.id} club={club} onLoginRequired={showLoginToast} />
                 ))}
               </div>
             ) : (
@@ -289,6 +294,12 @@ export default function Clubs() {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-5 py-3 font-bold text-sm border border-black shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] flex items-center gap-2">
+          <Bell className="w-4 h-4 text-orange-400" /> {toast}
+        </div>
+      )}
     </div>
   );
 }

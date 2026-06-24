@@ -5,6 +5,7 @@ import {
   Upload, FileText, X, Shield,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 
 const CLUB_TYPES = ['IT/개발', '마케팅/기획', '창업', '문화/예술', '사회공헌', '스포츠', '기타'];
@@ -244,8 +245,12 @@ export default function ClubRegister() {
     fieldKey: string,
     setter: (v: UploadedFile | null) => void,
   ) => async (file: File) => {
-    setUploadingField(fieldKey);
     setErrorMsg('');
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg(`${file.name} — 파일은 최대 10MB까지 업로드할 수 있어요.`);
+      return;
+    }
+    setUploadingField(fieldKey);
     try {
       const path = await uploadFile(file, fieldKey);
       setter({ name: file.name, path });
@@ -385,11 +390,7 @@ export default function ClubRegister() {
 
   // ── 로딩 ────────────────────────────────────────────────────
   if (loadState === 'loading') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-orange-500" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // ── 진행중 신청 차단(중복 방지) ──────────────────────────────

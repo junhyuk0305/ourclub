@@ -293,6 +293,7 @@ export default function B2BLounge() {
   const [query, setQuery]             = useState('');
   const [activeFilter, setActiveFilter] = useState('전체보기');
   const [detailProject, setDetailProject] = useState<LiveProject | null>(null);
+  const [toast, setToast]             = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -309,11 +310,14 @@ export default function B2BLounge() {
 
   const handleProposal = (project: LiveProject) => {
     if (!session) {
-      navigate('/login');
+      setToast('수주 제안은 동아리 운영진만 가능해요. 로그인 페이지로 이동합니다.');
+      setTimeout(() => navigate('/login'), 1200);
       return;
     }
     navigate(`/admin/b2b/proposal?project_id=${project.id}`);
   };
+
+  const resetSearch = () => { setQuery(''); setActiveFilter('전체보기'); };
 
   const handleCorpAction = () => {
     navigate(session ? '/corp/dashboard' : '/login');
@@ -384,11 +388,19 @@ export default function B2BLounge() {
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="flex-1 p-16 flex items-center justify-center">
-                  <div className="text-center text-gray-500 font-bold flex flex-col items-center">
-                    <Filter className="w-10 h-10 mb-4 opacity-50" />
-                    {query
+                  <div className="text-center text-gray-500 font-bold flex flex-col items-center gap-4">
+                    <Filter className="w-10 h-10 opacity-50" />
+                    <p>{query
                       ? `"${query}"에 해당하는 프로젝트가 없습니다.`
-                      : '해당 카테고리에 현재 등록된 프로젝트가 없습니다.'}
+                      : '해당 카테고리에 현재 등록된 프로젝트가 없습니다.'}</p>
+                    {(query || activeFilter !== '전체보기') && (
+                      <button
+                        onClick={resetSearch}
+                        className="px-5 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors"
+                      >
+                        전체 프로젝트 보기
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -413,6 +425,12 @@ export default function B2BLounge() {
           onClose={() => setDetailProject(null)}
           onProposal={handleProposal}
         />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-black text-white px-5 py-3 font-bold text-sm border border-black shadow-[4px_4px_0px_0px_rgba(249,115,22,1)]">
+          {toast}
+        </div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
