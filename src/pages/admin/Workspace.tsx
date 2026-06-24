@@ -1,272 +1,139 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Type, CheckSquare, Plus, Layout, ArrowLeft, Calendar,
-  Loader, Check, Globe, ChevronDown, ChevronRight, ChevronUp, Clock,
+  Type, CheckSquare, Plus, Layout, ArrowLeft,
+  Loader, Check, Globe, ChevronDown, ChevronUp, Clock,
   MessageSquare, Layers, MousePointer, GripVertical, Image as ImageIcon,
   Minus, Columns, RotateCcw, RotateCw, Monitor, Tablet, Smartphone,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify, Copy,
+  Copy, BarChart2, LayoutGrid, Timer, Trash2, X, ChevronLeft, ChevronRight, LayoutTemplate,
 } from 'lucide-react';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
+import SectionTemplateModal from '../../components/admin/SectionTemplateModal';
+import { instantiateTemplate } from '../../lib/templates/sections';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { WorkspaceProperties } from '../../components/admin/WorkspaceProperties';
 import { BlockPropertiesPanel } from '../../components/admin/BlockPropertiesPanel';
+import { BlockBody, WB_STYLE, genId, mkSection, mkRow, rowGridTemplate, resolveSectionBg, SectionDecor, rowCardWrapStyle, RowCardHeader, resolveThemeHex, getThemeText, THEME_HEX } from '../../components/blockKit';
+import {
+  findNode, patchNode, deleteNode, removeWidget, insertTop, insertInColumn,
+  addRow as addRowTo, moveRow, setRowCols, moveWidgetInColumn, widgetsLostOnShrink,
+} from '../../lib/sectionTree';
 import { useAdmin } from '../../contexts/AdminContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
-
-/* ─────────────────────────────────────────────
-   FAQ Item (sub-component, stays outside main)
-───────────────────────────────────────────── */
-const FaqEditorItem = ({
-  item, idx, onUpdate, onDelete, openBg, iconStyle,
-}: {
-  item: { id: string; question: string; answer: string };
-  idx: number;
-  onUpdate: (field: string, val: string) => void;
-  onDelete: () => void;
-  openBg?: string;
-  iconStyle?: 'plus' | 'arrow';
-}) => {
-  const [open, setOpen] = React.useState(true);
-  return (
-    <div>
-      <div className="flex items-center gap-3 px-5 py-4 bg-white hover:bg-gray-50 transition-colors">
-        <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }} className="font-black text-xs text-gray-400 shrink-0 w-5 text-left">{idx + 1}</button>
-        <input value={item.question} onChange={e => onUpdate('question', e.target.value)}
-          className="flex-1 font-bold outline-none bg-transparent text-sm cursor-text" placeholder="질문을 입력하세요" />
-        <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }} className="text-gray-400 text-sm shrink-0">
-          {iconStyle === 'arrow' ? (open ? '↑' : '↓') : (open ? '−' : '+')}
-        </button>
-        <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 ml-1">✕</button>
-      </div>
-      {open && (
-        <div className="px-5 py-4 border-t border-gray-100" style={{ backgroundColor: openBg || '#fff7ed' }}>
-          <textarea value={item.answer} onChange={e => onUpdate('answer', e.target.value)}
-            ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-            className="w-full bg-transparent outline-none font-medium text-gray-600 resize-none text-sm leading-relaxed"
-            style={{ overflow: 'hidden', minHeight: '1.5em' }}
-            placeholder="답변을 입력하세요" />
-        </div>
-      )}
-    </div>
-  );
-};
 
 /* ─────────────────────────────────────────────
    Widget palette definition
 ───────────────────────────────────────────── */
 const PALETTE: { type: string; label: string; icon: React.ElementType; disabled?: boolean }[] = [
+  { type: 'section',         label: '섹션',            icon: LayoutGrid },
   { type: 'text',            label: '텍스트',          icon: Type },
-  { type: 'layoutContainer', label: '레이아웃 컨테이너', icon: Columns },
+  { type: 'layoutContainer', label: '탭·캐러셀',        icon: Columns },
+  { type: 'stats',           label: '통계 카운터',      icon: BarChart2 },
   { type: 'faq',             label: 'FAQ 아코디언',    icon: MessageSquare },
-  { type: 'timeline',        label: '타임라인',         icon: Clock },
-  { type: 'heroSlider',      label: '히어로 슬라이더',  icon: Layers },
-  { type: 'button',          label: '동적 CTA 버튼',   icon: CheckSquare },
+  { type: 'timeline',        label: '프로세스 다이어그램', icon: Clock },
+  { type: 'heroSlider',      label: '슬라이드',         icon: Layers },
+  { type: 'button',          label: '버튼',            icon: CheckSquare },
+  { type: 'countdown',       label: '카운트다운',       icon: Timer },
   { type: 'image',           label: '이미지',           icon: ImageIcon },
   { type: 'spacer',          label: '여백 (Spacer)',    icon: Layout },
-  { type: 'divider',         label: '구분선',           icon: Minus },
-  { type: 'header',          label: '글로벌 헤더',      icon: ArrowLeft, disabled: true },
+  { type: 'divider',         label: '구분 요소',        icon: Minus },
 ];
 
 const PALETTE_LABEL: Record<string, string> = Object.fromEntries(PALETTE.map(p => [p.type, p.label]));
+
+function mkStatItem(id: string, value: string, label: string) {
+  return { id, value, label };
+}
 
 /* ─────────────────────────────────────────────
    Helpers
 ───────────────────────────────────────────── */
 function mkCell(id: string, n: number) {
-  return { id, title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#374151', titleColor: '#111827', titleSize: 18, textSize: 14, padding: 24, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '', imgPosition: 'top', imgHeight: 180 };
+  return { id, title: `카드 제목 ${n}`, text: '여기에 내용을 입력하세요.', align: 'left', bgColor: '#ffffff', textColor: '#6B6259', titleColor: '#1F1B18', titleSize: 18, textSize: 14, padding: 24, borderRadius: 12, borderWidth: 1, borderColor: '#EBE6DF', imgSrc: '', imgPosition: 'top', imgHeight: 180 };
 }
 
 function mkSlide(id: string) {
-  return { id, bgType: 'color', bgValue: '#111111', overlayOpacity: 0, h1: '메인 카피를\n입력하세요', subtitle: '서브 카피를 입력하세요', ctaText: '지원하기', ctaShow: true, align: 'center' };
+  return { id, bgType: 'color', bgValue: '#1F1B18', overlayOpacity: 0, h1: '메인 카피를\n입력하세요', subtitle: '서브 카피를 입력하세요', href: '', align: 'center' };
 }
 
 /* ─────────────────────────────────────────────
-   Default blocks — 데브 허슬러 템플릿
+   makeWidget — 위젯 타입별 기본값 (top-level·섹션 컬럼 공용)
+   섹션(section)은 mkSection() 으로 별도 생성한다.
 ───────────────────────────────────────────── */
-const DEFAULT_BLOCKS: any[] = [
-  // ① 히어로 슬라이더 — 2슬라이드, 5초 자동재생
-  {
-    id: '1', type: 'heroSlider', height: 72, autoPlay: true, interval: 5000, h1Size: 56, subtitleSize: 18,
-    slides: [
-      { id: 's1', bgType: 'color', bgValue: '#0a0a0a', overlayOpacity: 0, align: 'center',
-        h1: '코드로 세상을\n바꾸는 사람들', subtitle: '실전 프로젝트 · 코드 리뷰 · 현업 멘토링 · 네트워킹',
-        ctaText: '25기 지원하기', ctaShow: true },
-      { id: 's2', bgType: 'color', bgValue: '#111827', overlayOpacity: 0, align: 'center',
-        h1: '함께 배우고\n같이 성장합니다', subtitle: '2020년 창립 · 졸업생 200+ · 현업 취업 30+',
-        ctaText: '활동 더 보기', ctaShow: true },
-    ],
-  },
+function makeWidget(type: string): any {
+  const id = genId();
+  let nb: any = { id, type };
+  if (type === 'text')            nb = { ...nb, text: '텍스트를 입력하세요.', seoTag: 'p', align: 'left', fontSize: 16, fontWeight: 400, textColor: '#1F1B18', lineHeight: 1.7, paddingY: 32 };
+  if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionUrl: '', btnSize: 'm', btnTextColor: '#ffffff', borderWidth: 0, radius: 12, btnShadow: 'none', btnAnim: 'none', btnTemplate: 'solid', paddingY: 32 };
+  if (type === 'countdown')       nb = { ...nb, label: '모집 마감까지', expiredText: '모집이 마감되었습니다', bgColor: '#1F1B18', textColor: '#ffffff', accentColor: '', paddingY: 56 };
+  if (type === 'faq')             nb = { ...nb, title: '자주 묻는 질문', items: [{ id: id + '_1', question: '질문을 입력하세요', answer: '답변을 입력하세요.' }], iconStyle: 'plus', openBg: '#FDF2E9' };
+  if (type === 'timeline')        nb = { ...nb, title: '모집 프로세스', nodes: [{ id: id + '_1', title: '1단계', desc: '설명을 입력하세요' }, { id: id + '_2', title: '2단계', desc: '설명을 입력하세요' }], activeColor: '#EC6A2C', lineColor: '#1F1B18' };
+  if (type === 'heroSlider')      nb = { ...nb, height: 60, slides: [mkSlide(id + '_s1')], autoPlay: false, interval: 4000 };
+  if (type === 'layoutContainer') nb = { ...nb, mode: 'tabs', cols: 2, gap: 20, paddingY: 40, bgColor: '', cells: [mkCell(id + '_c1', 1), mkCell(id + '_c2', 2)] };
+  if (type === 'spacer')          nb = { ...nb, height: 64 };
+  if (type === 'image')           nb = { ...nb, src: '', alt: '', width: 100, align: 'center', aspect: 'auto', objectFit: 'cover', radius: 0, paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: 0 };
+  if (type === 'divider')         nb = { ...nb, variant: 'line', style: 'solid', color: '#EBE6DF', thickness: 1, width: 100, paddingY: 24, bgColor: '',
+                                          tickerItems: ['브랜드 전략 동아리', '2019년 창립', '누적 프로젝트 32건', '현업 취업률 80%'], separator: '✦', speed: 24, tickerFontSize: 13 };
+  if (type === 'stats')           nb = { ...nb, items: [mkStatItem(id+'_1','200+','누적 회원'),mkStatItem(id+'_2','50+','완성 프로젝트'),mkStatItem(id+'_3','3년','운영 역사')], cols: 3, layout: 'strip', bgColor: '#ffffff', valueColor: '#1F1B18', labelColor: '#7A7066', valueSize: 48, labelSize: 14, paddingY: 56, animate: true };
+  return nb;
+}
 
-  // ② 핵심 슬로건
-  {
-    id: '2', type: 'text', seoTag: 'h2', align: 'center', animation: 'slideUp',
-    text: '실전으로 배우는\n개발 동아리',
-    fontSize: 44, fontWeight: 900, textColor: '#0a0a0a', lineHeight: 1.2, letterSpacing: -0.02,
-    paddingTop: 72, paddingBottom: 16, maxWidth: 680,
-  },
-
-  // ③ 서브카피
-  {
-    id: '3', type: 'text', seoTag: 'p', align: 'center',
-    text: '단순한 공부 모임이 아닙니다.\n데브 허슬러는 실제 서비스를 기획하고, 개발하고, 배포합니다.',
-    fontSize: 17, fontWeight: 400, textColor: '#6b7280', lineHeight: 1.8,
-    paddingTop: 0, paddingBottom: 56, maxWidth: 560,
-  },
-
-  // ④ 핵심 특징 카드 3개 (다크 테마)
-  {
-    id: '4', type: 'layoutContainer', cols: 3, gap: 16, paddingY: 0, bgColor: '#000000',
-    cells: [
-      { id: 'c1', title: '실전 프로젝트', text: '팀 단위로 실제 서비스를 기획하고 개발합니다.\n배포까지 경험하는 풀사이클 개발.',
-        align: 'left', bgColor: '#000000', titleColor: '#ffffff', textColor: '#9ca3af',
-        titleSize: 20, textSize: 14, padding: 36, borderRadius: 0, borderWidth: 0, borderColor: '#1f2937', imgSrc: '' },
-      { id: 'c2', title: '주간 코드 리뷰', text: '매주 서로의 코드를 리뷰합니다.\n동료 피드백으로 빠르게 성장하세요.',
-        align: 'left', bgColor: '#111827', titleColor: '#ffffff', textColor: '#9ca3af',
-        titleSize: 20, textSize: 14, padding: 36, borderRadius: 0, borderWidth: 0, borderColor: '#1f2937', imgSrc: '' },
-      { id: 'c3', title: '현업 멘토링', text: '시니어 개발자와 1:1 멘토링.\n취업과 커리어 전략을 함께 설계합니다.',
-        align: 'left', bgColor: '#1f2937', titleColor: '#ffffff', textColor: '#9ca3af',
-        titleSize: 20, textSize: 14, padding: 36, borderRadius: 0, borderWidth: 0, borderColor: '#1f2937', imgSrc: '' },
-    ],
-  },
-
-  // ⑤ 구분선
-  { id: '5', type: 'divider', style: 'solid', color: '#e5e7eb', thickness: 1, width: 100, paddingY: 56 },
-
-  // ⑥ 섹션 제목 — 학습 스택
-  {
-    id: '6', type: 'text', seoTag: 'h2', align: 'center', animation: 'slideIn',
-    text: '무엇을 배우나요?',
-    fontSize: 34, fontWeight: 900, textColor: '#0a0a0a', lineHeight: 1.2, letterSpacing: -0.01,
-    paddingTop: 0, paddingBottom: 32, maxWidth: 720,
-  },
-
-  // ⑦ 학습 스택 2×2 그리드
-  {
-    id: '7', type: 'layoutContainer', cols: 2, gap: 20, paddingY: 0, bgColor: 'transparent',
-    cells: [
-      { id: 'd1', title: 'Frontend', text: 'React · TypeScript · Next.js · Tailwind CSS\n\n프로덕션급 프론트엔드 개발 경험을 쌓습니다.',
-        align: 'left', bgColor: '#f9fafb', titleColor: '#0a0a0a', textColor: '#374151',
-        titleSize: 17, textSize: 14, padding: 28, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '' },
-      { id: 'd2', title: 'Backend', text: 'Node.js · FastAPI · PostgreSQL · Docker\n\n서버부터 DB 설계까지 직접 구현합니다.',
-        align: 'left', bgColor: '#f9fafb', titleColor: '#0a0a0a', textColor: '#374151',
-        titleSize: 17, textSize: 14, padding: 28, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '' },
-      { id: 'd3', title: 'DevOps', text: 'AWS · Vercel · GitHub Actions · CI/CD\n\n자동화 배포 파이프라인을 직접 구축합니다.',
-        align: 'left', bgColor: '#f9fafb', titleColor: '#0a0a0a', textColor: '#374151',
-        titleSize: 17, textSize: 14, padding: 28, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '' },
-      { id: 'd4', title: 'Collaboration', text: 'GitHub · Notion · Figma · Jira\n\n팀 협업과 프로젝트 관리 실전 경험을 쌓습니다.',
-        align: 'left', bgColor: '#f9fafb', titleColor: '#0a0a0a', textColor: '#374151',
-        titleSize: 17, textSize: 14, padding: 28, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', imgSrc: '' },
-    ],
-  },
-
-  // ⑧ 여백
-  { id: '8', type: 'spacer', height: 64 },
-
-  // ⑨ 스탯 4개 — 다크 배경
-  {
-    id: '9', type: 'layoutContainer', cols: 4, gap: 0, paddingY: 56, bgColor: '#0a0a0a',
-    cells: [
-      { id: 'st1', title: '200+', text: '누적 졸업생', align: 'center',
-        bgColor: '#0a0a0a', titleColor: '#ffffff', textColor: '#6b7280',
-        titleSize: 40, textSize: 13, padding: 24, borderRadius: 0, borderWidth: 0, borderColor: 'transparent', imgSrc: '' },
-      { id: 'st2', title: '50+', text: '완성된 프로젝트', align: 'center',
-        bgColor: '#0a0a0a', titleColor: '#ffffff', textColor: '#6b7280',
-        titleSize: 40, textSize: 13, padding: 24, borderRadius: 0, borderWidth: 0, borderColor: 'transparent', imgSrc: '' },
-      { id: 'st3', title: '30+', text: '현업 취업 성공', align: 'center',
-        bgColor: '#0a0a0a', titleColor: '#ffffff', textColor: '#6b7280',
-        titleSize: 40, textSize: 13, padding: 24, borderRadius: 0, borderWidth: 0, borderColor: 'transparent', imgSrc: '' },
-      { id: 'st4', title: '5년', text: '운영 역사', align: 'center',
-        bgColor: '#0a0a0a', titleColor: '#ffffff', textColor: '#6b7280',
-        titleSize: 40, textSize: 13, padding: 24, borderRadius: 0, borderWidth: 0, borderColor: 'transparent', imgSrc: '' },
-    ],
-  },
-
-  // ⑩ 구분선
-  { id: '10', type: 'divider', style: 'solid', color: '#e5e7eb', thickness: 1, width: 100, paddingY: 56 },
-
-  // ⑪ 모집 프로세스 섹션 제목
-  {
-    id: '11', type: 'text', seoTag: 'h2', align: 'center',
-    text: '모집 프로세스',
-    fontSize: 34, fontWeight: 900, textColor: '#0a0a0a', lineHeight: 1.2,
-    paddingTop: 0, paddingBottom: 8, maxWidth: 720,
-  },
-
-  // ⑫ 타임라인 — 수평 5단계
-  {
-    id: '12', type: 'timeline', title: '', layout: 'horizontal', activeColor: '#0a0a0a', lineColor: '#d1d5db',
-    nodes: [
-      { id: 'n1', title: '서류 지원', desc: '지원서 + 포트폴리오 제출' },
-      { id: 'n2', title: '서류 심사', desc: '3일 내 개별 결과 안내' },
-      { id: 'n3', title: '과제 전형', desc: '48시간 온라인 코딩 과제' },
-      { id: 'n4', title: '최종 면접', desc: '팀장단 면접 (30분)' },
-      { id: 'n5', title: '합격 발표', desc: '최종 합격을 축하합니다!' },
-    ],
-  },
-
-  // ⑬ 여백
-  { id: '13', type: 'spacer', height: 64 },
-
-  // ⑭ FAQ
-  {
-    id: '14', type: 'faq', title: '자주 묻는 질문', iconStyle: 'plus', openBg: '#f3f4f6', borderRadius: 8,
-    items: [
-      { id: 'f1', question: '지원 자격이 어떻게 되나요?',
-        answer: '대학교 재학생이라면 전공 불문 누구나 지원 가능합니다. 개발 경험이 없어도 열정이 있다면 환영합니다.' },
-      { id: 'f2', question: '활동 기간은 어떻게 되나요?',
-        answer: '한 기수는 6개월(한 학기)로 운영됩니다. 매주 정기 모임이 있으며, 프로젝트 팀별로 추가 미팅을 진행합니다.' },
-      { id: 'f3', question: '스택을 미리 알아야 하나요?',
-        answer: '기초적인 프로그래밍 지식만 있어도 충분합니다. 스터디와 팀 프로젝트를 통해 함께 배워나갑니다.' },
-      { id: 'f4', question: '활동비가 있나요?',
-        answer: '반기 활동비 30,000원이 있습니다. 스터디 자료, 서버 비용, 네트워킹 행사 비용으로 사용됩니다.' },
-      { id: 'f5', question: '취업 연계가 가능한가요?',
-        answer: '졸업 후에도 데브 허슬러 네트워크를 유지합니다. 현업 멘토 연결, 레퍼런스 체크, 채용 정보 공유 등 커리어 지원을 제공합니다.' },
-      { id: 'f6', question: '포트폴리오가 없어도 지원할 수 있나요?',
-        answer: '포트폴리오가 없어도 지원 가능합니다. 지원 동기와 배우고 싶은 것을 구체적으로 작성해주시면 충분합니다.' },
-    ],
-  },
-
-  // ⑮ 여백
-  { id: '15', type: 'spacer', height: 48 },
-
-  // ⑯ 최종 CTA 버튼
-  {
-    id: '16', type: 'button', text: '25기 지원하기', actionType: 'modal',
-    btnSize: 'l', btnBg: '#0a0a0a', btnTextColor: '#ffffff', radius: 0, paddingY: 48,
-  },
-];
+/* ─────────────────────────────────────────────
+   Default blocks — 빈 캔버스 (사용자가 위젯으로 직접 구성)
+───────────────────────────────────────────── */
+const DEFAULT_BLOCKS: any[] = [];
 
 /* ─────────────────────────────────────────────
    Main Workspace component
 ───────────────────────────────────────────── */
 export default function Workspace() {
   const { adminClub, adminClubId } = useAdmin();
+  const { user, profile } = useAuth();
 
   /* global config */
   const [activeTheme, setActiveTheme] = useState('black');
-  const [coverImg, setCoverImg] = useState('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1920&q=80');
-  const [clubName, setClubName] = useState('');
-  const [hashtag1, setHashtag1] = useState('개발');
-  const [hashtag2, setHashtag2] = useState('성장');
-  const [badgeText, setBadgeText] = useState('25기 모집중');
   const [showFloatingBtn, setShowFloatingBtn] = useState(true);
+  const [smoothScroll, setSmoothScroll] = useState(false);
+  const [widgetPickerOpen, setWidgetPickerOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
 
   /* blocks */
   const [blocks, setBlocks] = useState<any[]>(DEFAULT_BLOCKS);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+
+  /* inter-block insert menu (gap index, or null) */
+  const [insertMenuIdx, setInsertMenuIdx] = useState<number | null>(null);
+
+  /* 섹션 컬럼 위젯 피커 (어느 컬럼에 추가 중인지) */
+  const [colPicker, setColPicker] = useState<{ sectionId: string; rowId: string; colId: string } | null>(null);
 
   /* drag-to-reorder */
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   /* slider per-block current slide index (editor-only, not persisted) */
-  const [sliderIdx, setSliderIdx] = useState<Record<string, number>>({});
 
   /* db */
   const [pageId, setPageId] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  /* 초안이 공개본과 달라 아직 발행되지 않은 변경사항이 있는지 */
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [toast, setToast] = useState('');
+
+  /* ── 동시 편집 제어 (낙관적 잠금 + presence) ──
+     versionRef: 마지막으로 읽거나 저장한 행 버전. 저장은 이 버전이 그대로일 때만 성공.
+     conflict: 내가 편집하는 동안 다른 운영진이 저장해 버전이 어긋난 상태(모달 표시).
+     conflictRef: 디바운스 콜백 등 비동기 경로에서 최신 충돌 여부를 즉시 읽기 위한 미러. */
+  const versionRef = useRef<number>(0);
+  const [conflict, setConflict] = useState(false);
+  const conflictRef = useRef(false);
+  const setConflictState = (v: boolean) => { conflictRef.current = v; setConflict(v); };
+  /* 현재 같은 페이지를 열고 있는 다른 편집자(나 제외) */
+  const [editors, setEditors] = useState<{ id: string; name: string }[]>([]);
 
   /* auto-scroll to new block */
   const newBlockIdRef = useRef<string | null>(null);
@@ -276,6 +143,11 @@ export default function Workspace() {
   /* undo/redo */
   const blockHistoryRef = useRef<any[][]>([]);
   const historyIdxRef = useRef<number>(-1);
+  const lastPushRef = useRef<number>(0);
+  /* 마지막으로 합쳐진 편집 대상(`id:field`) — 같은 필드 연속 편집만 한 undo 단계로 합친다 */
+  const lastKeyRef = useRef<string | null>(null);
+  /* 마지막 발행본 payload(JSON) — 초안이 이와 다를 때만 '미발행 변경' 으로 표시 */
+  const publishedRef = useRef<string>('');
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const undoFnRef = useRef<() => void>(() => {});
@@ -283,6 +155,15 @@ export default function Workspace() {
 
   /* viewport preview */
   const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+
+  /* 우측 속성 패널 접기/펼치기 — 접으면 캔버스가 풀폭이 된다(상태는 localStorage 기억). */
+  const [panelOpen, setPanelOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('wb-panel-open') !== '0'; } catch { return true; }
+  });
+  const togglePanel = () => setPanelOpen(o => { const next = !o; try { localStorage.setItem('wb-panel-open', next ? '1' : '0'); } catch {} return next; });
+  /* prefers-reduced-motion 준수 — 켜져 있으면 패널 전환 애니메이션을 즉시(0s)로 처리한다. */
+  const reduceMotion = useReducedMotion();
+  const panelTransition = reduceMotion ? { duration: 0 } : { duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
 
   /* inline text editing mode */
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -293,8 +174,6 @@ export default function Workspace() {
   const [globalFont, setGlobalFont] = useState('');
   const [pageTitle, setPageTitle] = useState('');
   const [pageDesc, setPageDesc] = useState('');
-
-  useEffect(() => { if (adminClub?.name) setClubName(adminClub.name); }, [adminClub]);
   useEffect(() => { if (adminClubId) loadPage(adminClubId); }, [adminClubId]);
 
   useEffect(() => {
@@ -307,6 +186,36 @@ export default function Workspace() {
     return () => window.removeEventListener('keydown', h);
   }, []);
 
+  /* block-level shortcuts: Esc deselect · Cmd+S save · Del remove · Cmd+D duplicate */
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        saveToDb(blocks);
+        return;
+      }
+      if (e.key === 'Escape') { setSelectedBlockId(null); setEditingBlockId(null); setInsertMenuIdx(null); return; }
+      if (typing || editingBlockId || !selectedBlockId) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteBlock(selectedBlockId); }
+      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); handleDuplicateBlock(selectedBlockId); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [blocks, selectedBlockId, editingBlockId]);
+
+  /* warn before leaving with unsaved changes */
+  useEffect(() => {
+    const h = (e: BeforeUnloadEvent) => {
+      if (saveStatus !== 'saved') { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [saveStatus]);
+
   useEffect(() => {
     const id = newBlockIdRef.current;
     if (!id) return;
@@ -316,19 +225,23 @@ export default function Workspace() {
 
   const loadPage = async (clubId: string) => {
     setFetching(true);
-    const { data } = await supabase.from('club_pages').select('id, blocks, published_at').eq('club_id', clubId).maybeSingle();
+    const { data } = await supabase.from('club_pages').select('id, blocks, draft, published_at, version').eq('club_id', clubId).maybeSingle();
     if (data) {
-      setPageId(data.id); setIsPublished(!!data.published_at);
-      const saved = data.blocks as any;
+      setPageId(data.id);
+      setIsPublished(!!data.published_at);
+      versionRef.current = data.version ?? 0;
+      setConflictState(false);
+      /* 편집은 항상 초안(draft)을 불러온다. 구버전 행(draft 없음)은 공개본으로 폴백. */
+      const published = data.blocks as any;
+      const saved = (data.draft ?? data.blocks) as any;
+      publishedRef.current = JSON.stringify(published ?? null);
+      /* 초안이 공개본과 다르면 = 아직 발행 안 된 변경사항 */
+      setHasUnpublishedChanges(JSON.stringify(saved ?? null) !== publishedRef.current);
       if (saved?.config) {
         const c = saved.config;
         if (c.activeTheme) setActiveTheme(c.activeTheme);
-        if (c.coverImg) setCoverImg(c.coverImg);
-        if (c.clubName) setClubName(c.clubName);
-        if (c.hashtag1 !== undefined) setHashtag1(c.hashtag1);
-        if (c.hashtag2 !== undefined) setHashtag2(c.hashtag2);
-        if (c.badgeText !== undefined) setBadgeText(c.badgeText);
         if (c.showFloatingBtn !== undefined) setShowFloatingBtn(c.showFloatingBtn);
+        if (c.smoothScroll !== undefined) setSmoothScroll(c.smoothScroll);
         if (c.contentWidth) setContentWidth(c.contentWidth);
         if (c.pageBgColor !== undefined) setPageBgColor(c.pageBgColor);
         if (c.globalFont !== undefined) setGlobalFont(c.globalFont);
@@ -357,58 +270,139 @@ export default function Workspace() {
   };
 
   const buildPayload = (b: any[], cfg: any) => ({ blocks: b, config: cfg });
+  const currentCfg = () => ({ activeTheme, showFloatingBtn, smoothScroll, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc });
   const triggerAutoSave = (upd: any[], cfg?: any) => {
     setSaveStatus('unsaved');
+    /* 발행본과 실제로 다를 때만 배지 표시 → undo 로 발행본과 같아지면 자동으로 꺼짐 */
+    const nowJson = JSON.stringify(buildPayload(upd, cfg ?? currentCfg()));
+    setHasUnpublishedChanges(nowJson !== publishedRef.current);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    /* 충돌 모달이 떠 있는 동안엔 자동저장을 멈춘다(해결 전까지 덮어쓰기 방지). */
+    if (conflictRef.current) return;
     debounceRef.current = setTimeout(() => saveToDb(upd, cfg), 5000);
   };
+  /* 자동저장 = 초안(draft)에만 기록. 공개본(blocks)·방문자 페이지는 건드리지 않는다.
+     낙관적 잠금: 내가 읽은 version 그대로일 때만 저장하고 version 을 +1. 어긋나면(다른
+     운영진이 먼저 저장) 영향 행이 0건 → 충돌로 보고 모달을 띄운다. */
   const saveToDb = async (cur: any[], cfgOvr?: any) => {
     if (!adminClubId) {
       showToast('❌ 동아리 정보를 불러오지 못했습니다. 페이지를 새로고침해주세요.');
       return;
     }
+    if (conflictRef.current) return;
     setSaveStatus('saving');
-    const cfg = cfgOvr ?? { activeTheme, coverImg, clubName, hashtag1, hashtag2, badgeText, showFloatingBtn, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc };
+    const cfg = cfgOvr ?? currentCfg();
     const payload = buildPayload(cur, cfg);
     if (pageId) {
-      const { error } = await supabase.from('club_pages').update({ blocks: payload, updated_at: new Date().toISOString() }).eq('id', pageId);
-      if (error) { showToast(`❌ 저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
+      const v = versionRef.current;
+      const { data, error } = await supabase.from('club_pages')
+        .update({ draft: payload, version: v + 1, updated_at: new Date().toISOString() })
+        .eq('id', pageId).eq('version', v).select('version');
+      if (error) { showToast(`❌ 임시저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
+      if (!data || data.length === 0) { setConflictState(true); setSaveStatus('unsaved'); return; }
+      versionRef.current = data[0].version;
     } else {
-      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, blocks: payload }).select().single();
-      if (error) { showToast(`❌ 저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
-      if (data) setPageId(data.id);
+      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, draft: payload }).select('id, version').single();
+      if (error) { showToast(`❌ 임시저장 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
+      if (data) { setPageId(data.id); versionRef.current = data.version ?? 0; }
     }
     setSaveStatus('saved');
   };
+  /* 발행 = 현재 초안을 공개본(blocks)으로 복사 + 발행 시각 갱신.
+     공개 페이지는 항상 이 공개본을 보여주므로, 발행 전까지는 방문자에게 이전 발행본
+     (또는 미발행 시 기본 소개 페이지)만 노출된다. '발행 취소(숨김)' 개념은 없다. */
   const handlePublish = async () => {
     if (!adminClubId) {
       showToast('❌ 동아리 정보를 불러오지 못했습니다. 페이지를 새로고침해주세요.');
       return;
     }
-    setSaveStatus('saving');
-    const cfg = { activeTheme, coverImg, clubName, hashtag1, hashtag2, badgeText, showFloatingBtn, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc };
+    if (publishing) return;
+    setPublishing(true);
+    /* 발행 직전, 디바운스 대기 중인 초안 저장을 확정해 최신 상태를 반영 */
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const cfg = currentCfg();
     const payload = buildPayload(blocks, cfg);
-    const ts = isPublished ? null : new Date().toISOString();
+    const ts = new Date().toISOString();
+    /* 공개본·초안을 동일하게 맞춰 '발행 안 된 변경사항'을 0으로 리셋.
+       발행도 자동저장과 같은 version 가드를 거쳐 동시 편집 유실을 막는다. */
     if (pageId) {
-      const { error } = await supabase.from('club_pages').update({ blocks: payload, published_at: ts }).eq('id', pageId);
-      if (error) { showToast(`❌ 발행 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
+      const v = versionRef.current;
+      const { data, error } = await supabase.from('club_pages')
+        .update({ blocks: payload, draft: payload, published_at: ts, updated_at: ts, version: v + 1 })
+        .eq('id', pageId).eq('version', v).select('version');
+      if (error) { showToast(`❌ 발행 실패: ${error.message}`); setPublishing(false); return; }
+      if (!data || data.length === 0) { setConflictState(true); setPublishing(false); return; }
+      versionRef.current = data[0].version;
     } else {
-      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, blocks: payload, published_at: ts }).select().single();
-      if (error) { showToast(`❌ 발행 실패: ${error.message}`); setSaveStatus('unsaved'); return; }
-      if (data) setPageId(data.id);
+      const { data, error } = await supabase.from('club_pages').insert({ club_id: adminClubId, blocks: payload, draft: payload, published_at: ts }).select('id, version').single();
+      if (error) { showToast(`❌ 발행 실패: ${error.message}`); setPublishing(false); return; }
+      if (data) { setPageId(data.id); versionRef.current = data.version ?? 0; }
     }
-    setIsPublished(!isPublished); setSaveStatus('saved');
-    showToast(isPublished ? '비공개로 전환되었습니다.' : '홈페이지가 발행되었습니다!');
+    const wasPublished = isPublished;
+    publishedRef.current = JSON.stringify(payload);
+    setIsPublished(true);
+    setHasUnpublishedChanges(false);
+    setSaveStatus('saved');
+    setPublishing(false);
+    showToast(wasPublished ? '변경사항이 발행되었습니다!' : '홈페이지가 발행되었습니다!');
   };
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
+  /* ── 충돌 해결 ──
+     불러오기: 내 변경을 버리고 다른 운영진이 저장한 최신 초안을 다시 로드.
+     덮어쓰기: 최신 version 을 받아온 뒤 내 변경을 그 위에 강제 저장(상대 변경은 사라짐). */
+  const resolveReload = async () => {
+    setConflictState(false);
+    if (adminClubId) await loadPage(adminClubId);
+  };
+  const resolveOverwrite = async () => {
+    if (!pageId) { setConflictState(false); return; }
+    const { data } = await supabase.from('club_pages').select('version').eq('id', pageId).maybeSingle();
+    versionRef.current = data?.version ?? versionRef.current;
+    setConflictState(false);
+    await saveToDb(blocks);
+  };
+
+  /* ── presence: 같은 페이지를 동시에 보고 있는 다른 운영진 표시(경고 전용) ──
+     ephemeral broadcast 라 DB/RLS 변경 불필요. 같은 사용자의 여러 탭은 id 로 dedupe. */
+  useEffect(() => {
+    if (!pageId || !user) return;
+    const ch = supabase.channel(`wb-page:${pageId}`, { config: { presence: { key: user.id } } });
+    ch.on('presence', { event: 'sync' }, () => {
+      const state = ch.presenceState() as Record<string, any[]>;
+      const list = Object.values(state).flat().map((p: any) => ({ id: p.id, name: p.name }));
+      const uniq = Array.from(new Map(list.map(e => [e.id, e])).values());
+      setEditors(uniq.filter(e => e.id !== user.id));
+    });
+    ch.subscribe(async status => {
+      if (status === 'SUBSCRIBED') await ch.track({ id: user.id, name: profile?.name ?? '운영진' });
+    });
+    return () => { supabase.removeChannel(ch); };
+  }, [pageId, user?.id, profile?.name]);
+
   /* ── undo / redo ── */
-  const pushHistory = (newBlocks: any[]) => {
+  /* force=true for structural ops (add/delete/move) → always a discrete undo step.
+     Without force, rapid same-length edits (e.g. typing per keystroke) within
+     COALESCE_MS collapse into a single undo entry instead of flooding history. */
+  const COALESCE_MS = 500;
+  const pushHistory = (newBlocks: any[], force = false, key?: string) => {
+    const now = Date.now();
     const h = blockHistoryRef.current.slice(0, historyIdxRef.current + 1);
-    h.push(newBlocks);
-    if (h.length > 50) h.shift();
+    const top = h[h.length - 1];
+    /* 같은 필드(key)를 COALESCE_MS 안에 연속 편집할 때만 한 단계로 합친다.
+       서로 다른 블록/필드 편집은 길이가 같아도 별도 undo 단계로 보존한다. */
+    const coalesce = !force && top && (now - lastPushRef.current) < COALESCE_MS
+      && top.length === newBlocks.length && key != null && key === lastKeyRef.current;
+    if (coalesce) {
+      h[h.length - 1] = newBlocks;
+    } else {
+      h.push(newBlocks);
+      if (h.length > 50) h.shift();
+    }
     blockHistoryRef.current = h;
     historyIdxRef.current = h.length - 1;
+    lastPushRef.current = now;
+    lastKeyRef.current = force ? null : (key ?? null);
     setCanUndo(h.length > 1);
     setCanRedo(false);
   };
@@ -428,662 +422,552 @@ export default function Workspace() {
   };
   undoFnRef.current = undo; redoFnRef.current = redo;
 
-  const handleAddBlock = (type: string) => {
+  const handleAddBlock = (type: string, atIndex?: number) => {
     if (type === 'header') return;
-    const id = Date.now().toString();
-    let nb: any = { id, type };
-    if (type === 'text')            nb = { ...nb, text: '텍스트를 입력하세요.', seoTag: 'p', align: 'left', fontSize: 16, fontWeight: 400, textColor: '#111827', lineHeight: 1.7, paddingY: 32 };
-    if (type === 'button')          nb = { ...nb, text: '버튼 텍스트', actionType: 'modal', paddingY: 32 };
-    if (type === 'faq')             nb = { ...nb, title: '자주 묻는 질문', items: [{ id: id + '_1', question: '질문을 입력하세요', answer: '답변을 입력하세요.' }], iconStyle: 'plus', openBg: '#fff7ed' };
-    if (type === 'timeline')        nb = { ...nb, title: '채용 프로세스', nodes: [{ id: id + '_1', title: '1단계', desc: '설명을 입력하세요' }, { id: id + '_2', title: '2단계', desc: '설명을 입력하세요' }], activeColor: '#f97316', lineColor: '#111827' };
-    if (type === 'heroSlider')      nb = { ...nb, height: 60, slides: [mkSlide(id + '_s1')], autoPlay: false, interval: 4000 };
-    if (type === 'layoutContainer') nb = { ...nb, cols: 2, gap: 20, paddingY: 40, bgColor: '', cells: [mkCell(id + '_c1', 1), mkCell(id + '_c2', 2)] };
-    if (type === 'spacer')          nb = { ...nb, height: 64 };
-    if (type === 'image')           nb = { ...nb, src: '', alt: '', width: 100, objectFit: 'cover', radius: 0, paddingY: 0 };
-    if (type === 'divider')         nb = { ...nb, style: 'solid', color: '#e5e7eb', thickness: 1, width: 100, paddingY: 24 };
-    newBlockIdRef.current = id;
-    const upd = [...blocks, nb];
-    setBlocks(upd); pushHistory(upd); setSelectedBlockId(id); triggerAutoSave(upd);
+    const nb = type === 'section' ? mkSection() : makeWidget(type);
+    newBlockIdRef.current = nb.id;
+    const selIdx = selectedBlockId ? blocks.findIndex(b => b.id === selectedBlockId) : -1;
+    const insertAt = atIndex ?? (selIdx >= 0 ? selIdx + 1 : blocks.length);
+    const next = [...blocks.slice(0, insertAt), nb, ...blocks.slice(insertAt)];
+    commit(next, true); setSelectedBlockId(nb.id);
+    setInsertMenuIdx(null);
   };
 
-  const upd = (id: string, field: string, value: any) => {
-    const updated = blocks.map(b => b.id === id ? { ...b, [field]: value } : b);
-    setBlocks(updated); pushHistory(updated); triggerAutoSave(updated);
+  /* 섹션 템플릿 삽입 — 선택 블록 다음(없으면 맨 끝)에 한 덩어리. instantiate 가 모든 id 재생성. */
+  const handleInsertTemplate = (tplBlock: any) => {
+    const nb = instantiateTemplate(tplBlock);
+    newBlockIdRef.current = nb.id;
+    const selIdx = selectedBlockId ? blocks.findIndex(b => b.id === selectedBlockId) : -1;
+    const insertAt = selIdx >= 0 ? selIdx + 1 : blocks.length;
+    commit([...blocks.slice(0, insertAt), nb, ...blocks.slice(insertAt)], true);
+    setSelectedBlockId(nb.id);
+    setTemplateModalOpen(false);
   };
+
+  /* 상태 갱신 단일 진입점 (set + history + autosave). key=같은 필드 연속 편집 합치기용 */
+  const commit = (next: any[], force = false, key?: string) => { setBlocks(next); pushHistory(next, force, key); triggerAutoSave(next); };
+
+  /* 노드 깊은 복제 + 모든 id 재생성 (섹션/행/컬럼/위젯 전체) */
+  const regenIds = (node: any): any => {
+    const n = { ...node, id: genId() };
+    if (n.type === 'section') {
+      n.rows = (n.rows || []).map((r: any) => ({
+        ...r, id: genId(),
+        columns: (r.columns || []).map((c: any) => ({ ...c, id: genId(), widgets: (c.widgets || []).map(regenIds) })),
+      }));
+    }
+    return n;
+  };
+
+  /* 필드 갱신 — 위젯(top/nested)·섹션·행·컬럼 위치 무관 */
+  const upd = (id: string, field: string, value: any) => commit(patchNode(blocks, id, { [field]: value }), false, `${id}:${field}`);
 
   const handleDeleteBlock = (id: string) => {
-    const updated = blocks.filter(b => b.id !== id);
-    setBlocks(updated); pushHistory(updated); if (selectedBlockId === id) setSelectedBlockId(null); triggerAutoSave(updated);
+    commit(deleteNode(blocks, id), true);
+    if (selectedBlockId === id) setSelectedBlockId(null);
   };
 
   const handleDuplicateBlock = (id: string) => {
-    const idx = blocks.findIndex(b => b.id === id);
-    if (idx === -1) return;
-    const clone = { ...blocks[idx], id: Date.now().toString() };
-    const updated = [...blocks.slice(0, idx + 1), clone, ...blocks.slice(idx + 1)];
+    const found = findNode(blocks, id);
+    if (!found) return;
+    const clone = regenIds(found.node);
     newBlockIdRef.current = clone.id;
-    setBlocks(updated); pushHistory(updated); setSelectedBlockId(clone.id); triggerAutoSave(updated);
+    if (found.kind === 'widget' && found.colId) {
+      const next = blocks.map(b => b.id !== found.sectionId ? b : {
+        ...b, rows: (b.rows || []).map((r: any) => r.id !== found.rowId ? r : {
+          ...r, columns: (r.columns || []).map((c: any) => {
+            if (c.id !== found.colId) return c;
+            const ws = c.widgets || [];
+            const i = ws.findIndex((w: any) => w.id === id);
+            const widgets = [...ws]; widgets.splice(i + 1, 0, clone);
+            return { ...c, widgets };
+          }),
+        }),
+      });
+      commit(next, true); setSelectedBlockId(clone.id); return;
+    }
+    const idx = blocks.findIndex(b => b.id === id);
+    if (idx < 0) return;
+    commit([...blocks.slice(0, idx + 1), clone, ...blocks.slice(idx + 1)], true);
+    setSelectedBlockId(clone.id);
   };
 
   const handleMoveBlock = (id: string, dir: 'up' | 'down') => {
+    const found = findNode(blocks, id);
+    if (!found) return;
+    if (found.kind === 'widget' && found.colId) { commit(moveWidgetInColumn(blocks, found.colId, id, dir), true); return; }
     const idx = blocks.findIndex(b => b.id === id);
     const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= blocks.length) return;
-    const arr = [...blocks];
-    [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
-    setBlocks(arr); pushHistory(arr); triggerAutoSave(arr);
+    if (idx < 0 || swapIdx < 0 || swapIdx >= blocks.length) return;
+    const arr = [...blocks]; [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
+    commit(arr, true);
   };
 
-  /* drag reorder */
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    e.dataTransfer.effectAllowed = 'move'; setDragId(id);
+  /* ── 섹션 전용 핸들러 ── */
+  const addWidgetToColumn = (type: string, sectionId: string, rowId: string, colId: string) => {
+    const w = makeWidget(type);
+    newBlockIdRef.current = w.id;
+    commit(insertInColumn(blocks, w, sectionId, rowId, colId), true);
+    setSelectedBlockId(w.id);
   };
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault(); if (dragId !== id) setDragOverId(id);
+  const addRowToSection = (sectionId: string, cols: number) => commit(addRowTo(blocks, sectionId, mkRow(cols)), true);
+  const handleMoveRow = (sectionId: string, rowId: string, dir: 'up' | 'down') => commit(moveRow(blocks, sectionId, rowId, dir), true);
+  const handleSetRowCols = (rowId: string, n: number) => {
+    const found = findNode(blocks, rowId);
+    if (found?.kind === 'row') {
+      const lost = widgetsLostOnShrink(found.node, n);
+      if (lost > 0 && !window.confirm(`열을 줄이면 사라지는 칸의 위젯 ${lost}개가 삭제됩니다. 계속할까요?`)) return;
+    }
+    const next = setRowCols(blocks, rowId, n);
+    commit(next, true);
+    /* 축소로 선택 중이던 위젯이 사라졌으면 선택 해제(패널이 빈 위젯을 가리키지 않도록) */
+    if (selectedBlockId && !findNode(next, selectedBlockId)) setSelectedBlockId(null);
   };
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!dragId || dragId === targetId) { setDragId(null); setDragOverId(null); return; }
+
+  /* ── 드래그앤드롭 (위젯=어디든 이동 / 섹션=top-level 순서) ── */
+  const onDragStartNode = (e: React.DragEvent, id: string) => { e.stopPropagation(); e.dataTransfer.effectAllowed = 'move'; setDragId(id); };
+  const clearDrag = () => { setDragId(null); setDragOverId(null); };
+  const moveWidgetTo = (target: { type: 'col'; sectionId: string; rowId: string; colId: string; before?: string | null } | { type: 'top'; before?: string | null }) => {
+    if (!dragId) return;
+    const [stripped, w] = removeWidget(blocks, dragId);
+    if (!w) { clearDrag(); return; }
+    const next = target.type === 'col'
+      ? insertInColumn(stripped, w, target.sectionId, target.rowId, target.colId, target.before ?? null)
+      : insertTop(stripped, w, target.before ?? null);
+    commit(next, true); clearDrag();
+  };
+  const reorderTopTo = (beforeId: string | null) => {
+    if (!dragId) return;
     const arr = [...blocks];
     const from = arr.findIndex(b => b.id === dragId);
-    const to = arr.findIndex(b => b.id === targetId);
+    if (from < 0) { clearDrag(); return; }
     const [moved] = arr.splice(from, 1);
+    let to = beforeId ? arr.findIndex(b => b.id === beforeId) : arr.length;
+    if (to < 0) to = arr.length;
     arr.splice(to, 0, moved);
-    setBlocks(arr); pushHistory(arr); triggerAutoSave(arr);
-    setDragId(null); setDragOverId(null);
+    commit(arr, true); clearDrag();
+  };
+  /* top-level wrapper 위로 드롭: 섹션이면 순서변경, 위젯이면 top-level 편입 */
+  const onDropOnTop = (beforeId: string | null) => {
+    if (!dragId || dragId === beforeId) { clearDrag(); return; }
+    const found = findNode(blocks, dragId);
+    if (!found) { clearDrag(); return; }
+    if (found.kind === 'section') reorderTopTo(beforeId);
+    else moveWidgetTo({ type: 'top', before: beforeId });
+  };
+  /* 컬럼/컬럼내 위젯 위로 드롭: 위젯만 허용(섹션 중첩 금지) */
+  const onDropInColumn = (sectionId: string, rowId: string, colId: string, beforeWidgetId: string | null) => {
+    if (!dragId) { clearDrag(); return; }
+    const found = findNode(blocks, dragId);
+    if (!found || found.kind === 'section') { clearDrag(); return; }
+    moveWidgetTo({ type: 'col', sectionId, rowId, colId, before: beforeWidgetId });
   };
 
   const mkConfigSetter = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, key: string) =>
-    (val: T) => { setter(val); triggerAutoSave(blocks, { activeTheme, coverImg, clubName, hashtag1, hashtag2, badgeText, showFloatingBtn, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc, [key]: val }); };
+    (val: T) => { setter(val); triggerAutoSave(blocks, { activeTheme, showFloatingBtn, smoothScroll, contentWidth, pageBgColor, globalFont, pageTitle, pageDesc, [key]: val }); };
 
-  const themes: Record<string, string> = {
-    'orange-500': 'bg-orange-500', 'black': 'bg-black', 'white': 'bg-white',
-    'blue-600': 'bg-blue-600', 'green-600': 'bg-green-600', 'purple-500': 'bg-purple-500',
-  };
-  const themeHex: Record<string, string> = {
-    'orange-500': '#f97316', 'black': '#000000', 'white': '#ffffff',
-    'blue-600': '#2563eb', 'green-600': '#16a34a', 'purple-500': '#a855f7',
-  };
-  const resolveThemeHex = (t: string) =>
-    t.startsWith('custom:') ? t.replace('custom:', '') : (themeHex[t] || '#f97316');
-  const getThemeText = (t: string) => {
-    const hex = resolveThemeHex(t);
-    if (t === 'white' || hex === '#ffffff') return 'text-black';
-    return 'text-white';
-  };
-  const getAlignClass = (a?: string) => ({ center: 'text-center', right: 'text-right', justify: 'text-justify' }[a || ''] || 'text-left');
+  const selectedFound = selectedBlockId ? findNode(blocks, selectedBlockId) : null;
+  const selectedBlock = selectedFound?.node ?? null;
+  const selectedKind = selectedFound?.kind ?? null;
 
-  const selectedBlock = selectedBlockId ? blocks.find(b => b.id === selectedBlockId) : null;
+  /* inter-block insert affordance — a hairline+button at each gap that opens a widget picker */
+  const insertZone = (idx: number) => {
+    const open = insertMenuIdx === idx;
+    return (
+      <div className="relative w-full h-0 z-30" onClick={e => e.stopPropagation()}>
+        <div className="group/iz absolute left-0 right-0 -top-2 h-4 flex items-center justify-center">
+          <div className={`absolute left-10 right-10 h-px bg-brand transition-opacity ${open ? 'opacity-100' : 'opacity-0 group-hover/iz:opacity-100'}`} />
+          <button
+            onClick={() => setInsertMenuIdx(open ? null : idx)}
+            title="여기에 위젯 추가"
+            className={`relative flex items-center justify-center w-5 h-5 rounded-full border border-brand bg-white text-brand hover:bg-brand hover:text-white transition-all ${open ? 'opacity-100 rotate-45' : 'opacity-0 group-hover/iz:opacity-100'}`}>
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+        {open && (
+          <div className="absolute z-50 left-1/2 -translate-x-1/2 top-2.5 w-64 bg-white border border-sand-200 rounded-card shadow-soft-lg p-2"
+            onClick={e => e.stopPropagation()}>
+            <div className="text-[12px] font-black text-sand-400 uppercase tracking-widest px-1 pb-1.5">여기에 위젯 삽입</div>
+            <div className="grid grid-cols-3 gap-1">
+              {PALETTE.filter(p => !p.disabled).map(({ type, label, icon: Icon }) => (
+                <button key={type} onClick={() => handleAddBlock(type, idx)}
+                  className="flex flex-col items-center gap-1 p-2 border border-sand-200 rounded-ctl hover:border-brand hover:bg-brand-tint transition-colors">
+                  <Icon className="w-3.5 h-3.5 text-sand-500" />
+                  <span className="text-[12px] font-bold text-sand-600 leading-tight text-center">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* 컬럼에 넣을 수 있는 위젯 — 섹션 중첩 금지 + 자체로 폭/레이아웃을 크게 차지하는 위젯은 제외
+     (FAQ·프로세스 다이어그램·통계 카운터·탭/캐러셀·카운트다운은 섹션 컬럼 안에 넣지 않는다) */
+  const SECTION_EXCLUDED_WIDGETS = new Set(['section', 'faq', 'timeline', 'stats', 'layoutContainer', 'countdown']);
+  const COLUMN_WIDGETS = PALETTE.filter(p => !p.disabled && !SECTION_EXCLUDED_WIDGETS.has(p.type));
+
+  /* 위젯 미니 툴바 + 시각(BlockBody). top-level·컬럼 내부 공용. */
+  const renderWidgetShell = (
+    block: any,
+    opts: { nested?: boolean; colInfo?: { sectionId: string; rowId: string; colId: string }; topIndex?: number } = {},
+  ) => {
+    const { nested, colInfo, topIndex } = opts;
+    const isSel = selectedBlockId === block.id;
+    const isDragOver = dragOverId === block.id;
+    return (
+      <div
+        key={block.id}
+        ref={el => { if (el) blockElRefs.current[block.id] = el as HTMLDivElement; }}
+        /* 캡처 단계에서 선택 — 위젯 내부 입력창(텍스트 등)을 눌러도 해당 위젯이 선택되도록
+           (입력창의 stopPropagation 보다 먼저 실행) */
+        onClickCapture={() => { setSelectedBlockId(block.id); setInsertMenuIdx(null); }}
+        onClick={e => e.stopPropagation()}
+        onDragOver={e => { if (dragId && dragId !== block.id) { e.preventDefault(); e.stopPropagation(); setDragOverId(block.id); } }}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); nested && colInfo ? onDropInColumn(colInfo.sectionId, colInfo.rowId, colInfo.colId, block.id) : onDropOnTop(block.id); }}
+        onDragEnd={clearDrag}
+        className={`wbe-widget relative group transition-all ${nested ? '' : 'animate-slide-down'}
+          ${isSel ? 'z-20' : 'hover:ring-inset hover:ring-2 hover:ring-brand/40 hover:z-10'}
+          ${isDragOver && dragId !== block.id ? 'ring-2 ring-green-500' : ''}`}
+      >
+        {/* 선택 외곽선 — 위젯 콘텐츠(배경 포함) 위에 그려 항상 보이게 */}
+        {isSel && <div className="pointer-events-none absolute inset-0 z-[25] border-2 border-brand" />}
+        {/* 드래그 핸들 — 위젯 좌측 중앙. 섹션 내부(nested)는 컬럼 바깥(-left-6)에, top-level 은
+           프레임이 overflowX:clip 이라 바깥이 잘리므로 안쪽(left-0)에 둬서 항상 보이게 한다. */}
+        <div draggable onDragStart={e => onDragStartNode(e, block.id)} onClick={e => e.stopPropagation()}
+          className={`absolute ${nested ? '-left-6 rounded-l' : 'left-0 rounded-r'} top-1/2 -translate-y-1/2 cursor-grab z-30 bg-brand text-white p-1 transition-opacity ${isSel ? 'opacity-90' : 'opacity-0 group-hover:opacity-70'}`}
+          title="드래그하여 이동">
+          <GripVertical className="w-3.5 h-3.5" />
+        </div>
+
+        {/* 라벨 + 액션 — 선택 시 상단 가장자리. 드래그 핸들은 위 좌측 바깥에 분리 배치. */}
+        <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-30 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none bg-brand">{PALETTE_LABEL[block.type] ?? block.type}</span>
+          {isSel && (
+            <div className="flex items-center gap-0.5 pointer-events-auto">
+              <button onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'up'); }} disabled={!nested && topIndex === 0} title="위로 이동"
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronUp className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'down'); }} disabled={!nested && topIndex === blocks.length - 1} title="아래로 이동"
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center"><ChevronDown className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleDuplicateBlock(block.id); }} title="복제"
+                className="bg-blue-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-blue-600 transition-colors flex items-center gap-0.5"><Copy className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleDeleteBlock(block.id); }} title="삭제"
+                className="bg-red-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-red-600 transition-colors">✕</button>
+            </div>
+          )}
+        </div>
+
+        {/* 텍스트 서식은 멀티라인 필드의 리치 에디터(RichEditable) 자체 툴바가 담당 — 드래그 선택 글자에 적용 */}
+        {/* 기본 글꼴(globalFont)은 위젯 콘텐츠에만 적용 — 빌더 chrome(툴바·+버튼·라벨)은 고정 UI 글꼴 유지.
+           공개 렌더의 .wb-root 가 콘텐츠만 감싸는 것과 동일 원리. */}
+        <div style={{ fontFamily: globalFont || undefined }}>
+          <BlockBody block={block} ctx={{ activeTheme, themeColor: resolveThemeHex(activeTheme), edit: true, upd: (field: string, value: any) => upd(block.id, field, value) }} />
+        </div>
+      </div>
+    );
+  };
+
+  /* 섹션 에디터 — chrome(툴바·DnD) + 행/컬럼. 위젯 시각은 renderWidgetShell 재사용. */
+  const renderSection = (section: any, topIndex: number) => {
+    const isSel = selectedBlockId === section.id;
+    const hasImage = section.bgType === 'image' && section.bgImage;
+    const hasOverlay = hasImage && (section.bgOverlay ?? 0) > 0;
+    /* 배경 패럴랙스(Track B)는 공개 페이지에서만 스크롤로 움직인다. 에디터에는 스크롤 컨텍스트가 없으므로
+       '정적 미리보기'로 배경 이미지를 그대로 보여준다(패럴랙스 ON 시 resolveSectionBg 는 검정 반환 → 안 그리면 까맣게 보임). */
+    const parallaxPreview = hasImage && (section.bgParallax ?? 0) > 0 ? section.bgImage : null;
+    /* 배경 모션(Ken Burns)이 켜지면 배경 이미지는 별도 애니메이션 레이어가 그린다(공개 SectionBlock 과 동일).
+       이 레이어가 없으면 resolveSectionBg 가 검정을 반환해 에디터에서 배경이 까맣게 보인다. 패럴랙스가 켜지면 그쪽이 우선. */
+    const kenBurns = !parallaxPreview && hasImage && section.bgKenBurns && section.bgKenBurns !== 'none' ? section.bgKenBurns : null;
+    return (
+      <div key={section.id}
+        ref={el => { if (el) blockElRefs.current[section.id] = el as HTMLDivElement; }}
+        onClick={e => { e.stopPropagation(); setSelectedBlockId(section.id); setInsertMenuIdx(null); }}
+        onDragOver={e => { if (dragId && dragId !== section.id) { e.preventDefault(); setDragOverId(section.id); } }}
+        onDrop={e => { e.preventDefault(); onDropOnTop(section.id); }}
+        onDragEnd={clearDrag}
+        /* hover/선택 시 z-30 으로 올려, 음수 오프셋 chrome(+위젯·행 추가·열 버튼)이
+           다음 섹션에 가려지지 않고 위에 그려지도록 한다. */
+        className={`relative group/sec transition-all animate-slide-down ${isSel ? 'z-30' : 'hover:ring-inset hover:ring-2 hover:ring-brand/40 hover:z-30'}`}
+      >
+        {/* 선택 외곽선 — 섹션 배경/콘텐츠 위에 그려 항상 보이게 */}
+        {isSel && <div className="pointer-events-none absolute inset-0 z-[35] border-2 border-brand" />}
+        {/* 섹션 툴바 — hover 시엔 라벨만, 선택 시에만 액션 버튼 노출 (위젯과 동일한 맥락형 규칙) */}
+        <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-40 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0 group-hover/sec:opacity-100'}`}>
+          <span className={`ml-5 text-white text-[11px] font-black px-1.5 py-0.5 pointer-events-none ${isSel ? 'bg-brand' : 'bg-brand/90'}`}>섹션</span>
+          {isSel && (
+            <div className="flex items-center gap-0.5 pointer-events-auto">
+              <button onClick={e => { e.stopPropagation(); handleMoveBlock(section.id, 'up'); }} disabled={topIndex === 0} title="위로 이동"
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink disabled:opacity-30 flex items-center"><ChevronUp className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleMoveBlock(section.id, 'down'); }} disabled={topIndex === blocks.length - 1} title="아래로 이동"
+                className="bg-ink/80 text-white text-[11px] font-black px-1 py-0.5 hover:bg-ink disabled:opacity-30 flex items-center"><ChevronDown className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleDuplicateBlock(section.id); }} title="복제"
+                className="bg-blue-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-blue-600 flex items-center"><Copy className="w-3 h-3" /></button>
+              <button onClick={e => { e.stopPropagation(); handleDeleteBlock(section.id); }} title="섹션 삭제"
+                className="bg-red-500 text-white text-[11px] font-black px-1.5 py-0.5 hover:bg-red-600">✕</button>
+            </div>
+          )}
+        </div>
+        <div draggable onDragStart={e => onDragStartNode(e, section.id)} onClick={e => e.stopPropagation()}
+          className={`absolute left-1 top-1 cursor-grab z-40 p-1 rounded-ctl transition-opacity ${isSel ? 'opacity-70' : 'opacity-0 group-hover/sec:opacity-60'}`} title="드래그하여 섹션 순서 변경">
+          <GripVertical className="w-3.5 h-3.5 text-brand" />
+        </div>
+
+        {/* 섹션 배경 + 콘텐츠 (공개 렌더 SectionBlock 과 동일 시각) */}
+        {/* 에디터에선 overflow:visible — 행 툴바(-top-6)·+위젯(-bottom-3) 등 음수 오프셋 chrome 이
+            섹션 경계 밖으로 나가도 보이게 한다. 공개 SectionBlock 은 overflow:hidden 유지(장식 클리핑). */}
+        <div className="wb-section" style={{ position: 'relative', overflow: 'visible', ...resolveSectionBg(section) }}>
+          {parallaxPreview && (
+            /* 패럴랙스 정적 미리보기 — 섹션 경계로 클리핑(공개와 동일 시각). 실제 움직임은 공개 페이지에서만. */
+            <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${parallaxPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            </div>
+          )}
+          {kenBurns && (
+            /* 에디터 섹션은 overflow:visible 이라 scale 애니메이션 레이어가 섹션 밖으로 새어나간다.
+               → 자체 overflow:hidden 래퍼로 감싸 섹션 경계로 클리핑(공개 SectionBlock 의 overflow:hidden 과 동일 효과). */
+            <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+              <div className={`wb-kenburns wb-ken-${kenBurns}`} style={{ backgroundImage: `url(${section.bgImage})` }} />
+            </div>
+          )}
+          {/* 배경 장식(워터마크·셰이프) — 공개 SectionBlock 과 동일한 공유 컴포넌트. 자체 overflow:hidden 으로 섹션 경계 클리핑 → 에디터/공개 동일 시각 */}
+          <SectionDecor block={section} />
+          {hasOverlay && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${(section.bgOverlay || 0) / 100})`, zIndex: 1 }} />}
+          <div className="wbe-secbody" style={{
+            position: 'relative', zIndex: 2,
+            maxWidth: section.maxWidth ? `${section.maxWidth}px` : '100%', margin: '0 auto',
+            paddingTop: `${section.paddingY ?? 80}px`, paddingBottom: `${section.paddingY ?? 80}px`,
+            paddingLeft: `${section.paddingX ?? 32}px`, paddingRight: `${section.paddingX ?? 32}px`,
+            display: 'flex', flexDirection: 'column', gap: `${section.gap ?? 32}px`,
+          }}>
+            {(section.rows || []).map((row: any, ri: number) => (
+              <div key={row.id} className="relative group/row">
+                {/* 행 툴바 — 행 위쪽 gap 에 오버레이. 해당 행 hover 또는 행 선택 시에만(맥락형) */}
+                <div className={`absolute -top-6 left-0 z-30 flex items-center gap-1.5 transition-opacity pointer-events-auto ${selectedBlockId === row.id ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100'}`}
+                  onClick={e => e.stopPropagation()}>
+                  <span className="text-[11px] font-black text-brand/70 bg-white/80 px-1 rounded">열</span>
+                  <div className="inline-flex border border-brand/40 rounded-ctl overflow-hidden bg-white">
+                    {[1, 2, 3, 4].map(n => (
+                      <button key={n} onClick={e => { e.stopPropagation(); handleSetRowCols(row.id, n); }}
+                        className={`px-2 py-0.5 text-[11px] font-black ${ (row.cols || 1) === n ? 'bg-brand text-white' : 'bg-white text-brand hover:bg-brand-tint'}`}>{n}</button>
+                    ))}
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); setSelectedBlockId(row.id); }} title="행 세부 설정 (비율)"
+                    className="px-1.5 py-0.5 text-[11px] font-bold border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint">비율</button>
+                  <button onClick={e => { e.stopPropagation(); handleMoveRow(section.id, row.id, 'up'); }} disabled={ri === 0} title="행 위로"
+                    className="p-0.5 border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); handleMoveRow(section.id, row.id, 'down'); }} disabled={ri === (section.rows.length - 1)} title="행 아래로"
+                    className="p-0.5 border border-brand/30 rounded-ctl text-brand bg-white hover:bg-brand-tint disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                  <button onClick={e => { e.stopPropagation(); handleDeleteBlock(row.id); }} title="행 삭제"
+                    className="p-0.5 border border-red-200 rounded-ctl text-red-500 bg-white hover:bg-red-50"><Trash2 className="w-3 h-3" /></button>
+                </div>
+                {/* 행 그리드 */}
+                <div className="wb-section-row" data-collapse={(row.cols || 1) >= 2 ? '' : undefined}
+                  style={{ display: 'grid', gridTemplateColumns: rowGridTemplate(row), gap: `${row.gap ?? 24}px`, alignItems: 'start' }}>
+                  {(row.columns || []).map((col: any, ci: number) => {
+                    const colInfo = { sectionId: section.id, rowId: row.id, colId: col.id };
+                    const empty = (col.widgets || []).length === 0;
+                    const isColOver = dragOverId === col.id;
+                    const rowCard = rowCardWrapStyle(row, resolveThemeHex(activeTheme));
+                    return (
+                      <div key={col.id}
+                        onDragOver={e => { if (dragId) { e.preventDefault(); setDragOverId(col.id); } }}
+                        onDrop={e => { e.preventDefault(); onDropInColumn(section.id, row.id, col.id, null); }}
+                        className={`wbe-col relative group/col rounded-ctl transition-colors ${isColOver ? 'outline outline-2 outline-green-500 bg-green-50/40' : ''}`}
+                        style={{ display: 'flex', flexDirection: 'column', gap: `${row.rowGap ?? 24}px`, minWidth: 0, minHeight: empty ? '56px' : undefined, ...(rowCard || {}) }}>
+                        {rowCard && <RowCardHeader row={row} idx={ci} accent={resolveThemeHex(activeTheme)} />}
+                        {(col.widgets || []).map((w: any) => renderWidgetShell(w, { nested: true, colInfo }))}
+                        {/* 빈 칸 — 점선 테두리 + 작은 + 아이콘만(문구 제거로 노이즈 감소). 칸 hover/섹션 선택 시 */}
+                        {empty && (
+                          <div className={`absolute inset-0 flex items-center justify-center border border-dashed border-brand/30 rounded-ctl transition-opacity pointer-events-none ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                            <Plus className="w-4 h-4 text-brand" />
+                          </div>
+                        )}
+                        {/* + 위젯 — 컬럼 하단 오버레이. 해당 칸 hover 또는 섹션 선택 시에만(맥락형) */}
+                        <button onClick={e => { e.stopPropagation(); setColPicker(colInfo); }} title="이 칸에 위젯 추가"
+                          className={`absolute left-1/2 -translate-x-1/2 -bottom-3 z-30 inline-flex items-center gap-1 px-2.5 py-1 border border-dashed border-brand/40 bg-white text-brand hover:bg-brand-tint text-[12px] font-bold rounded-ctl shadow-sm transition-all ${isSel ? 'opacity-100' : 'opacity-0 group-hover/col:opacity-100'}`}>
+                          <Plus className="w-3 h-3" /> 위젯
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* 행 추가 — 섹션 하단 오버레이. 섹션 선택 시에만. 단일 버튼으로 단순화(열 수는 행 툴바에서 1~4 조정) */}
+          <div className={`absolute left-0 right-0 bottom-1 z-30 flex items-center justify-center transition-opacity ${isSel ? 'opacity-100' : 'opacity-0'}`} onClick={e => e.stopPropagation()}>
+            <button onClick={e => { e.stopPropagation(); addRowToSection(section.id, 1); }} title="행 추가 (열 수는 행 위 1~4 버튼에서 조정)"
+              className="inline-flex items-center gap-1 px-3 py-1 border border-dashed border-brand/40 bg-white text-brand text-[11px] font-bold rounded-ctl hover:bg-brand-tint">
+              <Plus className="w-3 h-3" /> 행 추가
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-sand-50 overflow-hidden font-sans">
+
+      {/* 단일 렌더 코어(blockKit)가 의존하는 공유 CSS — 공개 페이지와 동일 시각 보장 */}
+      <style dangerouslySetInnerHTML={{ __html: WB_STYLE }} />
 
       {/* ── Top Bar ── */}
-      <header className="h-13 border-b border-black bg-white flex items-center justify-between px-5 flex-shrink-0" style={{ height: '52px' }}>
+      <header className="h-13 border-b border-sand-200 bg-white flex items-center justify-between px-5 flex-shrink-0" style={{ height: '52px' }}>
         <div className="flex items-center gap-3">
-          <Link to="/admin/dashboard" className="p-2 hover:bg-gray-100 border border-transparent hover:border-black rounded transition-colors">
+          <Link to="/admin/dashboard" className="p-2 hover:bg-sand-100 border border-transparent hover:border-brand rounded-ctl transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div className="w-px h-5 bg-gray-200" />
-          <h1 className="font-black text-sm tracking-tight">1-Page 웹빌더</h1>
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-sand-200" />
+          <h1 className="font-black text-sm tracking-tight">1PAGE 웹 디자인</h1>
+          <div className="w-px h-5 bg-sand-200" />
           <button onClick={undo} disabled={!canUndo} title="실행취소 (Ctrl+Z)"
-            className="p-1.5 border border-transparent hover:border-gray-300 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            className="p-1.5 border border-transparent hover:border-sand-300 rounded-ctl transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button onClick={redo} disabled={!canRedo} title="재실행 (Ctrl+Y)"
-            className="p-1.5 border border-transparent hover:border-gray-300 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+            className="p-1.5 border border-transparent hover:border-sand-300 rounded-ctl transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
             <RotateCw className="w-3.5 h-3.5" />
           </button>
-          <div className="w-px h-5 bg-gray-200" />
-          <div className="text-xs font-bold flex items-center gap-1">
-            {saveStatus === 'saving'  && <><Loader className="w-3 h-3 animate-spin text-gray-400" /><span className="text-gray-400">저장 중...</span></>}
-            {saveStatus === 'saved'   && <><Check className="w-3 h-3 text-green-500" /><span className="text-gray-400">저장됨</span></>}
-            {saveStatus === 'unsaved' && <span className="text-orange-500 font-black">● 미저장</span>}
+          <div className="w-px h-5 bg-sand-200" />
+          <div className="text-xs font-bold flex items-center gap-1" title="편집 내용은 초안으로 자동 임시저장됩니다. 방문자에게는 '발행'한 내용만 보입니다.">
+            {saveStatus === 'saving'  && <><Loader className="w-3 h-3 animate-spin text-sand-400" /><span className="text-sand-400">임시저장 중...</span></>}
+            {saveStatus === 'saved'   && <><Check className="w-3 h-3 text-green-500" /><span className="text-sand-400">초안 저장됨</span></>}
+            {saveStatus === 'unsaved' && <span className="text-brand font-black">● 저장 안 됨</span>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex border border-gray-200 rounded overflow-hidden">
+          <div className="flex border border-sand-200 rounded-ctl overflow-hidden">
             {[{ mode: 'desktop', Icon: Monitor, label: '데스크톱' }, { mode: 'tablet', Icon: Tablet, label: '태블릿' }, { mode: 'mobile', Icon: Smartphone, label: '모바일' }].map(({ mode, Icon, label }) => (
               <button key={mode} onClick={() => setViewportMode(mode as typeof viewportMode)} title={label}
-                className={`p-1.5 transition-colors ${viewportMode === mode ? 'bg-black text-white' : 'text-gray-400 hover:bg-gray-100'}`}>
+                className={`p-1.5 transition-colors ${viewportMode === mode ? 'bg-brand text-white' : 'text-sand-400 hover:bg-sand-100'}`}>
                 <Icon className="w-3.5 h-3.5" />
               </button>
             ))}
           </div>
+          {/* 발행 상태 안내 — 무엇이 방문자에게 보이는지 명확히 */}
+          <div className="text-[11px] font-bold flex items-center gap-1 mr-0.5"
+            title={isPublished ? '방문자에게는 마지막으로 발행한 내용이 보입니다.' : '아직 발행 전이라 방문자에게는 기본 소개 페이지가 보입니다.'}>
+            {!isPublished
+              ? <span className="text-sand-400">미발행 · 기본 페이지 노출</span>
+              : hasUnpublishedChanges
+                ? <span className="text-brand">● 발행 안 된 변경사항</span>
+                : <span className="text-green-600 flex items-center gap-1"><Check className="w-3 h-3" />발행됨</span>}
+          </div>
           <Link to={`/clubs/${adminClub?.slug ?? ''}`} target="_blank"
-            className="px-3 py-1.5 border border-black bg-white hover:bg-gray-50 text-xs font-bold shadow-[2px_2px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-y-px transition-all">
-            라이브 프리뷰
+            title="편집 중인 초안을 새 탭에서 전체 화면으로 미리봅니다."
+            className="px-3 py-1.5 border border-sand-300 rounded-ctl bg-white hover:bg-sand-50 hover:border-brand text-xs font-bold text-ink shadow-soft active:translate-y-px transition-all">
+            미리보기
           </Link>
-          <button onClick={handlePublish}
-            className={`px-4 py-1.5 font-black border border-black text-xs shadow-[2px_2px_0_0_rgba(0,0,0,1)] hover:-translate-y-px active:shadow-none active:translate-y-px transition-all flex items-center gap-1.5 ${isPublished ? 'bg-gray-700 text-white' : 'bg-orange-500 text-black'}`}>
-            <Globe className="w-3.5 h-3.5" />{isPublished ? '발행 취소' : '저장 및 발행'}
-          </button>
+          {(() => {
+            const canPublish = !isPublished || hasUnpublishedChanges;
+            return (
+              <button onClick={handlePublish} disabled={!canPublish || publishing}
+                title={canPublish ? '현재 초안을 공개본으로 발행합니다.' : '발행할 변경사항이 없습니다.'}
+                className={`px-4 py-1.5 font-black border rounded-ctl text-xs transition-all flex items-center gap-1.5 ${
+                  canPublish
+                    ? 'border-transparent btn-grad text-white shadow-btn hover:-translate-y-0.5 active:translate-y-0'
+                    : 'border-sand-200 bg-sand-100 text-sand-400 cursor-default'}`}>
+                <Globe className="w-3.5 h-3.5" />
+                {publishing ? '발행 중...' : (!isPublished ? '발행' : hasUnpublishedChanges ? '변경사항 발행' : '발행됨')}
+              </button>
+            );
+          })()}
         </div>
       </header>
 
+      {/* ── 동시 편집 안내 배너 — 다른 운영진이 같은 페이지를 열고 있을 때만 ── */}
+      {editors.length > 0 && (
+        <div className="flex items-center gap-2 px-5 py-1.5 bg-amber-50 border-b border-amber-300 text-[12px] font-bold text-amber-800 flex-shrink-0">
+          <span className="inline-flex w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+          지금 <b className="font-black">{editors.map(e => e.name).join(', ')}</b>님도 이 페이지를 편집 중이에요.
+          같은 부분을 동시에 바꾸면 나중에 저장한 쪽이 우선되니 주의하세요.
+        </div>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Left Panel: Widget Palette ── */}
-        <aside className="w-48 border-r border-black bg-white flex flex-col shrink-0 overflow-y-auto">
-          <div className="px-3 py-2.5 border-b border-gray-100">
-            <div className="text-[9px] font-black text-gray-400 tracking-widest uppercase">ENTERPRISE WIDGETS</div>
-          </div>
-          <div className="p-2 grid grid-cols-2 gap-1.5">
-            {PALETTE.map(({ type, label, icon: Icon, disabled }) => (
-              <button key={type} onClick={() => handleAddBlock(type)} disabled={disabled}
-                title={label}
-                className={`flex flex-col items-center gap-1.5 p-2.5 border rounded transition-all group text-center
-                  ${disabled
-                    ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
-                    : 'border-gray-200 hover:border-black hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-white cursor-pointer'}`}>
-                <Icon className={`w-4 h-4 ${disabled ? 'text-gray-300' : 'text-gray-400 group-hover:text-black'}`} />
-                <span className={`font-bold text-[9px] leading-tight ${disabled ? 'text-gray-300' : 'text-gray-500 group-hover:text-black'}`}>{label}</span>
-              </button>
-            ))}
-          </div>
+        {/* ── Left Rail: 얇은 바 + 위젯 추가(+) → 모달 ── */}
+        <aside className="w-14 border-r border-sand-200 bg-white flex flex-col items-center pt-4 shrink-0 gap-1.5">
+          <button onClick={() => setWidgetPickerOpen(true)} title="위젯 추가"
+            className="w-10 h-10 flex items-center justify-center border border-sand-300 rounded-ctl bg-white hover:bg-brand-tint hover:border-brand hover:text-brand transition-colors shadow-soft active:translate-y-0.5">
+            <Plus className="w-5 h-5" />
+          </button>
+          <span className="text-[10px] font-black text-sand-400 tracking-wide">추가</span>
+          <div className="w-7 h-px bg-sand-200 my-1.5" />
+          <button onClick={() => setTemplateModalOpen(true)} title="섹션 템플릿"
+            className="w-10 h-10 flex items-center justify-center border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 transition-all active:translate-y-0">
+            <LayoutTemplate className="w-5 h-5" />
+          </button>
+          <span className="text-[10px] font-black text-sand-400 tracking-wide">템플릿</span>
         </aside>
 
         {/* ── Center Canvas ── */}
         <main
-          className="flex-1 bg-[#f0f0f0] flex flex-col items-center overflow-y-auto p-6 relative min-h-0"
-          onClick={() => { setSelectedBlockId(null); setEditingBlockId(null); }}
+          className="flex-1 bg-sand-100 flex flex-col items-center overflow-y-auto p-6 relative min-h-0"
+          onClick={() => { setSelectedBlockId(null); setEditingBlockId(null); setInsertMenuIdx(null); }}
         >
           {fetching ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader className="w-7 h-7 animate-spin text-orange-500" />
-            </div>
+            <LoadingScreen />
           ) : (
             <div
-              className="border border-gray-300 shadow-xl min-h-[800px] flex flex-col relative shrink-0 overflow-hidden w-full transition-[max-width] duration-200"
+              /* overflowX:clip → 풀블리드 위젯이 프레임 좌우로 새는 것만 막고,
+                 overflowY:visible → 위젯/섹션 편집 chrome(툴바·+버튼)이 위아래로 안 잘리게 한다.
+                 (overflow:hidden 은 양축을 모두 잘라 chrome 을 먹어버림) */
+              className="border border-sand-300 shadow-xl min-h-[800px] flex flex-col relative shrink-0 w-full transition-[max-width] duration-200"
               style={{
-                maxWidth: viewportMode === 'mobile' ? '390px' : viewportMode === 'tablet' ? '768px' : (contentWidth === 'full' ? '100%' : `${contentWidth}px`),
+                maxWidth: viewportMode === 'mobile' ? '390px' : viewportMode === 'tablet' ? '768px' : '100%',
                 backgroundColor: pageBgColor || '#ffffff',
-                fontFamily: globalFont || undefined,
+                overflowX: 'clip',
+                overflowY: 'visible',
               }}
               onClick={e => e.stopPropagation()}>
 
-              {/* Hero Cover (global config area) */}
-              <div className="h-[38vh] bg-gray-900 border-b border-black relative overflow-hidden">
-                <img src={coverImg} alt="" className="w-full h-full object-cover opacity-60 mix-blend-overlay" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-8">
-                  <div className="flex gap-2 mb-3">
-                    {hashtag1 && <span className="px-2.5 py-0.5 font-bold text-xs bg-white text-black">#{hashtag1}</span>}
-                    {hashtag2 && <span className="px-2.5 py-0.5 font-bold text-xs bg-white text-black">#{hashtag2}</span>}
-                  </div>
-                  <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-1">{clubName || adminClub?.name}</h1>
-                  <p className="text-base font-bold text-gray-300">{adminClub?.one_line_desc ?? ''}</p>
-                  {badgeText && (
-                    <div
-                      className={`absolute top-6 right-6 px-4 py-2 font-black text-sm border-2 border-black rotate-3 shadow-[3px_3px_0_0_rgba(255,255,255,0.9)] ${getThemeText(activeTheme)}`}
-                      style={{ backgroundColor: resolveThemeHex(activeTheme) }}
-                    >
-                      {badgeText}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Sticky nav bar */}
-              <div className="w-full border-b-2 border-black bg-white sticky top-0 z-40">
-                <div className="px-6 py-2.5 flex items-center justify-between">
-                  <div className="font-bold text-xs text-gray-400 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-orange-500" /> 지원 기간 표시 영역
-                  </div>
-                  <div className="px-6 py-2 text-xs font-black border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-gray-100 text-gray-500">
-                    지원하기
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Blocks list ── */}
-              <div className="flex-1 flex flex-col bg-white">
+              {/* ── Blocks list ── 페이지 배경(pageBgColor)은 프레임 전체를 채우고,
+                   본문만 contentWidth로 캡 → 너비를 줄이면 좌우 여백에 배경색이 드러남(실제 페이지와 동일)
+                   wb-root: 공개 페이지와 동일한 한글 줄바꿈(word-break:keep-all) 규칙을 에디터에도 적용 */}
+              <div className="wb-root flex-1 w-full flex flex-col" style={{ backgroundColor: pageBgColor || '#ffffff' }}>
+                <div
+                  className="w-full mx-auto flex flex-col flex-1 transition-[max-width] duration-200"
+                  style={{ maxWidth: contentWidth === 'full' ? '100%' : `${contentWidth}px` }}
+                >
                 {blocks.length === 0 && (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300 py-20">
+                  <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sand-400 py-20">
                     <MousePointer className="w-8 h-8" />
-                    <span className="font-bold text-sm">좌측 팔레트에서 위젯을 클릭하여 추가하세요</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setTemplateModalOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 transition-all"><LayoutTemplate className="w-4 h-4" /> 템플릿으로 시작</button>
+                      <button onClick={() => setWidgetPickerOpen(true)} className="font-black text-sm flex items-center gap-1.5 px-4 py-2.5 border border-sand-300 rounded-ctl text-ink bg-white hover:bg-sand-50 hover:border-brand transition-colors shadow-soft"><Plus className="w-4 h-4" /> 위젯 추가하기</button>
+                    </div>
                   </div>
                 )}
 
-                {blocks.map((block) => {
-                  const isSel = selectedBlockId === block.id;
-                  const isDragOver = dragOverId === block.id;
-                  return (
-                    <div
-                      key={block.id}
-                      ref={el => { if (el) blockElRefs.current[block.id] = el as HTMLDivElement; }}
-                      onClick={e => { e.stopPropagation(); setSelectedBlockId(block.id); }}
-                      onDragOver={e => handleDragOver(e, block.id)}
-                      onDrop={e => handleDrop(e, block.id)}
-                      onDragEnd={() => { setDragId(null); setDragOverId(null); }}
-                      className={`relative group transition-all animate-slide-down
-                        ${isSel ? 'ring-inset ring-[3px] ring-orange-500 z-20' : 'hover:ring-inset hover:ring-2 hover:ring-orange-300 hover:z-10'}
-                        ${isDragOver && dragId !== block.id ? 'border-t-4 border-orange-500' : ''}`}
-                    >
-                      {/* Widget label + toolbar (shows on hover/select) */}
-                      <div className={`absolute top-0 left-0 right-0 flex items-center justify-between px-2 py-0.5 z-30 pointer-events-none transition-opacity ${isSel ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                        <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 pointer-events-none">
-                          {PALETTE_LABEL[block.type] ?? block.type}
-                        </span>
-                        <div className="flex items-center gap-0.5 pointer-events-auto">
-                          <button
-                            onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'up'); }}
-                            disabled={blocks.indexOf(block) === 0}
-                            title="위로 이동"
-                            className="bg-gray-700 text-white text-[9px] font-black px-1 py-0.5 hover:bg-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center">
-                            <ChevronUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleMoveBlock(block.id, 'down'); }}
-                            disabled={blocks.indexOf(block) === blocks.length - 1}
-                            title="아래로 이동"
-                            className="bg-gray-700 text-white text-[9px] font-black px-1 py-0.5 hover:bg-gray-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center">
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDuplicateBlock(block.id); }}
-                            title="복제"
-                            className="bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 hover:bg-blue-600 transition-colors flex items-center gap-0.5">
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDeleteBlock(block.id); }}
-                            title="삭제"
-                            className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 hover:bg-red-600 transition-colors">
-                            ✕
-                          </button>
-                        </div>
-                      </div>
+                {blocks.map((block, bi) => (
+                  <React.Fragment key={block.id}>
+                    {insertZone(bi)}
+                    {block.type === 'section' ? renderSection(block, bi) : renderWidgetShell(block, { topIndex: bi })}
+                  </React.Fragment>
+                ))}
 
-                      {/* Drag handle */}
-                      <div
-                        draggable
-                        onDragStart={e => handleDragStart(e, block.id)}
-                        onClick={e => e.stopPropagation()}
-                        className={`absolute left-1 top-1/2 -translate-y-1/2 cursor-grab z-30 p-1 rounded transition-opacity ${isSel ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-40 hover:opacity-80'}`}
-                        title="드래그하여 순서 변경"
-                      >
-                        <GripVertical className="w-3.5 h-3.5 text-gray-400" />
-                      </div>
+                {blocks.length > 0 && insertZone(blocks.length)}
 
-                      {/* ──────── Widget renders ──────── */}
-
-                      {/* TEXT */}
-                      {block.type === 'text' && (() => {
-                        const isEditing = editingBlockId === block.id;
-                        const ptop = block.paddingTop ?? block.paddingY ?? 32;
-                        const pbot = block.paddingBottom ?? block.paddingY ?? 32;
-                        const pleft = block.paddingLeft ?? 40;
-                        const pright = block.paddingRight ?? 40;
-                        const onSelChange = (el: HTMLTextAreaElement) => {
-                          if (el.selectionStart !== el.selectionEnd) setEditingBlockId(block.id);
-                        };
-                        return (
-                          <div
-                            className={block.animation && block.animation !== 'none' ? `wb-anim-${block.animation}` : ''}
-                            onDoubleClick={e => { e.stopPropagation(); setEditingBlockId(block.id); }}
-                            style={{ position: 'relative', backgroundColor: block.bgColor || 'transparent', paddingTop: `${ptop}px`, paddingBottom: `${pbot}px`, paddingLeft: `${pleft}px`, paddingRight: `${pright}px` }}>
-                            {isEditing && (
-                              <div
-                                style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, zIndex: 100 }}
-                                className="flex items-center gap-1 px-2 py-1.5 bg-white border border-gray-300 border-b-0 shadow-[0_-2px_8px_rgba(0,0,0,0.12)] flex-wrap"
-                                onClick={e => e.stopPropagation()}
-                                onDoubleClick={e => e.stopPropagation()}
-                              >
-                                <button
-                                  onMouseDown={e => { e.preventDefault(); upd(block.id, 'fontWeight', (block.fontWeight || 400) >= 700 ? 400 : 700); }}
-                                  className={`w-7 h-7 flex items-center justify-center rounded font-black text-sm border transition-colors ${(block.fontWeight || 400) >= 700 ? 'bg-black text-white border-black' : 'border-gray-200 hover:border-gray-400'}`}
-                                  title="굵게 (Bold)"
-                                >B</button>
-                                <div className="w-px h-5 bg-gray-200 mx-0.5" />
-                                <div className="flex items-center border border-gray-200 rounded overflow-hidden">
-                                  <input
-                                    type="number"
-                                    value={block.fontSize || 16}
-                                    onChange={e => upd(block.id, 'fontSize', Number(e.target.value))}
-                                    className="w-12 text-xs px-1.5 py-1 outline-none text-center font-bold"
-                                    min={8} max={200}
-                                  />
-                                  <span className="text-[10px] text-gray-400 pr-1.5">px</span>
-                                </div>
-                                <div className="w-px h-5 bg-gray-200 mx-0.5" />
-                                {([
-                                  { v: 'left', Icon: AlignLeft, label: '왼쪽' },
-                                  { v: 'center', Icon: AlignCenter, label: '가운데' },
-                                  { v: 'right', Icon: AlignRight, label: '오른쪽' },
-                                  { v: 'justify', Icon: AlignJustify, label: '양쪽' },
-                                ] as { v: string; Icon: React.ElementType; label: string }[]).map(({ v, Icon, label }) => (
-                                  <button
-                                    key={v}
-                                    onMouseDown={e => { e.preventDefault(); upd(block.id, 'align', v); }}
-                                    className={`w-7 h-7 flex items-center justify-center rounded border transition-colors ${(block.align || 'left') === v ? 'bg-black text-white border-black' : 'border-transparent hover:border-gray-300 text-gray-600'}`}
-                                    title={label}
-                                  >
-                                    <Icon className="w-3.5 h-3.5" />
-                                  </button>
-                                ))}
-                                <button
-                                  onClick={e => { e.stopPropagation(); setEditingBlockId(null); }}
-                                  className="ml-auto text-[10px] font-bold text-gray-400 hover:text-black px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-                                >완료</button>
-                              </div>
-                            )}
-                            <div style={{ maxWidth: block.maxWidth ? `${block.maxWidth}px` : '100%' }} className="mx-auto">
-                              <textarea
-                                value={block.text || ''}
-                                onChange={e => upd(block.id, 'text', e.target.value)}
-                                onMouseUp={e => onSelChange(e.currentTarget)}
-                                onKeyUp={e => onSelChange(e.currentTarget)}
-                                ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                                className={`w-full bg-transparent outline-none resize-none border border-transparent focus:border-orange-300 ${getAlignClass(block.align)}`}
-                                style={{ fontSize: `${block.fontSize || 16}px`, fontWeight: block.fontWeight || 400, color: block.textColor || '#111827', lineHeight: block.lineHeight || 1.7, letterSpacing: block.letterSpacing ? `${block.letterSpacing}em` : undefined, overflow: 'hidden', minHeight: '1.5em' }}
-                                placeholder="텍스트를 입력하세요..."
-                              />
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* HERO SLIDER */}
-                      {block.type === 'heroSlider' && (() => {
-                        const slides: any[] = block.slides || [mkSlide('s1')];
-                        const si = sliderIdx[block.id] ?? 0;
-                        const slide = slides[Math.min(si, slides.length - 1)];
-                        const bgStyle = slide.bgType === 'image' && slide.bgValue
-                          ? { backgroundImage: `url(${slide.bgValue})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                          : { backgroundColor: slide.bgValue || '#111111' };
-                        return (
-                          <div className="relative w-full overflow-hidden" style={{ ...bgStyle, minHeight: `${block.height || 60}vh` }}>
-                            {slide.bgType === 'image' && slide.bgValue && <div className="absolute inset-0 bg-black" style={{ opacity: (slide.overlayOpacity || 0) / 100 }} />}
-                            <div className={`relative z-10 flex flex-col justify-center p-12 h-full ${slide.align === 'center' ? 'items-center text-center' : slide.align === 'right' ? 'items-end text-right' : 'items-start text-left'}`}
-                              style={{ minHeight: `${block.height || 60}vh` }}>
-                              <textarea value={slide.h1 || ''} onChange={e => { const sl = slides.map((s: any) => s.id === slide.id ? { ...s, h1: e.target.value } : s); upd(block.id, 'slides', sl); }}
-                                ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                                className="bg-transparent outline-none resize-none font-black text-white border border-transparent focus:border-white/40 leading-tight w-full max-w-2xl"
-                                style={{ fontSize: `${block.h1Size || 48}px`, overflow: 'hidden', minHeight: '1em' }}
-                                placeholder="메인 카피 (H1)" />
-                              <textarea value={slide.subtitle || ''} onChange={e => { const sl = slides.map((s: any) => s.id === slide.id ? { ...s, subtitle: e.target.value } : s); upd(block.id, 'slides', sl); }}
-                                ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                                className="bg-transparent outline-none resize-none text-white/70 border border-transparent focus:border-white/30 mt-4 w-full max-w-2xl"
-                                style={{ fontSize: `${block.subtitleSize || 18}px`, overflow: 'hidden', minHeight: '1em' }}
-                                placeholder="서브 카피" />
-                              {slide.ctaShow !== false && (
-                                <input value={slide.ctaText || '지원하기'} onChange={e => { const sl = slides.map((s: any) => s.id === slide.id ? { ...s, ctaText: e.target.value } : s); upd(block.id, 'slides', sl); }}
-                                  className="mt-8 px-8 py-3 font-black text-base border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,0.5)] outline-none text-center min-w-[160px]"
-                                  style={{ backgroundColor: resolveThemeHex(activeTheme), color: getThemeText(activeTheme) === 'text-black' ? '#000' : '#fff' }} />
-                              )}
-                            </div>
-                            {/* Slide dots navigation */}
-                            {slides.length > 1 && (
-                              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                                {slides.map((_: any, i: number) => (
-                                  <button key={i} onClick={e => { e.stopPropagation(); setSliderIdx(s => ({ ...s, [block.id]: i })); }}
-                                    className={`w-2 h-2 rounded-full border border-white transition-all ${i === si ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white/70'}`} />
-                                ))}
-                              </div>
-                            )}
-                            {/* Slide label */}
-                            <div className="absolute top-2 right-10 flex gap-1 z-20">
-                              {slides.map((_: any, i: number) => (
-                                <button key={i} onClick={e => { e.stopPropagation(); setSliderIdx(s => ({ ...s, [block.id]: i })); }}
-                                  className={`px-2 py-0.5 text-[9px] font-black border border-white/50 transition-colors ${i === si ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}>
-                                  슬라이드 {i + 1}
-                                </button>
-                              ))}
-                              <button onClick={e => { e.stopPropagation(); const newSlide = mkSlide(Date.now().toString()); upd(block.id, 'slides', [...slides, newSlide]); }}
-                                className="px-2 py-0.5 text-[9px] font-black border border-white/50 text-white hover:bg-white/20 transition-colors">
-                                + 슬라이드
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* LAYOUT CONTAINER */}
-                      {block.type === 'layoutContainer' && (
-                        <div style={{ backgroundColor: block.bgColor || 'transparent', paddingTop: `${block.paddingY || 40}px`, paddingBottom: `${block.paddingY || 40}px` }}>
-                          <div className="px-8 mx-auto" style={{ display: 'grid', gridTemplateColumns: `repeat(${block.cols || 2}, 1fr)`, gap: `${block.gap || 20}px` }}>
-                            {(block.cells || []).map((cell: any, ci: number) => (
-                              <div key={cell.id} style={{ backgroundColor: cell.bgColor || '#fff', padding: `${cell.padding || 24}px`, borderRadius: `${cell.borderRadius || 8}px`, border: `${cell.borderWidth || 1}px solid ${cell.borderColor || '#e5e7eb'}` }}>
-                                {cell.imgSrc && (
-                                  <img src={cell.imgSrc} alt="" className="w-full object-cover mb-4" style={{ borderRadius: '4px', maxHeight: '180px' }} />
-                                )}
-                                <input value={cell.title || ''} placeholder={`카드 제목 ${ci + 1}`}
-                                  onChange={e => { const cells = block.cells.map((c: any) => c.id === cell.id ? { ...c, title: e.target.value } : c); upd(block.id, 'cells', cells); }}
-                                  className="w-full font-black outline-none bg-transparent border-b border-transparent focus:border-orange-400 mb-2"
-                                  style={{ fontSize: `${cell.titleSize || 18}px`, color: cell.titleColor || '#111827', textAlign: cell.align || 'left' }} />
-                                <textarea value={cell.text || ''} placeholder={`카드 ${ci + 1} 내용`}
-                                  onChange={e => { const cells = block.cells.map((c: any) => c.id === cell.id ? { ...c, text: e.target.value } : c); upd(block.id, 'cells', cells); }}
-                                  ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                                  className="w-full bg-transparent outline-none resize-none border border-transparent focus:border-orange-300 leading-relaxed"
-                                  style={{ fontSize: `${cell.textSize || 14}px`, color: cell.textColor || '#374151', textAlign: cell.align || 'left', overflow: 'hidden', minHeight: '1.5em' }} />
-                              </div>
-                            ))}
-                          </div>
-                          <div className="flex justify-center mt-3 gap-2">
-                            {(block.cells || []).length < 4 && (
-                              <button onClick={e => { e.stopPropagation(); const nc = mkCell(Date.now().toString(), (block.cells || []).length + 1); upd(block.id, 'cells', [...(block.cells || []), nc]); }}
-                                className="px-3 py-1 border border-dashed border-gray-300 hover:border-black text-gray-400 hover:text-black text-xs font-bold transition-colors flex items-center gap-1">
-                                <Plus className="w-3 h-3" /> 컬럼 추가
-                              </button>
-                            )}
-                            {(block.cells || []).length > 1 && (
-                              <button onClick={e => { e.stopPropagation(); const cells = (block.cells || []).slice(0, -1); upd(block.id, 'cells', cells); }}
-                                className="px-3 py-1 border border-dashed border-red-200 hover:border-red-400 text-red-300 hover:text-red-500 text-xs font-bold transition-colors">
-                                − 컬럼 삭제
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* FAQ */}
-                      {block.type === 'faq' && (
-                        <div className="px-8 max-w-3xl mx-auto w-full py-10">
-                          <div className="flex items-center gap-3 mb-6">
-                            <MessageSquare className="w-5 h-5 text-orange-500 shrink-0" />
-                            <input value={block.title || 'FAQ'} onChange={e => upd(block.id, 'title', e.target.value)}
-                              className="text-2xl font-black bg-transparent outline-none border-b-2 border-transparent focus:border-orange-500 w-full" />
-                          </div>
-                          <div className="border-2 border-black divide-y divide-black overflow-hidden" style={{ borderRadius: `${block.borderRadius || 0}px` }}>
-                            {(block.items || []).map((item: any, idx: number) => (
-                              <FaqEditorItem key={item.id} item={item} idx={idx} openBg={block.openBg} iconStyle={block.iconStyle}
-                                onUpdate={(field, val) => { const items = block.items.map((it: any) => it.id === item.id ? { ...it, [field]: val } : it); upd(block.id, 'items', items); }}
-                                onDelete={() => { const items = block.items.filter((it: any) => it.id !== item.id); upd(block.id, 'items', items); }}
-                              />
-                            ))}
-                          </div>
-                          <button onClick={e => { e.stopPropagation(); const items = [...(block.items || []), { id: Date.now().toString(), question: '새 질문', answer: '답변을 입력하세요.' }]; upd(block.id, 'items', items); }}
-                            className="mt-3 w-full py-2.5 border-2 border-dashed border-gray-200 hover:border-black text-gray-400 hover:text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> FAQ 항목 추가
-                          </button>
-                        </div>
-                      )}
-
-                      {/* TIMELINE */}
-                      {block.type === 'timeline' && (() => {
-                        const tlLayout = block.layout || 'vertical-left';
-                        const tlNodes: any[] = block.nodes || [];
-                        const tlActive = block.activeColor || '#f97316';
-                        const tlLine = block.lineColor || '#111827';
-                        const tlUpdNode = (node: any, field: string, val: string) =>
-                          upd(block.id, 'nodes', tlNodes.map((n: any) => n.id === node.id ? { ...n, [field]: val } : n));
-                        const tlDelNode = (nodeId: string) =>
-                          upd(block.id, 'nodes', tlNodes.filter((n: any) => n.id !== nodeId));
-
-                        const TlDot = ({ idx }: { idx: number }) => (
-                          <div
-                            className="w-9 h-9 rounded-full border-2 border-black flex items-center justify-center font-black text-sm shrink-0 z-10 transition-colors"
-                            style={idx === 0 ? { backgroundColor: tlActive, color: '#fff', borderColor: tlActive } : { backgroundColor: '#fff', color: '#111' }}
-                          >{idx + 1}</div>
-                        );
-
-                        const TlContent = ({ node, alignRight }: { node: any; alignRight?: boolean }) => (
-                          <div>
-                            <div className={`flex items-start gap-1 ${alignRight ? 'flex-row-reverse' : ''}`}>
-                              <input value={node.title} onChange={e => tlUpdNode(node, 'title', e.target.value)}
-                                className={`font-black text-base bg-transparent outline-none border-b border-transparent focus:border-orange-500 flex-1 ${alignRight ? 'text-right' : ''}`} />
-                              <button onClick={e => { e.stopPropagation(); tlDelNode(node.id); }}
-                                className="text-red-400 hover:text-red-600 text-[10px] font-bold shrink-0 mt-1.5">✕</button>
-                            </div>
-                            <textarea value={node.desc} onChange={e => tlUpdNode(node, 'desc', e.target.value)}
-                              ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                              className={`text-gray-500 text-sm w-full bg-transparent outline-none mt-1.5 resize-none border border-transparent focus:border-gray-300 leading-relaxed ${alignRight ? 'text-right' : ''}`}
-                              style={{ overflow: 'hidden', minHeight: '1.5em' }} />
-                          </div>
-                        );
-
-                        return (
-                          <div className="px-10 max-w-3xl mx-auto w-full py-10">
-                            <div className="flex items-center gap-3 mb-10">
-                              <Clock className="w-5 h-5 text-orange-500 shrink-0" />
-                              <input value={block.title || '채용 프로세스'} onChange={e => upd(block.id, 'title', e.target.value)}
-                                className="text-2xl font-black bg-transparent outline-none border-b-2 border-transparent focus:border-orange-500 w-full" />
-                            </div>
-
-                            {/* ── VERTICAL LEFT ── */}
-                            {tlLayout === 'vertical-left' && (
-                              <div className="relative">
-                                {tlNodes.length > 1 && (
-                                  <div className="absolute left-4 top-5 bottom-5 w-0.5" style={{ backgroundColor: tlLine }} />
-                                )}
-                                <div className="flex flex-col">
-                                  {tlNodes.map((node: any, idx: number) => (
-                                    <div key={node.id} className="flex gap-6 pb-10 last:pb-0">
-                                      <TlDot idx={idx} />
-                                      <div className="flex-1 pt-1"><TlContent node={node} /></div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* ── VERTICAL CENTER (ALTERNATING) ── */}
-                            {tlLayout === 'vertical-center' && (
-                              <div className="relative">
-                                {tlNodes.length > 1 && (
-                                  <div className="absolute left-1/2 top-5 bottom-5 w-0.5 -translate-x-1/2" style={{ backgroundColor: tlLine }} />
-                                )}
-                                <div className="flex flex-col">
-                                  {tlNodes.map((node: any, idx: number) => {
-                                    const isEven = idx % 2 === 0;
-                                    return (
-                                      <div key={node.id} className="flex items-start gap-6 pb-10 last:pb-0">
-                                        <div className="flex-1 pt-1 min-w-0">
-                                          {isEven && <TlContent node={node} alignRight />}
-                                        </div>
-                                        <TlDot idx={idx} />
-                                        <div className="flex-1 pt-1 min-w-0">
-                                          {!isEven && <TlContent node={node} />}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* ── HORIZONTAL ── */}
-                            {tlLayout === 'horizontal' && (
-                              <div className="overflow-x-auto pb-2">
-                                <div className="relative flex" style={{ minWidth: `${Math.max(tlNodes.length * 140, 300)}px` }}>
-                                  {tlNodes.length > 1 && (
-                                    <div className="absolute top-4 h-0.5 z-0"
-                                      style={{ backgroundColor: tlLine, left: '36px', right: '36px' }} />
-                                  )}
-                                  {tlNodes.map((node: any, idx: number) => (
-                                    <div key={node.id} className="flex-1 flex flex-col items-center gap-3 relative z-10 px-1">
-                                      <TlDot idx={idx} />
-                                      <div className="text-center w-full">
-                                        <div className="flex items-start justify-center gap-1">
-                                          <input value={node.title} onChange={e => tlUpdNode(node, 'title', e.target.value)}
-                                            className="font-black text-sm bg-transparent outline-none border-b border-transparent focus:border-orange-500 text-center min-w-0 flex-1" />
-                                          <button onClick={e => { e.stopPropagation(); tlDelNode(node.id); }}
-                                            className="text-red-400 hover:text-red-600 text-[10px] font-bold shrink-0 mt-1">✕</button>
-                                        </div>
-                                        <textarea value={node.desc} onChange={e => tlUpdNode(node, 'desc', e.target.value)}
-                                          ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                                          className="text-gray-500 text-xs w-full bg-transparent outline-none mt-1 resize-none leading-relaxed text-center border border-transparent focus:border-gray-300"
-                                          style={{ overflow: 'hidden', minHeight: '1.5em' }} />
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            <button onClick={e => { e.stopPropagation(); upd(block.id, 'nodes', [...tlNodes, { id: Date.now().toString(), title: '새 단계', desc: '설명을 입력하세요.' }]); }}
-                              className="mt-4 py-2 px-4 border border-dashed border-gray-200 hover:border-black text-gray-400 hover:text-black text-xs font-bold flex items-center gap-1.5 transition-colors">
-                              <Plus className="w-3 h-3" /> 단계 추가
-                            </button>
-                          </div>
-                        );
-                      })()}
-
-                      {/* BUTTON */}
-                      {block.type === 'button' && (
-                        <div className="flex justify-center w-full" style={{ paddingTop: `${block.paddingY || 32}px`, paddingBottom: `${block.paddingY || 32}px`, backgroundColor: block.bgColor || 'transparent' }}>
-                          <input value={block.text || '버튼 텍스트'} onChange={e => upd(block.id, 'text', e.target.value)}
-                            className={`font-black border-2 border-black outline-none text-center ${block.btnSize === 's' ? 'px-6 py-2 text-xs min-w-[100px]' : block.btnSize === 'l' ? 'px-14 py-5 text-xl min-w-[240px]' : 'px-10 py-4 text-base min-w-[200px]'}`}
-                            style={{
-                              backgroundColor: block.btnBg || resolveThemeHex(activeTheme),
-                              color: block.btnTextColor || (activeTheme === 'white' ? '#000' : '#fff'),
-                              borderRadius: `${block.radius || 0}px`,
-                              boxShadow: '4px 4px 0 0 rgba(0,0,0,0.9)',
-                              letterSpacing: '0.02em',
-                            }} />
-                        </div>
-                      )}
-
-                      {/* IMAGE */}
-                      {block.type === 'image' && (
-                        <div className="w-full flex justify-center px-8" style={{ paddingTop: `${block.paddingY || 16}px`, paddingBottom: `${block.paddingY || 16}px`, backgroundColor: block.bgColor || 'transparent' }}>
-                          {block.src ? (
-                            block.href ? (
-                              <a href={block.href} target={block.linkTarget || '_blank'} rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                                <img src={block.src} alt={block.alt || ''} style={{ width: `${block.width || 100}%`, borderRadius: `${block.radius || 0}px`, objectFit: block.objectFit || 'cover', maxHeight: '500px', display: 'block' }} />
-                              </a>
-                            ) : (
-                              <img src={block.src} alt={block.alt || ''} style={{ width: `${block.width || 100}%`, borderRadius: `${block.radius || 0}px`, objectFit: block.objectFit || 'cover', maxHeight: '500px', display: 'block' }} />
-                            )
-                          ) : (
-                            <div className="w-full h-44 bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 text-gray-400"
-                              style={{ borderRadius: `${block.radius || 0}px` }}>
-                              <ImageIcon className="w-7 h-7" />
-                              <span className="text-xs font-bold">우측 패널에서 이미지 URL을 입력하세요</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* SPACER */}
-                      {block.type === 'spacer' && (
-                        <div className="w-full relative flex items-center justify-center border-y border-dashed border-transparent hover:border-gray-200 transition-colors group/sp"
-                          style={{ height: `${block.height || 64}px`, backgroundColor: block.bgColor || 'transparent' }}>
-                          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover/sp:opacity-100 transition-opacity">
-                            <input type="range" min={8} max={320} step={8} value={block.height || 64}
-                              onChange={e => upd(block.id, 'height', Number(e.target.value))}
-                              className="w-40 accent-orange-500 cursor-ew-resize" />
-                            <span className="text-xs font-bold text-gray-400 w-12">{block.height || 64}px</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* DIVIDER */}
-                      {block.type === 'divider' && (
-                        <div className="w-full px-8" style={{ paddingTop: `${block.paddingY || 24}px`, paddingBottom: `${block.paddingY || 24}px`, backgroundColor: block.bgColor || 'transparent' }}>
-                          <hr style={{ borderStyle: block.style || 'solid', borderTopWidth: `${block.thickness || 1}px`, borderColor: block.color || '#e5e7eb', width: `${block.width || 100}%`, margin: '0 auto' }} />
-                        </div>
-                      )}
-
-                    </div>
-                  );
-                })}
-
-                <div className="py-8 px-10">
-                  <div className="w-full py-6 border-2 border-dashed border-gray-200 flex items-center justify-center gap-2 text-gray-300 text-xs font-bold">
-                    <Plus className="w-3.5 h-3.5" /> 좌측 팔레트에서 위젯을 추가하세요
+                {/* 섹션 밖으로 빼기(위젯) / 끝으로 이동 드롭존 — 드래그 중에만 노출 */}
+                {dragId && (
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOverId('__bottom__'); }}
+                    onDrop={e => { e.preventDefault(); onDropOnTop(null); }}
+                    className={`mx-10 my-3 py-4 border-2 border-dashed rounded-ctl text-center text-[12px] font-bold transition-colors ${dragOverId === '__bottom__' ? 'border-green-500 bg-green-50 text-green-600' : 'border-sand-300 text-sand-400'}`}>
+                    ⬇ 여기에 놓으면 섹션 밖 맨 아래로 이동합니다
                   </div>
+                )}
+
+                {blocks.length > 0 && (
+                  <div className="py-8 px-10">
+                    <button onClick={() => setWidgetPickerOpen(true)} className="w-full py-6 border-2 border-dashed border-sand-200 hover:border-brand flex items-center justify-center gap-2 text-sand-400 hover:text-brand text-xs font-bold transition-colors">
+                      <Plus className="w-3.5 h-3.5" /> 위젯 추가
+                    </button>
+                  </div>
+                )}
                 </div>
               </div>
             </div>
@@ -1092,7 +976,7 @@ export default function Workspace() {
           {showFloatingBtn && (
             <div className="sticky bottom-6 self-end mr-4 z-50 pointer-events-none max-w-[860px] w-full flex justify-end -mt-16">
               <button
-                className={`pointer-events-auto px-6 py-3 font-black border-2 border-black text-sm shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-y-1 transition-all ${getThemeText(activeTheme)}`}
+                className={`pointer-events-auto px-6 py-3 font-black border border-transparent rounded-ctl text-sm shadow-btn hover:-translate-y-0.5 transition-all ${getThemeText(activeTheme)}`}
                 style={{ backgroundColor: resolveThemeHex(activeTheme) }}
               >
                 지원하기 →
@@ -1101,49 +985,153 @@ export default function Workspace() {
           )}
         </main>
 
-        {/* ── Right Panel ── */}
+        {/* ── Right Panel (접기/펼치기 + 부드러운 전환) ──
+            얇은 핸들 바는 항상 노출 → 접힌 상태에서도 다시 펼칠 수 있다.
+            패널 본문은 width+opacity 슬라이드로 등장/이탈(motion, reduced-motion 시 즉시). */}
+        <div className="flex shrink-0 min-h-0">
+          {/* 토글 레일 — 좌측 레일(w-14)과 동일한 두께·스타일로 맞춰 항상 또렷하게 보이도록 */}
+          <div className="w-14 shrink-0 border-l border-sand-200 bg-white flex flex-col items-center pt-4 gap-1.5">
+            <button
+              onClick={togglePanel}
+              title={panelOpen ? '속성 패널 접기' : '속성 패널 펼치기'}
+              className="w-10 h-10 flex items-center justify-center border border-sand-300 rounded-ctl bg-white hover:bg-brand-tint hover:border-brand hover:text-brand transition-colors shadow-soft active:translate-y-0.5"
+            >
+              {panelOpen ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+            <span className="text-[10px] font-black text-sand-400 tracking-wide">{panelOpen ? '접기' : '속성'}</span>
+          </div>
+          <AnimatePresence initial={false}>
+            {panelOpen && (
+              <motion.div
+                key="prop-panel"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 288, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={panelTransition}
+                className="overflow-hidden flex min-h-0"
+              >
         {selectedBlock ? (
           <BlockPropertiesPanel
             block={selectedBlock}
-            onUpdate={(field, value) => upd(selectedBlock.id, field, value)}
+            kind={selectedKind}
+            onUpdate={(field, value) => {
+              if (field === '__setCols') handleSetRowCols(selectedBlock.id, value);
+              else if (field === '__merge') commit(patchNode(blocks, selectedBlock.id, value), false, `${selectedBlock.id}:merge`);
+              else if (field === '__layoutOp') {
+                /* 섹션 레이아웃 관리 모달의 구조 변경 — 섹션 선택을 유지(위젯으로 선택이 옮겨가면 모달이 깨짐) */
+                const v = value;
+                if (v.op === 'addRow') addRowToSection(selectedBlock.id, v.cols ?? 1);
+                else if (v.op === 'setCols') handleSetRowCols(v.rowId, v.n);
+                else if (v.op === 'setRatio') commit(patchNode(blocks, v.rowId, { colRatios: v.ratios }), false, `${v.rowId}:ratio`);
+                else if (v.op === 'addWidget') commit(insertInColumn(blocks, makeWidget(v.type), selectedBlock.id, v.rowId, v.colId), true);
+                else if (v.op === 'delNode') commit(deleteNode(blocks, v.id), true);
+                else if (v.op === 'moveRow') handleMoveRow(selectedBlock.id, v.rowId, v.dir);
+                else if (v.op === 'moveWidget') handleMoveBlock(v.id, v.dir);
+              }
+              else upd(selectedBlock.id, field, value);
+            }}
             onDeselect={() => setSelectedBlockId(null)}
             onDelete={() => handleDeleteBlock(selectedBlock.id)}
-            themeHex={themeHex}
+            themeHex={THEME_HEX}
             activeTheme={activeTheme}
           />
         ) : (
           <WorkspaceProperties
             activeTheme={activeTheme} setActiveTheme={mkConfigSetter(setActiveTheme, 'activeTheme')}
-            coverImg={coverImg} setCoverImg={mkConfigSetter(setCoverImg, 'coverImg')}
-            clubName={clubName} setClubName={mkConfigSetter(setClubName, 'clubName')}
-            hashtag1={hashtag1} setHashtag1={mkConfigSetter(setHashtag1, 'hashtag1')}
-            hashtag2={hashtag2} setHashtag2={mkConfigSetter(setHashtag2, 'hashtag2')}
-            badgeText={badgeText} setBadgeText={mkConfigSetter(setBadgeText, 'badgeText')}
             showFloatingBtn={showFloatingBtn} setShowFloatingBtn={mkConfigSetter(setShowFloatingBtn, 'showFloatingBtn')}
+            smoothScroll={smoothScroll} setSmoothScroll={mkConfigSetter(setSmoothScroll, 'smoothScroll')}
             contentWidth={contentWidth} setContentWidth={mkConfigSetter(setContentWidth, 'contentWidth')}
             pageBgColor={pageBgColor} setPageBgColor={mkConfigSetter(setPageBgColor, 'pageBgColor')}
             globalFont={globalFont} setGlobalFont={mkConfigSetter(setGlobalFont, 'globalFont')}
-            pageTitle={pageTitle} setPageTitle={mkConfigSetter(setPageTitle, 'pageTitle')}
-            pageDesc={pageDesc} setPageDesc={mkConfigSetter(setPageDesc, 'pageDesc')}
           />
         )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 font-bold text-sm flex items-center gap-2 shadow-[4px_4px_0_0_rgba(249,115,22,0.7)]">
+        <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-card font-bold text-sm flex items-center gap-2 shadow-soft-lg">
           <Check className="w-4 h-4 text-green-400" /> {toast}
+        </div>
+      )}
+
+      {/* ── 저장 충돌 모달 — 다른 운영진이 먼저 저장해 버전이 어긋났을 때 ── */}
+      {conflict && (
+        <div className="fixed inset-0 z-[300] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg w-[440px] max-w-[92vw] p-6">
+            <div className="font-black text-lg mb-2 text-ink">다른 사람이 페이지를 수정했어요</div>
+            <p className="text-[13px] font-bold text-sand-600 leading-relaxed mb-5">
+              내가 편집하는 동안 다른 운영진이 이 페이지를 저장했습니다.
+              지금 내 변경을 그대로 저장하면 <b className="text-ink">상대의 변경이 사라집니다.</b><br />
+              어떻게 할지 선택해 주세요.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={resolveReload}
+                className="w-full px-4 py-2.5 font-black text-sm border border-transparent rounded-ctl btn-grad text-white shadow-btn hover:-translate-y-0.5 active:translate-y-0 transition-all">
+                최신 내용 불러오기 <span className="font-bold text-white/80">(내 변경 취소)</span>
+              </button>
+              <button onClick={resolveOverwrite}
+                className="w-full px-4 py-2.5 font-black text-sm border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 hover:border-brand shadow-soft active:translate-y-px transition-all">
+                내 변경으로 덮어쓰기 <span className="font-bold text-sand-500">(상대 변경 삭제)</span>
+              </button>
+            </div>
+            <p className="text-[11px] font-bold text-sand-400 mt-3 leading-snug">
+              내 변경이 중요하다면 먼저 내용을 복사해 둔 뒤 ‘최신 내용 불러오기’를 누르는 것이 안전합니다.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 섹션 템플릿 갤러리 모달 (좌측 레일 템플릿 버튼) */}
+      <SectionTemplateModal open={templateModalOpen} activeTheme={activeTheme}
+        onClose={() => setTemplateModalOpen(false)} onInsert={handleInsertTemplate} />
+
+      {/* 위젯 추가 모달 (좌측 레일 + 버튼) */}
+      {widgetPickerOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" onClick={() => setWidgetPickerOpen(false)}>
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg p-5 w-[540px] max-w-[92vw] animate-slide-down" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="font-black text-base text-ink">위젯 추가</div>
+              <button onClick={() => setWidgetPickerOpen(false)} className="p-1.5 border border-sand-200 hover:border-brand rounded-ctl transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2 max-h-[62vh] overflow-y-auto hide-scrollbar">
+              {PALETTE.map(({ type, label, icon: Icon, disabled }) => (
+                <button key={type} disabled={disabled} onClick={() => { handleAddBlock(type); setWidgetPickerOpen(false); }}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 border rounded-ctl transition-all text-center group
+                    ${disabled ? 'border-sand-100 text-sand-400 cursor-not-allowed bg-sand-50'
+                      : 'border-sand-200 hover:border-brand hover:bg-brand-tint hover:shadow-soft hover:-translate-y-0.5 cursor-pointer'}`}>
+                  <Icon className={`w-5 h-5 shrink-0 ${disabled ? 'text-sand-400' : 'text-sand-500 group-hover:text-brand'}`} />
+                  <span className={`font-bold text-[12px] leading-tight ${disabled ? 'text-sand-400' : 'text-sand-600 group-hover:text-brand'}`}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 섹션 컬럼 위젯 피커 */}
+      {colPicker && (
+        <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center" onClick={() => setColPicker(null)}>
+          <div className="bg-white rounded-card border border-sand-200 shadow-soft-lg p-4 w-[360px]" onClick={e => e.stopPropagation()}>
+            <div className="text-xs font-black mb-3 text-ink">이 칸에 추가할 위젯 선택</div>
+            <div className="grid grid-cols-3 gap-1.5 max-h-[60vh] overflow-y-auto hide-scrollbar">
+              {COLUMN_WIDGETS.map(({ type, label, icon: Icon }) => (
+                <button key={type} onClick={() => { addWidgetToColumn(type, colPicker.sectionId, colPicker.rowId, colPicker.colId); setColPicker(null); }}
+                  className="flex flex-col items-center gap-1 p-2.5 border border-sand-200 rounded-ctl hover:border-brand hover:bg-brand-tint transition-colors">
+                  <Icon className="w-4 h-4 text-sand-500" />
+                  <span className="text-[12px] font-bold text-sand-600 leading-tight text-center">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slideDownIn { from { opacity:0; transform:translateY(-12px) scale(0.99); } to { opacity:1; transform:none; } }
         .animate-slide-down { animation: slideDownIn 0.2s cubic-bezier(0.16,1,0.3,1) forwards; }
-        @keyframes wbFadeIn { from { opacity:0; } to { opacity:1; } }
-        @keyframes wbSlideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:none; } }
-        @keyframes wbSlideIn { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:none; } }
-        .wb-anim-fadeIn { animation: wbFadeIn 0.7s ease forwards; }
-        .wb-anim-slideUp { animation: wbSlideUp 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
-        .wb-anim-slideIn { animation: wbSlideIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
       ` }} />
     </div>
   );

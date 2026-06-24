@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="ourclub emblem — fish in the orange sea">
+  <rect x="20" y="20" width="560" height="560" rx="120" fill="#F97316"/>
+  <g transform="translate(64 150) scale(0.60)" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="295" cy="260" rx="205" ry="150"/>
+    <path d="M 505 260
+             C 535 165 715 165 730 235
+             C 742 292 588 305 505 260
+             C 588 215 742 228 730 285
+             C 715 355 535 355 505 260 Z"/>
+  </g>
+  <circle cx="183" cy="305" r="13" fill="#FFFFFF"/>
+</svg>

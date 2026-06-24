@@ -4,11 +4,15 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { NumberTicker } from '../../components/ui/NumberTicker';
 import { FadeInText } from '../../components/ui/FadeInText';
+import { STORY_ENABLED } from '../../lib/features';
+import { BannerSlider } from '../../components/ui/BannerSlider';
+import { getBanners } from '../../data/banners';
+import { usePublicStats } from '../../hooks/usePublicStats';
 
 const MARQUEE_EVENTS = [
-  "🔥 마케팅 동아리 '마제스티', 기업 A 신제품 프로모션 성공적 수주 완료",
-  "🔒 IT 동아리 '코드크래프트', 14기 운영진 전원 안전 검증 통과",
-  "💼 창업 동아리 '스타터스', 시드 투자 유치 및 B2B 협약 체결",
+  "🎨 디자인 동아리 '모노그램', 홈페이지 오픈 후 신입 지원 3배 증가",
+  "📋 IT 동아리 '코드크래프트', 출석·회비 관리 자동화로 운영 시간 70% 절약",
+  "💼 마케팅 동아리 '마제스티', 기업 신제품 프로모션 프로젝트 진행",
   "🏆 기획 동아리 '플래너스', 13기 누적 회비 100% 투명 공개 달성",
 ];
 
@@ -40,59 +44,69 @@ function useCarousel() {
   return { ref, scroll, dragging, dragHandlers };
 }
 
-const HeroSection = () => (
-  <section className="grid grid-cols-1 md:grid-cols-3 border-b border-black">
-    <div className="md:col-span-2 p-8 md:p-12 lg:p-16 border-r-0 md:border-r border-black flex flex-col justify-between bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
-      <div>
-        <span className="inline-block px-3 py-1 border border-black bg-white font-bold text-sm mb-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-          B2B 동아리를 위한 관문
+const HeroSection = () => {
+  const stats = usePublicStats();
+  return (
+  <section className="relative overflow-hidden border-b border-sand-200 bg-sand-50 hero-glow">
+    {/* 연속 배경(도트) — 섹션 전체에 끊김 없이 깔린다 */}
+    <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#EBE6DF_1px,transparent_1px)] [background-size:16px_16px] opacity-60" />
+    <div className="relative max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-24 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12 items-center">
+      {/* 좌측 카피 */}
+      <div className="md:col-span-2">
+        <span className="inline-block px-3 py-1 bg-brand-tint text-brand-dark font-bold text-sm mb-6 rounded-ctl">
+          동아리·학회를 위한 운영 플랫폼
         </span>
         <FadeInText as="h1" className="text-4xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight mb-6">
-          <span className="text-orange-500 block">100% 검증된 청정 구역,</span>
-          진짜 실무 스펙을 쌓는<br />B2B 동아리 허브
+          <span className="text-brand block">동아리·학회 운영,</span>
+          이제 한 곳에서<br />시작하세요
         </FadeInText>
-        <p className="text-lg font-medium text-gray-700 mb-12 max-w-xl">
-          불확실한 동아리 활동은 그만. 신원 검증과 예산 투명성이 확인된 오렌지 뱃지 클럽에서 진짜 기업의 프로젝트를 수주하세요.
+        <p className="text-lg font-medium text-sand-600 mb-10 max-w-xl">
+          흩어진 카톡·엑셀, 복잡한 웹빌더는 그만. 우리 동아리 홈페이지를 만들고, 출석·회비·모집을 한 번에 관리하세요. 그리고 기업과 진짜 프로젝트로 한 단계 더 성장하세요.
         </p>
+        <div className="flex flex-col gap-3 reveal-up">
+          <Link to="/club-setup" className="inline-flex group flex-row items-center gap-4 btn-grad text-white px-8 py-5 text-xl font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all w-fit">
+            🚀 우리 동아리 시작하기
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" strokeWidth={2.5} />
+          </Link>
+          <Link to="/clubs" className="text-sm font-bold text-sand-500 hover:text-brand transition-colors w-fit">
+            동아리 찾는 학생이신가요? 동아리 둘러보기 →
+          </Link>
+        </div>
       </div>
-      <div>
-        <Link to="/clubs" className="inline-flex group flex-row items-center gap-4 bg-orange-500 border border-black px-8 py-5 text-xl font-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-all">
-          🚀 검증된 동아리 합류하기
-          <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-        </Link>
-      </div>
-    </div>
-    <div className="grid grid-rows-2">
-      <div className="p-8 border-b border-black bg-gray-100 text-black flex flex-col justify-center">
-        <div className="flex items-center gap-2 mb-2">
-          <CheckCircle className="w-5 h-5 text-orange-500" />
-          <span className="font-bold tracking-widest text-sm">엄격한 동아리 검증</span>
+      {/* 우측 지표 — 연속 배경 위 소프트 카드 (분할선·다른 배경색 제거) */}
+      <div className="flex flex-col gap-4">
+        <div className="stat-grad border border-sand-200 rounded-card shadow-soft p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-5 h-5 text-brand" strokeWidth={2.5} />
+            <span className="font-bold tracking-widest text-sm text-sand-600">한 곳에서 운영 중</span>
+          </div>
+          <div className="text-4xl md:text-5xl font-black text-ink mb-2">
+            <NumberTicker value={stats?.clubs ?? 0} /><span className="text-2xl text-sand-500 ml-2">팀</span>
+          </div>
+          <p className="text-sand-600 font-medium text-sm">의 동아리·학회가 OURCLUB으로 홈페이지와 운영을 해결하고 있어요.</p>
         </div>
-        <div className="text-5xl font-black text-black mb-2">
-          <NumberTicker value={124} /><span className="text-2xl text-gray-500 ml-2">팀</span>
+        <div className="stat-grad border border-sand-200 rounded-card shadow-soft p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Briefcase className="w-5 h-5 text-brand" strokeWidth={2.5} />
+            <span className="font-bold tracking-widest text-sm text-sand-600">기업과 함께한 프로젝트</span>
+          </div>
+          <div className="text-4xl md:text-5xl font-black text-ink mb-2">
+            <NumberTicker value={stats?.completedProjects ?? 0} duration={1600} /><span className="text-2xl text-sand-500 ml-2">건</span>
+          </div>
+          <p className="text-sand-600 font-medium text-sm">동아리들이 기업과 함께 완료한 협업 프로젝트입니다.</p>
         </div>
-        <p className="text-gray-600 font-medium">의 동아리가 엄격한 안전 검증을 통과하여 오렌지 뱃지를 획득했습니다.</p>
-      </div>
-      <div className="p-8 bg-white flex flex-col justify-center">
-        <div className="flex items-center gap-2 mb-2">
-          <Briefcase className="w-5 h-5" />
-          <span className="font-bold tracking-widest text-sm">B2B 프로젝트 매칭</span>
-        </div>
-        <div className="text-5xl font-black text-black mb-2">
-          <NumberTicker value={45} duration={1600} /><span className="text-2xl text-gray-500 ml-2">건</span>
-        </div>
-        <p className="text-gray-600 font-medium">이번 달 동아리들이 기업으로부터 성공적으로 수주한 협업 건수입니다.</p>
       </div>
     </div>
   </section>
-);
+  );
+};
 
 const Marquee = () => (
-  <div className="flex overflow-hidden bg-orange-500 border-b border-black py-3 select-none">
+  <div className="flex overflow-hidden bg-brand-tint py-3 select-none">
     <div className="flex flex-shrink-0 animate-marquee whitespace-nowrap items-center">
       {[...MARQUEE_EVENTS, ...MARQUEE_EVENTS].map((text, i) => (
-        <span key={i} className="mx-4 font-bold text-black text-sm md:text-base flex items-center">
-          {text} <span className="mx-4 w-1.5 h-1.5 bg-black rounded-full inline-block" />
+        <span key={i} className="mx-4 font-bold text-ink text-sm md:text-base flex items-center">
+          {text} <span className="mx-4 w-1.5 h-1.5 bg-brand rounded-full inline-block" />
         </span>
       ))}
     </div>
@@ -107,24 +121,24 @@ const SectionHead = ({ eyebrow, title, subtitle, linkTo, linkLabel, onPrev, onNe
   eyebrow: string; title: React.ReactNode; subtitle?: string;
   linkTo?: string; linkLabel?: string; onPrev: () => void; onNext: () => void;
 }) => (
-  <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+  <div className="max-w-6xl mx-auto px-6 md:px-12 flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
     <div>
-      <div className="text-orange-500 font-bold tracking-widest text-sm mb-3 flex items-center gap-2">
-        <span className="w-3 h-3 bg-orange-500 border border-black inline-block" />
+      <div className="text-brand font-bold tracking-widest text-sm mb-3 flex items-center gap-2">
+        <span className="w-3 h-3 bg-brand-accent rounded-md inline-block" />
         {eyebrow}
       </div>
       <FadeInText as="h2" className="text-4xl md:text-5xl font-black tracking-tight mb-3 leading-tight">{title}</FadeInText>
-      {subtitle && <p className="font-medium text-gray-500 text-lg">{subtitle}</p>}
+      {subtitle && <p className="font-medium text-sand-500 text-lg">{subtitle}</p>}
     </div>
     <div className="flex gap-2 flex-shrink-0 items-center">
       {linkTo && linkLabel && (
-        <Link to={linkTo} className="text-sm font-black underline hover:text-orange-500 transition-colors mr-4 hidden md:block">{linkLabel}</Link>
+        <Link to={linkTo} className="text-sm font-black underline hover:text-brand transition-colors mr-4 hidden md:block">{linkLabel}</Link>
       )}
-      <button onClick={onPrev} className="w-12 h-12 border border-black flex items-center justify-center hover:bg-orange-500 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all bg-white">
-        <ChevronRight className="w-6 h-6 rotate-180" />
+      <button onClick={onPrev} className="w-12 h-12 border border-sand-200 rounded-ctl flex items-center justify-center bg-white shadow-soft hover:shadow-soft-lg hover:-translate-y-1 hover:text-brand transition-all">
+        <ChevronRight className="w-6 h-6 rotate-180" strokeWidth={2.5} />
       </button>
-      <button onClick={onNext} className="w-12 h-12 border border-black flex items-center justify-center hover:bg-orange-500 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all bg-white">
-        <ChevronRight className="w-6 h-6" />
+      <button onClick={onNext} className="w-12 h-12 border border-sand-200 rounded-ctl flex items-center justify-center bg-white shadow-soft hover:shadow-soft-lg hover:-translate-y-1 hover:text-brand transition-all">
+        <ChevronRight className="w-6 h-6" strokeWidth={2.5} />
       </button>
     </div>
   </div>
@@ -133,13 +147,13 @@ const SectionHead = ({ eyebrow, title, subtitle, linkTo, linkLabel, onPrev, onNe
 const FilterChips = ({ filters, active, onChange }: {
   filters: string[]; active: string; onChange: (f: string) => void;
 }) => (
-  <div className="flex gap-2 px-6 md:px-12 mb-8 overflow-x-auto hide-scrollbar">
+  <div className="flex gap-2 max-w-6xl mx-auto px-6 md:px-12 mb-8 overflow-x-auto hide-scrollbar">
     {filters.map(f => (
       <button
         key={f}
         onClick={() => onChange(f)}
-        className={`whitespace-nowrap px-5 py-2 font-bold border border-black text-sm transition-colors shrink-0 ${
-          active === f ? 'bg-black text-white shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]' : 'bg-white hover:bg-gray-100'
+        className={`whitespace-nowrap px-5 py-2 font-bold border text-sm rounded-ctl transition-all shrink-0 ${
+          active === f ? 'btn-grad text-white border-transparent shadow-btn' : 'bg-white border-sand-200 text-sand-600 hover:bg-sand-100'
         }`}
       >
         {f}
@@ -185,11 +199,11 @@ const StoryArchive = () => {
   }, []);
 
   return (
-    <section className="border-b border-black bg-gray-50 overflow-hidden py-24 md:py-32">
+    <section className="border-b border-sand-200 bg-sand-50 overflow-hidden py-24 md:py-32">
       <SectionHead
         eyebrow="INSIGHT & STORIES"
         title={<>검증된 동아리들의<br />생생한 스토리</>}
-        subtitle="오렌지 뱃지를 획득한 동아리들의 생생한 활동기와 인사이트입니다."
+        subtitle="인증을 마친 동아리들의 생생한 활동기와 인사이트입니다."
         linkTo="/stories"
         linkLabel="스토리 전체보기"
         onPrev={() => scroll('left')}
@@ -197,19 +211,19 @@ const StoryArchive = () => {
       />
       <div
         ref={ref}
-        className="flex overflow-x-auto px-6 md:px-12 gap-8 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
+        className="flex overflow-x-auto max-w-6xl mx-auto px-6 md:px-12 gap-8 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
         {...dragHandlers}
       >
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="snap-start shrink-0 min-w-[300px] md:min-w-[400px] w-[300px] md:w-[400px] border border-black bg-white flex flex-col animate-pulse"
+              className="snap-start shrink-0 min-w-[300px] md:min-w-[400px] w-[300px] md:w-[400px] border border-sand-200 rounded-card bg-white flex flex-col animate-pulse overflow-hidden"
             >
-              <div className="h-48 bg-gray-200 border-b border-black" />
+              <div className="h-48 bg-sand-100" />
               <div className="p-6 flex flex-col gap-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
+                <div className="h-4 bg-sand-100 rounded w-3/4" />
+                <div className="h-4 bg-sand-100 rounded w-1/2" />
               </div>
             </div>
           ))
@@ -218,26 +232,26 @@ const StoryArchive = () => {
             <div key={story.id} className="snap-start shrink-0" style={{ pointerEvents: dragging ? 'none' : 'auto' }}>
               <Link
                 to={`/stories/${story.id}`}
-                className="min-w-[300px] md:min-w-[400px] w-[300px] md:w-[400px] border border-black bg-white group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all flex flex-col block"
+                className="min-w-[300px] md:min-w-[400px] w-[300px] md:w-[400px] border border-sand-200 rounded-card bg-white shadow-soft group hover:shadow-soft-lg hover:-translate-y-1 transition-all flex flex-col block overflow-hidden"
               >
-                <div className="h-48 border-b border-black overflow-hidden relative bg-gray-100">
+                <div className="h-48 overflow-hidden relative thumb-grad">
                   {story.img ? (
                     <img
                       src={story.img}
                       alt={story.title}
-                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                      className="w-full h-full object-cover transition-all duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                      <span className="text-4xl font-black text-gray-400">{story.title[0]}</span>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-4xl font-black text-brand-peach">{story.title[0]}</span>
                     </div>
                   )}
-                  <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 text-xs font-bold border border-white">
+                  <div className="absolute top-4 left-4 bg-ink text-white px-3 py-1 text-xs font-bold rounded-md">
                     {story.tag}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col justify-center">
-                  <h3 className="text-xl font-bold leading-tight group-hover:text-orange-600 transition-colors">
+                  <h3 className="text-xl font-bold leading-tight group-hover:text-brand transition-colors">
                     {story.title}
                   </h3>
                 </div>
@@ -245,7 +259,7 @@ const StoryArchive = () => {
             </div>
           ))
         ) : (
-          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-gray-400 font-bold">
+          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-sand-400 font-bold">
             아직 발행된 스토리가 없습니다.
           </div>
         )}
@@ -289,7 +303,7 @@ const ClubCarousel = () => {
             logo_url: string | null; one_line_desc: string | null; is_certified: boolean;
             recruitments: { id: string; status: string; deadline: string | null }[];
           }[]).map(row => {
-            const active = (row.recruitments ?? []).filter(r => ['진행중', '모집중'].includes(r.status));
+            const active = (row.recruitments ?? []).filter(r => ['진행중'].includes(r.status));
             const nearest = active
               .filter(r => r.deadline)
               .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];
@@ -314,11 +328,11 @@ const ClubCarousel = () => {
   const filtered = activeFilter === '전체' ? clubs : clubs.filter(c => c.category === activeFilter);
 
   return (
-    <section className="border-b border-black bg-white overflow-hidden py-24 md:py-32">
+    <section className="border-b border-sand-200 bg-white overflow-hidden py-24 md:py-32">
       <SectionHead
-        eyebrow="CURATED CLUBS"
-        title={<>검증된 동아리<br />큐레이션</>}
-        subtitle="OURCLUB이 직접 심사한 오렌지 뱃지 동아리만 모았습니다."
+        eyebrow="CLUBS & SOCIETIES"
+        title={<>지금 활동 중인<br />동아리·학회</>}
+        subtitle="OURCLUB에서 운영 중인 동아리·학회를 둘러보세요. 인증을 마친 곳에는 인증 뱃지가 붙어요."
         linkTo="/clubs"
         linkLabel="동아리 전체보기"
         onPrev={() => scroll('left')}
@@ -327,17 +341,17 @@ const ClubCarousel = () => {
       <FilterChips filters={CLUB_FILTERS} active={activeFilter} onChange={setActiveFilter} />
       <div
         ref={ref}
-        className="flex overflow-x-auto px-6 md:px-12 gap-6 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
+        className="flex overflow-x-auto max-w-6xl mx-auto px-6 md:px-12 gap-6 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
         {...dragHandlers}
       >
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="snap-start shrink-0 min-w-[300px] md:min-w-[340px] w-[300px] md:w-[340px] border border-black bg-white flex flex-col animate-pulse">
-              <div className="h-44 bg-gray-200 border-b border-black" />
+            <div key={i} className="snap-start shrink-0 min-w-[300px] md:min-w-[340px] w-[300px] md:w-[340px] border border-sand-200 rounded-card bg-white flex flex-col animate-pulse overflow-hidden">
+              <div className="h-44 bg-sand-100" />
               <div className="p-5 flex flex-col gap-3">
-                <div className="h-3 bg-gray-200 rounded w-1/3" />
-                <div className="h-5 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-3 bg-sand-100 rounded w-1/3" />
+                <div className="h-5 bg-sand-100 rounded w-3/4" />
+                <div className="h-3 bg-sand-100 rounded w-1/2" />
               </div>
             </div>
           ))
@@ -346,45 +360,41 @@ const ClubCarousel = () => {
             <div key={club.id} className="snap-start shrink-0" style={{ pointerEvents: dragging ? 'none' : 'auto' }}>
               <Link
                 to={`/clubs/${club.slug}`}
-                className="min-w-[300px] md:min-w-[340px] w-[300px] md:w-[340px] border border-black bg-white group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all flex flex-col block"
+                className="min-w-[300px] md:min-w-[340px] w-[300px] md:w-[340px] bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all block"
               >
-                <div className="h-44 border-b border-black overflow-hidden relative bg-gray-100">
+                <div className="h-36 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach overflow-hidden">
                   {club.img ? (
-                    <img src={club.img} alt={club.name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    <img src={club.img} alt={club.name} className="w-full h-full object-cover transition-all duration-500" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                      <span className="text-4xl font-black text-gray-400">{club.name[0]}</span>
-                    </div>
+                    club.name[0]
                   )}
-                  <div className="absolute top-3 left-3 bg-black text-white px-2 py-1 text-xs font-bold">{club.category}</div>
+                  <div className="absolute top-2.5 left-2.5 bg-ink text-white text-[10px] font-bold px-2 py-0.5 rounded-md leading-tight">{club.category}</div>
                   {club.badge && (
-                    <div className="absolute top-3 right-3 bg-orange-500 w-7 h-7 border border-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                      <CheckCircle className="w-4 h-4 text-white" />
+                    <div className="absolute top-2.5 right-2.5 bg-brand-accent text-white w-6 h-6 rounded-ctl flex items-center justify-center text-sm font-black shadow-soft">
+                      <CheckCircle className="w-4 h-4 text-white" strokeWidth={2.5} />
                     </div>
                   )}
                 </div>
-                <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="text-lg font-black mb-2 group-hover:text-orange-600 transition-colors leading-tight">{club.name}</h3>
+                <div className="p-4">
+                  <h3 className="font-black mb-1 group-hover:text-brand transition-colors">{club.name}</h3>
                   {club.desc && (
-                    <p className="text-xs font-medium text-gray-500 mb-4 leading-relaxed line-clamp-2">{club.desc}</p>
+                    <p className="text-xs font-medium text-sand-500 mb-3 line-clamp-2">{club.desc}</p>
                   )}
-                  <div className="mt-auto">
-                    {club.isRecruiting ? (
-                      <div className="w-full bg-orange-500 border border-black py-2.5 font-bold text-black text-center text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                        🔶 모집중{club.dDay !== null ? ` · D-${club.dDay}` : ''}
-                      </div>
-                    ) : (
-                      <div className="w-full bg-gray-100 border border-black py-2.5 font-medium text-gray-400 text-center text-sm">
-                        모집 마감
-                      </div>
-                    )}
-                  </div>
+                  {club.isRecruiting ? (
+                    <div className="cta-grad text-brand-dark text-center py-2 text-xs font-bold rounded-ctl">
+                      🔶 모집중{club.dDay !== null ? ` · D-${club.dDay}` : ''}
+                    </div>
+                  ) : (
+                    <div className="bg-sand-100 text-sand-400 text-center py-2 text-xs font-bold rounded-ctl">
+                      모집 마감
+                    </div>
+                  )}
                 </div>
               </Link>
             </div>
           ))
         ) : (
-          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-gray-400 font-bold">
+          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-sand-400 font-bold">
             해당 카테고리의 동아리가 없습니다.
           </div>
         )}
@@ -450,11 +460,11 @@ const ProjectCarousel = () => {
   const filtered = activeFilter === '전체' ? projects : projects.filter(p => p.category === activeFilter);
 
   return (
-    <section className="border-b border-black bg-gray-50 overflow-hidden py-24 md:py-32">
+    <section className="border-b border-sand-200 bg-sand-50 overflow-hidden py-24 md:py-32">
       <SectionHead
-        eyebrow="B2B PROJECTS"
-        title={<>진행 중인<br />B2B 프로젝트</>}
-        subtitle="기업들이 동아리에 제안한 실전 협업 프로젝트입니다."
+        eyebrow="COMPANY PROJECTS"
+        title={<>진행 중인<br />기업 프로젝트</>}
+        subtitle="기업이 동아리·학회에 제안한 실전 협업 프로젝트입니다."
         linkTo="/b2b"
         linkLabel="프로젝트 전체보기"
         onPrev={() => scroll('left')}
@@ -463,18 +473,18 @@ const ProjectCarousel = () => {
       <FilterChips filters={PROJECT_FILTERS} active={activeFilter} onChange={setActiveFilter} />
       <div
         ref={ref}
-        className="flex overflow-x-auto px-6 md:px-12 gap-6 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
+        className="flex overflow-x-auto max-w-6xl mx-auto px-6 md:px-12 gap-6 snap-x snap-mandatory hide-scrollbar py-4 cursor-grab select-none"
         {...dragHandlers}
       >
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="snap-start shrink-0 min-w-[300px] md:min-w-[360px] w-[300px] md:w-[360px] border border-black bg-white flex flex-col animate-pulse">
-              <div className="h-14 bg-gray-100 border-b border-black" />
+            <div key={i} className="snap-start shrink-0 min-w-[300px] md:min-w-[360px] w-[300px] md:w-[360px] border border-sand-200 rounded-card bg-white flex flex-col animate-pulse overflow-hidden">
+              <div className="h-14 bg-brand-tint" />
               <div className="p-5 flex flex-col gap-3">
-                <div className="h-3 bg-gray-200 rounded w-1/3" />
-                <div className="h-5 bg-gray-200 rounded w-full" />
-                <div className="h-5 bg-gray-200 rounded w-4/5" />
-                <div className="h-3 bg-gray-200 rounded w-1/2 mt-2" />
+                <div className="h-3 bg-sand-100 rounded w-1/3" />
+                <div className="h-5 bg-sand-100 rounded w-full" />
+                <div className="h-5 bg-sand-100 rounded w-4/5" />
+                <div className="h-3 bg-sand-100 rounded w-1/2 mt-2" />
               </div>
             </div>
           ))
@@ -483,30 +493,28 @@ const ProjectCarousel = () => {
             <div key={project.id} className="snap-start shrink-0" style={{ pointerEvents: dragging ? 'none' : 'auto' }}>
               <Link
                 to="/b2b"
-                className="min-w-[300px] md:min-w-[360px] w-[300px] md:w-[360px] border border-black bg-white group hover:shadow-[8px_8px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-2 transition-all flex flex-col block"
+                className="min-w-[300px] md:min-w-[360px] w-[300px] md:w-[360px] bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all block"
               >
-                <div className={`px-5 py-4 border-b border-black flex justify-between items-center ${project.isOpen ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                  <span className="text-sm font-bold text-gray-700 truncate mr-3">{project.company}</span>
-                  <span className={`text-xs font-black px-2.5 py-1 border shrink-0 ${
-                    project.isOpen ? 'bg-white text-green-700 border-green-500' : 'bg-gray-200 text-gray-500 border-gray-400'
+                <div className="px-4 py-3 bg-brand-tint flex justify-between items-center">
+                  <span className="text-xs font-bold text-sand-600 truncate mr-2">{project.company}</span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-ctl bg-white ${
+                    project.isOpen ? 'text-ok-fg' : 'text-off-fg'
                   }`}>{project.isOpen ? 'OPEN' : 'CLOSED'}</span>
                 </div>
-                <div className="p-5 flex-1 flex flex-col">
-                  <div className="flex gap-2 mb-3 flex-wrap">
-                    <span className="text-xs font-black px-2 py-0.5 bg-black text-white">{project.category}</span>
+                <div className="p-4">
+                  <div className="flex gap-1.5 mb-2 flex-wrap">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-ctl bg-ink text-white">{project.category}</span>
                     {project.dDayLabel && (
-                      <span className={`text-xs font-bold px-2 py-0.5 border ${
-                        project.dDayLabel === '마감' ? 'border-gray-300 text-gray-400' : 'border-orange-400 text-orange-600 bg-orange-50'
-                      }`}>{project.dDayLabel}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-ctl bg-brand-tint text-brand-dark">{project.dDayLabel}</span>
                     )}
                   </div>
-                  <h3 className="text-base font-black mb-3 leading-snug group-hover:text-orange-600 transition-colors line-clamp-2">{project.title}</h3>
+                  <h3 className="text-sm font-black mb-2 leading-snug group-hover:text-brand transition-colors line-clamp-2">{project.title}</h3>
                   {project.budget && (
-                    <p className="text-xs font-medium text-gray-500 mb-4">활동비 {project.budget.toLocaleString()}만원</p>
+                    <p className="text-xs font-medium text-sand-500 mb-4">활동비 {project.budget.toLocaleString()}만원</p>
                   )}
-                  <div className="flex flex-wrap gap-1.5 mt-auto">
+                  <div className="flex flex-wrap gap-1.5">
                     {project.tags.map(tag => (
-                      <span key={tag} className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5">{tag}</span>
+                      <span key={tag} className="text-xs text-sand-400 font-medium bg-sand-100 px-2 py-0.5 rounded-ctl">{tag}</span>
                     ))}
                   </div>
                 </div>
@@ -514,7 +522,7 @@ const ProjectCarousel = () => {
             </div>
           ))
         ) : (
-          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-gray-400 font-bold">
+          <div className="flex items-center justify-center w-full min-w-[400px] py-16 text-sand-400 font-bold">
             현재 진행 중인 프로젝트가 없습니다.
           </div>
         )}
@@ -525,27 +533,27 @@ const ProjectCarousel = () => {
 
 const Gateway = () => (
   <section className="grid grid-cols-1 md:grid-cols-2">
-    <Link to="/clubs" className="block border-r border-b md:border-b-0 border-black p-12 bg-gray-100 group cursor-pointer hover:bg-orange-500 transition-colors duration-300">
+    <Link to="/clubs" className="block border-r-0 border-b md:border-b-0 md:border-r border-sand-200 p-12 cta-grad text-ink group cursor-pointer transition-all duration-300">
       <div className="mb-8">
-        <Users className="w-12 h-12 mb-4 text-black group-hover:scale-110 transition-transform" />
-        <FadeInText as="h2" className="text-3xl font-black mb-2">동아리 큐레이션 보기</FadeInText>
-        <p className="font-medium text-gray-700 group-hover:text-black">안전하고 내 커리어에 도움되는 검증된 동아리를 탐색하고 지원하세요.</p>
+        <Users className="w-12 h-12 mb-4 text-brand group-hover:scale-110 transition-transform" strokeWidth={2.5} />
+        <FadeInText as="h2" className="text-3xl font-black mb-2">동아리·학회 둘러보기</FadeInText>
+        <p className="font-medium text-sand-600">관심 분야의 동아리·학회를 찾아 둘러보고 지원하세요. 인증을 마친 곳에는 인증 뱃지가 붙어요.</p>
       </div>
       <div className="flex justify-end">
-        <div className="w-16 h-16 border-2 border-black rounded-full flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors bg-white">
-          <ArrowRight className="w-8 h-8 -rotate-45 group-hover:rotate-0 transition-transform" />
+        <div className="w-16 h-16 btn-grad text-white rounded-full flex items-center justify-center shadow-btn group-hover:-translate-y-0.5 transition-all">
+          <ArrowRight className="w-8 h-8 -rotate-45 group-hover:rotate-0 transition-transform" strokeWidth={2.5} />
         </div>
       </div>
     </Link>
-    <Link to="/b2b" className="block p-12 bg-black text-white group cursor-pointer hover:bg-orange-500 hover:text-black transition-colors duration-300">
+    <Link to="/b2b" className="block p-12 cta-grad text-ink group cursor-pointer transition-all duration-300">
       <div className="mb-8">
-        <Briefcase className="w-12 h-12 mb-4 text-orange-500 group-hover:text-black group-hover:scale-110 transition-transform" />
+        <Briefcase className="w-12 h-12 mb-4 text-brand group-hover:scale-110 transition-transform" strokeWidth={2.5} />
         <FadeInText as="h2" className="text-3xl font-black mb-2">기업 프로젝트 라운지</FadeInText>
-        <p className="font-medium text-gray-400 group-hover:text-gray-900">검증된 동아리에게 외주, 행사 제휴 등 B2B 협업을 제안해보세요.</p>
+        <p className="font-medium text-sand-600">동아리·학회에게 프로젝트, 행사 제휴 등 협업을 제안해보세요.</p>
       </div>
       <div className="flex justify-end">
-        <div className="w-16 h-16 border-2 border-orange-500 rounded-full flex items-center justify-center bg-black text-white group-hover:bg-black group-hover:border-black transition-colors">
-          <ArrowRight className="w-8 h-8 -rotate-45 group-hover:rotate-0 transition-transform" />
+        <div className="w-16 h-16 btn-grad text-white rounded-full flex items-center justify-center shadow-btn group-hover:-translate-y-0.5 transition-all">
+          <ArrowRight className="w-8 h-8 -rotate-45 group-hover:rotate-0 transition-transform" strokeWidth={2.5} />
         </div>
       </div>
     </Link>
@@ -557,10 +565,15 @@ export default function Home() {
     <>
       <HeroSection />
       <Marquee />
-      <StoryArchive />
+      {STORY_ENABLED && <StoryArchive />}
       <ClubCarousel />
       <ProjectCarousel />
       <Gateway />
+      <section className="border-b border-sand-200 bg-sand-50 px-6 md:px-12 py-8">
+        <div className="max-w-6xl mx-auto">
+          <BannerSlider page="home" slides={getBanners('home')} />
+        </div>
+      </section>
     </>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader, CheckCircle, XCircle, ChevronRight, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
+import { statusColor } from '../../lib/statusColor';
 import { useAuth } from '../../contexts/AuthContext';
-import { MasterLayout } from './MasterLayout';
 
 interface JoinRequest {
   id: string;
@@ -19,14 +20,8 @@ interface JoinRequest {
 
 const STATUS_TABS = ['대기중', '승인', '거절'];
 
-const STATUS_STYLE: Record<string, string> = {
-  '대기중': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  '승인':   'bg-green-100 text-green-800 border-green-300',
-  '거절':   'bg-gray-100 text-gray-600 border-gray-300',
-};
-
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDate(iso, 'medium');
 }
 
 export default function JoinRequests() {
@@ -98,21 +93,21 @@ export default function JoinRequests() {
   };
 
   return (
-    <MasterLayout>
+    <>
       <div className="max-w-5xl mx-auto flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-black mb-1">합류 신청 심사</h1>
-          <p className="font-bold text-gray-500">기존 동아리에 운영진으로 합류하려는 신청을 처리하세요.</p>
+          <h1 className="text-3xl font-black text-ink mb-1">합류 신청 심사</h1>
+          <p className="font-bold text-sand-500">기존 동아리에 운영진으로 합류하려는 신청을 처리하세요.</p>
         </div>
 
         {/* 탭 */}
-        <div className="flex gap-0 border-2 border-black w-fit bg-white">
+        <div className="flex gap-1 border border-sand-200 rounded-ctl w-fit bg-sand-100 p-1">
           {STATUS_TABS.map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-5 py-2 font-black text-sm border-r-2 border-black last:border-r-0 transition-colors ${
-                tab === t ? 'bg-black text-white' : 'hover:bg-gray-100'
+              className={`px-5 py-1.5 font-black text-sm rounded-ctl transition-colors ${
+                tab === t ? 'bg-white text-ink shadow-soft' : 'text-sand-500 hover:text-ink'
               }`}
             >
               {t}
@@ -125,31 +120,31 @@ export default function JoinRequests() {
           <div className="w-72 shrink-0 flex flex-col gap-2">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-orange-500" />
+                <Loader className="w-6 h-6 animate-spin text-brand" strokeWidth={2.5} />
               </div>
             ) : list.length === 0 ? (
-              <div className="bg-white border-2 border-black p-8 text-center">
-                <p className="font-bold text-gray-400 text-sm">해당 상태의 신청이 없어요.</p>
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-8 text-center">
+                <p className="font-bold text-sand-400 text-sm">해당 상태의 신청이 없어요.</p>
               </div>
             ) : (
               list.map(req => (
                 <button
                   key={req.id}
                   onClick={() => setSelected(req)}
-                  className={`w-full text-left bg-white border-2 border-black p-4 transition-all hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${
-                    selected?.id === req.id ? 'shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] border-orange-500' : ''
+                  className={`w-full text-left bg-white border rounded-card p-4 transition-all hover:shadow-soft-lg ${
+                    selected?.id === req.id ? 'border-brand shadow-soft-lg' : 'border-sand-200 shadow-soft'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="font-black text-sm">{req.profiles?.name ?? '—'}</span>
-                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span className="font-black text-sm text-ink">{req.profiles?.name ?? '—'}</span>
+                    <ChevronRight className="w-4 h-4 text-sand-400 shrink-0" strokeWidth={2.5} />
                   </div>
-                  <p className="text-xs font-bold text-orange-600 mb-2">→ {req.clubs?.name ?? '—'}</p>
+                  <p className="text-xs font-bold text-brand mb-2">→ {req.clubs?.name ?? '—'}</p>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-black px-2 py-0.5 border ${STATUS_STYLE[req.status]}`}>
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-ctl ${statusColor(req.status)}`}>
                       {req.status}
                     </span>
-                    <span className="text-xs font-bold text-gray-400">{fmt(req.created_at)}</span>
+                    <span className="text-xs font-bold text-sand-400">{fmt(req.created_at)}</span>
                   </div>
                 </button>
               ))
@@ -159,10 +154,10 @@ export default function JoinRequests() {
           {/* 상세 */}
           {selected ? (
             <div className="flex-1 flex flex-col gap-4">
-              <div className="bg-white border-2 border-black p-6">
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6">
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-xl font-black">신청 상세</h2>
-                  <span className={`text-sm font-black px-3 py-1 border-2 ${STATUS_STYLE[selected.status]}`}>
+                  <h2 className="text-xl font-black text-ink">신청 상세</h2>
+                  <span className={`text-sm font-black px-3 py-1 rounded-ctl ${statusColor(selected.status)}`}>
                     {selected.status}
                   </span>
                 </div>
@@ -177,16 +172,16 @@ export default function JoinRequests() {
                     ['신청일', fmt(selected.created_at)],
                   ].map(([k, v]) => (
                     <div key={k} className="flex flex-col gap-0.5">
-                      <span className="font-bold text-gray-400 text-xs">{k}</span>
-                      <span className="font-bold">{v}</span>
+                      <span className="font-bold text-sand-400 text-xs">{k}</span>
+                      <span className="font-bold text-sand-600">{v}</span>
                     </div>
                   ))}
                 </div>
 
                 {selected.intro && (
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="text-xs font-bold text-gray-400 mb-1">한 줄 소개</p>
-                    <p className="font-bold text-sm bg-gray-50 border border-gray-200 p-3 whitespace-pre-line">
+                  <div className="border-t border-sand-200 pt-4">
+                    <p className="text-xs font-bold text-sand-400 mb-1">한 줄 소개</p>
+                    <p className="font-bold text-sm text-sand-600 bg-sand-50 border border-sand-200 rounded-ctl p-3 whitespace-pre-line">
                       {selected.intro}
                     </p>
                   </div>
@@ -195,12 +190,12 @@ export default function JoinRequests() {
 
               {/* 액션 */}
               {selected.status === '대기중' && (
-                <div className="bg-white border-2 border-black p-6 flex flex-col gap-4">
-                  <h3 className="font-black">심사 처리</h3>
+                <div className="bg-white border border-sand-200 rounded-card shadow-soft p-6 flex flex-col gap-4">
+                  <h3 className="font-black text-ink">심사 처리</h3>
 
                   {actionMsg && (
-                    <p className={`text-sm font-bold px-3 py-2 border-2 ${
-                      actionMsg.startsWith('✅') ? 'border-green-300 bg-green-50 text-green-700' : 'border-red-300 bg-red-50 text-red-700'
+                    <p className={`text-sm font-bold px-3 py-2 rounded-ctl ${
+                      actionMsg.startsWith('✅') ? 'bg-ok-bg text-ok-fg' : 'bg-bad-bg text-bad-fg'
                     }`}>
                       {actionMsg}
                     </p>
@@ -211,46 +206,46 @@ export default function JoinRequests() {
                       type="button"
                       onClick={() => handleDecision('거절')}
                       disabled={processing}
-                      className="flex-1 py-3 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                      className="flex-1 py-3 bg-white border border-sand-300 rounded-ctl text-ink font-black text-sm hover:bg-sand-50 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
                     >
-                      {processing ? <Loader className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                      {processing ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <XCircle className="w-4 h-4" strokeWidth={2.5} />}
                       거절
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDecision('승인')}
                       disabled={processing}
-                      className="flex-1 py-3 bg-orange-500 border-2 border-black font-black text-sm hover:bg-black hover:text-orange-500 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                      className="flex-1 py-3 btn-grad text-white rounded-ctl shadow-btn font-black text-sm hover:-translate-y-0.5 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                     >
-                      {processing ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      {processing ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <CheckCircle className="w-4 h-4" strokeWidth={2.5} />}
                       승인 (운영진 등록)
                     </button>
                   </div>
 
-                  <p className="text-xs font-bold text-gray-400">
+                  <p className="text-xs font-bold text-sand-400">
                     * 승인 시 해당 사용자가 club_members에 운영진(활동중)으로 즉시 등록됩니다.
                   </p>
                 </div>
               )}
 
               {selected.status !== '대기중' && (
-                <div className="bg-gray-50 border-2 border-gray-300 p-4 text-center">
-                  <p className="font-bold text-gray-500 text-sm">
+                <div className="bg-sand-50 border border-sand-200 rounded-card p-4 text-center">
+                  <p className="font-bold text-sand-500 text-sm">
                     이미 처리된 신청이에요. ({selected.status} · {selected.reviewed_at ? fmt(selected.reviewed_at) : '—'})
                   </p>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="flex-1 flex items-center justify-center text-sand-400">
               <div className="text-center">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={2.5} />
                 <p className="font-bold">목록에서 신청을 선택하세요.</p>
               </div>
             </div>
           )}
         </div>
       </div>
-    </MasterLayout>
+    </>
   );
 }

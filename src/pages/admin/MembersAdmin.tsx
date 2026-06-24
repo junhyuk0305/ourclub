@@ -1,24 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Search, Award, Loader, UserPlus, X, Check, Save, Info, Bell, CheckCircle, XCircle } from 'lucide-react';
-import { AdminSidebar } from '../../components/admin/AdminSidebar';
-import { AdminHeader } from '../../components/admin/AdminHeader';
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LabelList } from 'recharts';
+import { Users, Search, Award, Loader, UserPlus, Check, Save, Info, Bell, CheckCircle, XCircle, AlertTriangle, Settings, Download, GraduationCap, ChevronDown, Archive } from 'lucide-react';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAdmin } from '../../contexts/AdminContext';
 import { supabase } from '../../lib/supabaseClient';
+import { fetchAll, fetchAllIn } from '../../lib/fetchAll';
+import { formatDate } from '../../lib/format';
+import { downloadExcel } from '../../lib/excel';
+import { attendanceRate } from '../../lib/attendanceRate';
+import type { MemberStatus, Member, CustomField, CustomFieldType, NewCustomField } from './members/types';
+import { ColumnHeaderFilter } from './members/ColumnHeaderFilter';
+import { ColumnSettingsModal } from './members/ColumnSettingsModal';
+import { InviteModal } from './members/InviteModal';
+import { GenManagerModal } from './members/GenManagerModal';
+import { PullApplicantsModal } from './members/PullApplicantsModal';
 
-type MemberStatus = '활동중' | '수료' | '탈퇴' | '활동정지';
+const memberName = (m: Member): string => m.profiles?.name ?? m.display_name ?? '—';
+const memberUniversity = (m: Member): string => m.profiles?.university ?? m.display_university ?? '';
 
-interface Member {
-  id: string;
-  role: '운영진' | '부원';
-  generation: string | null;
-  position: string | null;
-  status: MemberStatus;
-  joined_at: string;
-  profiles: { name: string; email: string; major: string | null; university: string | null } | null;
-  attendanceRate?: number | null;
-}
+type MemberDraft = Partial<Pick<Member, 'role' | 'status' | 'generation' | 'position' | 'role_function'>>;
 
-type MemberDraft = Partial<Pick<Member, 'role' | 'status' | 'generation' | 'position'>>;
+type Tab = 'members' | 'join-requests';
+const GEN_ALL = '__all';
 
 interface JoinRequest {
   id: string;
@@ -31,54 +35,240 @@ interface JoinRequest {
 }
 
 const STATUS_BADGE: Record<MemberStatus, string> = {
-  '활동중':  'bg-green-100 text-green-700 border-green-300',
-  '수료':    'bg-blue-100 text-blue-700 border-blue-300',
-  '탈퇴':    'bg-gray-100 text-gray-500 border-gray-300',
-  '활동정지': 'bg-red-100 text-red-700 border-red-300',
+  '활동중':  'bg-ok-bg text-ok-fg',
+  '수료':    'bg-info-bg text-info-fg',
+  '탈퇴':    'bg-off-bg text-off-fg',
+  '활동정지': 'bg-bad-bg text-bad-fg',
 };
 
 export default function MembersAdmin() {
   const { adminClubId } = useAdmin();
-  const [activeTab, setActiveTab] = useState<'members' | 'join-requests'>('members');
+  const [activeTab, setActiveTab] = useState<Tab>('members');
+  const [viewGen, setViewGen] = useState<string>(GEN_ALL);
+  const [viewGenOpen, setViewGenOpen] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [fetching, setFetching] = useState(true);
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showPullModal, setShowPullModal] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, MemberDraft>>({});
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+  const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, Record<string, string>>>({});
+  const [customDrafts, setCustomDrafts] = useState<Record<string, Record<string, string>>>({});
+  const [hiddenCustomCols, setHiddenCustomCols] = useState<Set<string>>(new Set());
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
+
+  // 기수 관리
+  const [generations, setGenerations] = useState<string[]>([]);
+  const [currentGeneration, setCurrentGeneration] = useState<string | null>(null);
+  const [showGenManager, setShowGenManager] = useState(false);
+  const [genPickerOpen, setGenPickerOpen] = useState(false);
+  const [showCloseGenModal, setShowCloseGenModal] = useState(false);
+  const [closingGen, setClosingGen] = useState(false);
 
   // 합류 신청 탭
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [joinFetching, setJoinFetching] = useState(false);
   const [joinProcessing, setJoinProcessing] = useState<Record<string, boolean>>({});
 
+  // 멤버 로드 경쟁 가드: 클럽을 빠르게 전환하면 이전 응답이 새 응답을 덮어쓰는 것 방지
+  const loadSeq = useRef(0);
+
   useEffect(() => {
     if (!adminClubId) return;
     loadMembers(adminClubId);
     loadJoinRequests(adminClubId);
+    loadCustomFields(adminClubId);
+    loadGenerations(adminClubId);
+    try {
+      const raw = localStorage.getItem(`members-hidden-cols-${adminClubId}`);
+      if (raw) setHiddenCustomCols(new Set(JSON.parse(raw) as string[]));
+    } catch {}
   }, [adminClubId]);
 
-  const loadMembers = async (clubId: string) => {
-    setFetching(true);
+  const loadGenerations = async (clubId: string) => {
     const { data } = await supabase
+      .from('clubs')
+      .select('generations, current_generation')
+      .eq('id', clubId)
+      .maybeSingle();
+    setGenerations((data?.generations ?? []) as string[]);
+    setCurrentGeneration((data?.current_generation ?? null) as string | null);
+  };
+
+  const updateClubGenerations = async (
+    nextGenerations: string[],
+    nextCurrent: string | null,
+  ) => {
+    if (!adminClubId) return { error: null as null | string };
+    const { error } = await supabase
+      .from('clubs')
+      .update({ generations: nextGenerations, current_generation: nextCurrent })
+      .eq('id', adminClubId);
+    if (error) return { error: error.message };
+    setGenerations(nextGenerations);
+    setCurrentGeneration(nextCurrent);
+    return { error: null };
+  };
+
+  const handleCloseCurrentGen = async () => {
+    if (!adminClubId || !currentGeneration) return;
+    setClosingGen(true);
+    const { data: updated, error } = await supabase
       .from('club_members')
-      .select('id, role, generation, position, status, joined_at, profiles(name, email, major, university)')
+      .update({ status: '수료' })
+      .eq('club_id', adminClubId)
+      .eq('generation', currentGeneration)
+      .eq('status', '활동중')
+      .select('id');
+    if (error) {
+      setClosingGen(false);
+      showToast(`기수 마감 실패: ${error.message}`);
+      return;
+    }
+    await updateClubGenerations(generations, null);
+    await loadMembers(adminClubId);
+    setClosingGen(false);
+    setShowCloseGenModal(false);
+    showToast(`${currentGeneration} 부원 ${updated?.length ?? 0}명을 수료 처리했습니다.`);
+  };
+
+  const persistHiddenCols = (next: Set<string>) => {
+    setHiddenCustomCols(next);
+    if (adminClubId) {
+      localStorage.setItem(`members-hidden-cols-${adminClubId}`, JSON.stringify(Array.from(next)));
+    }
+  };
+
+  const loadCustomFields = async (clubId: string) => {
+    // select('*'): 마이그레이션(field_type/options/required) 적용 전후 모두 동작 — 누락 컬럼은 기본값 처리
+    const { data: fields } = await supabase
+      .from('club_custom_fields')
+      .select('*')
       .eq('club_id', clubId)
-      .order('joined_at', { ascending: true });
+      .order('display_order', { ascending: true });
+    const list: CustomField[] = ((fields ?? []) as Record<string, unknown>[]).map(f => ({
+      id: f.id as string,
+      name: f.name as string,
+      display_order: (f.display_order as number) ?? 0,
+      field_type: ((f.field_type as CustomFieldType) ?? 'text'),
+      options: Array.isArray(f.options) ? (f.options as string[]) : [],
+      required: !!f.required,
+    }));
+    setCustomFields(list);
+
+    if (list.length > 0) {
+      const { data: values } = await fetchAllIn<{ member_id: string; field_id: string; value: string | null }>(
+        list.map(f => f.id),
+        (chunk, from, to) => supabase
+          .from('club_member_custom_values')
+          .select('member_id, field_id, value')
+          .in('field_id', chunk)
+          .range(from, to),
+      );
+      const map: Record<string, Record<string, string>> = {};
+      (values ?? []).forEach((v: { member_id: string; field_id: string; value: string | null }) => {
+        if (!map[v.member_id]) map[v.member_id] = {};
+        map[v.member_id][v.field_id] = v.value ?? '';
+      });
+      setCustomValues(map);
+    } else {
+      setCustomValues({});
+    }
+  };
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setColFilters({});
+  }, [activeTab, viewGen]);
+
+  useEffect(() => {
+    if (!openFilterCol) return;
+    const handler = () => setOpenFilterCol(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openFilterCol]);
+
+  useEffect(() => {
+    if (!genPickerOpen) return;
+    const handler = () => setGenPickerOpen(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [genPickerOpen]);
+
+  useEffect(() => {
+    if (!viewGenOpen) return;
+    const handler = () => setViewGenOpen(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [viewGenOpen]);
+
+  // 기수 보기 기본값: 현재 활동 기수(없으면 전체)
+  useEffect(() => {
+    setViewGen(currentGeneration ?? GEN_ALL);
+  }, [currentGeneration]);
+
+  // 기수 내림차순 (숫자 우선, 그 외 사전식 역순)
+  const genDesc = useMemo(() => {
+    return [...generations].sort((a, b) => {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return nb - na;
+      return b.localeCompare(a);
+    });
+  }, [generations]);
+
+  const loadMembers = async (clubId: string) => {
+    const seq = ++loadSeq.current;
+    setFetching(true);
+    const { data } = await fetchAll((from, to) => supabase
+      .from('club_members')
+      .select('id, role, generation, position, role_function, status, joined_at, display_name, display_university, profiles(name, email, major, university, academic_status)')
+      .eq('club_id', clubId)
+      .order('joined_at', { ascending: true })
+      .range(from, to));
 
     const members = (data as unknown as Member[]) ?? [];
-    const withRates = await Promise.all(
-      members.map(async m => {
-        const { data: atts } = await supabase
-          .from('attendances')
-          .select('status')
-          .eq('member_id', m.id);
-        const total = atts?.length ?? 0;
-        const attended = atts?.filter(a => a.status === '출석').length ?? 0;
-        return { ...m, attendanceRate: total > 0 ? Math.round(attended / total * 100) : null };
-      })
-    );
+
+    // 출석률(D2 스코프 집계): 분모 = 멤버가 대상(session_targets)인 세션 수,
+    // 분자 = 그 중 status='출석'(공결·결석 제외 = D5). 멤버별 자기 대상 세션만 보므로
+    // 활동중=현 기수 실시간 / 수료=과거 기수 누적이 자동으로 스코프됨.
+    const rateMap: Record<string, number | null> = {};
+    const { data: sessRows } = await fetchAll((from, to) => supabase
+      .from('sessions')
+      .select('id')
+      .eq('club_id', clubId)
+      .range(from, to));
+    const sessionIds = (sessRows ?? []).map(s => s.id as string);
+
+    if (sessionIds.length > 0) {
+      const [{ data: tgtRows }, { data: attRows }] = await Promise.all([
+        fetchAllIn<{ member_id: string; session_id: string }>(sessionIds, (chunk, from, to) =>
+          supabase.from('session_targets').select('member_id, session_id').in('session_id', chunk).range(from, to)),
+        fetchAllIn<{ member_id: string; session_id: string }>(sessionIds, (chunk, from, to) =>
+          supabase.from('attendances').select('member_id, session_id').in('session_id', chunk).eq('status', '출석').range(from, to)),
+      ]);
+      const denom: Record<string, Set<string>> = {};
+      (tgtRows ?? []).forEach((t: { member_id: string; session_id: string }) => {
+        (denom[t.member_id] ??= new Set()).add(t.session_id);
+      });
+      const attended: Record<string, string[]> = {};
+      (attRows ?? []).forEach((a: { member_id: string; session_id: string }) => {
+        (attended[a.member_id] ??= []).push(a.session_id);
+      });
+      members.forEach(m => {
+        rateMap[m.id] = attendanceRate(denom[m.id] ?? new Set(), attended[m.id] ?? []);
+      });
+    }
+
+    if (seq !== loadSeq.current) return; // 더 최신 로드가 진행 중 → 이 응답은 폐기
+
+    const withRates = members.map(m => ({ ...m, attendanceRate: rateMap[m.id] ?? null }));
     setMembers(withRates);
     setDrafts({});
     setFetching(false);
@@ -100,22 +290,15 @@ export default function MembersAdmin() {
     if (!adminClubId) return;
     setJoinProcessing(prev => ({ ...prev, [req.id]: true }));
 
-    if (decision === '승인') {
-      await supabase.from('club_members').insert({
-        user_id: req.user_id,
-        club_id: adminClubId,
-        role: '운영진',
-        status: '활동중',
-        position: req.role_title ?? null,
-      });
-    }
-
-    await supabase
-      .from('club_join_requests')
-      .update({ status: decision, reviewed_at: new Date().toISOString() })
-      .eq('id', req.id);
+    // 멤버 생성 + 신청 상태 갱신을 한 트랜잭션(RPC)으로. 중간 실패 시 부분쓰기·
+    // 두 운영진 동시 승인 시 중복 멤버를 차단(서버에서 멱등 처리).
+    const { error } = await supabase.rpc('decide_club_join_request', {
+      p_request_id: req.id,
+      p_decision: decision,
+    });
 
     setJoinProcessing(prev => ({ ...prev, [req.id]: false }));
+    if (error) { showToast('처리에 실패했습니다. 다시 시도해주세요.'); return; }
     showToast(decision === '승인' ? `${req.profiles?.name}님이 운영진으로 추가됐습니다.` : '거절 처리됐습니다.');
     loadJoinRequests(adminClubId);
     if (decision === '승인') loadMembers(adminClubId);
@@ -132,24 +315,221 @@ export default function MembersAdmin() {
 
   const hasDraft = (id: string) => {
     const d = drafts[id];
-    if (!d) return false;
-    return Object.keys(d).length > 0;
+    if (d && Object.keys(d).length > 0) return true;
+    const cd = customDrafts[id];
+    if (cd && Object.keys(cd).length > 0) return true;
+    return false;
   };
 
-  const saveMember = async (id: string) => {
-    const patch = drafts[id];
-    if (!patch || Object.keys(patch).length === 0) return;
-    setSaving(prev => ({ ...prev, [id]: true }));
-    const { error } = await supabase.from('club_members').update(patch).eq('id', id);
-    setSaving(prev => ({ ...prev, [id]: false }));
-    if (error) { showToast('저장 중 오류가 발생했습니다.'); return; }
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
-    setDrafts(prev => {
+  const getCustomVal = (memberId: string, fieldId: string): string => {
+    const draft = customDrafts[memberId]?.[fieldId];
+    if (draft !== undefined) return draft;
+    return customValues[memberId]?.[fieldId] ?? '';
+  };
+
+  const setCustomDraft = (memberId: string, fieldId: string, value: string) => {
+    setCustomDrafts(prev => {
       const next = { ...prev };
-      delete next[id];
+      const original = customValues[memberId]?.[fieldId] ?? '';
+      const rowDrafts = { ...(next[memberId] ?? {}) };
+      if (value === original) {
+        delete rowDrafts[fieldId];
+      } else {
+        rowDrafts[fieldId] = value;
+      }
+      if (Object.keys(rowDrafts).length === 0) delete next[memberId];
+      else next[memberId] = rowDrafts;
       return next;
     });
-    showToast('저장되었습니다.');
+  };
+
+  const renderCustomInput = (f: CustomField, m: Member) => {
+    const val = getCustomVal(m.id, f.id);
+    const onChange = (v: string) => setCustomDraft(m.id, f.id, v);
+    const base = 'field border border-sand-300 rounded-ctl p-1 text-sm font-bold';
+    switch (f.field_type) {
+      case 'select':
+        return (
+          <select value={val} onChange={e => onChange(e.target.value)} className={`w-28 ${base} bg-white cursor-pointer`}>
+            <option value="">—</option>
+            {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+            {val && !f.options.includes(val) && <option value={val}>{val} (목록 외)</option>}
+          </select>
+        );
+      case 'number':
+        return <input type="number" value={val} onChange={e => onChange(e.target.value)} className={`w-24 ${base}`} placeholder="—" />;
+      case 'date':
+        return <input type="date" value={val} onChange={e => onChange(e.target.value)} className={`w-36 ${base} bg-white`} />;
+      case 'textarea':
+        return <textarea value={val} onChange={e => onChange(e.target.value)} rows={2} className={`w-40 ${base} resize-y`} placeholder="—" />;
+      default:
+        return <input value={val} onChange={e => onChange(e.target.value)} className={`w-28 ${base}`} placeholder="—" />;
+    }
+  };
+
+  const saveAll = async () => {
+    const memberIds = Object.keys(drafts);
+    const customRowIds = Object.keys(customDrafts);
+    if (memberIds.length === 0 && customRowIds.length === 0) return;
+    setBulkSaving(true);
+
+    // 멤버 업데이트: 동일한 변경내용끼리 묶어 .in() 한 번으로 처리한다.
+    // (같은 컬럼을 여러 명에게 일괄 변경하는 흔한 경우 N개 요청 → 1개로 축소.
+    //  .update 는 전달한 컬럼만 갱신하므로 다른 컬럼이 null 로 덮이지 않는다.)
+    const byPatch = new Map<string, string[]>();
+    memberIds.forEach(id => {
+      const key = JSON.stringify(drafts[id]);
+      const arr = byPatch.get(key);
+      if (arr) arr.push(id);
+      else byPatch.set(key, [id]);
+    });
+    const memberOps = Array.from(byPatch.entries()).map(([key, ids]) =>
+      supabase.from('club_members').update(JSON.parse(key) as MemberDraft).in('id', ids)
+    );
+
+    // 커스텀 값: 셀 단위 N개 요청 → 비어있지 않은 값은 단일 upsert(배열),
+    // 비운 값은 단일 delete(복합조건 or 필터)로 묶는다.
+    const customUpserts: { member_id: string; field_id: string; value: string }[] = [];
+    const customDeletes: { member_id: string; field_id: string }[] = [];
+    customRowIds.forEach(memberId => {
+      Object.entries(customDrafts[memberId]).forEach(([fieldId, value]) => {
+        if (value === '') customDeletes.push({ member_id: memberId, field_id: fieldId });
+        else customUpserts.push({ member_id: memberId, field_id: fieldId, value });
+      });
+    });
+    const customOps: Promise<{ error: unknown }>[] = [];
+    if (customUpserts.length > 0) {
+      customOps.push(
+        supabase.from('club_member_custom_values')
+          .upsert(customUpserts, { onConflict: 'member_id,field_id' }) as unknown as Promise<{ error: unknown }>
+      );
+    }
+    if (customDeletes.length > 0) {
+      const orFilter = customDeletes
+        .map(d => `and(member_id.eq.${d.member_id},field_id.eq.${d.field_id})`)
+        .join(',');
+      customOps.push(
+        supabase.from('club_member_custom_values')
+          .delete()
+          .or(orFilter) as unknown as Promise<{ error: unknown }>
+      );
+    }
+
+    const results = await Promise.all([...memberOps, ...customOps]);
+    const errors = results.map(r => (r as { error?: { message?: string } }).error).filter(Boolean);
+    setBulkSaving(false);
+    setShowSaveModal(false);
+    if (errors.length > 0) {
+      // DB 트리거(예: 마지막 운영진 보호)가 던진 메시지를 그대로 노출 — 무한 재시도 방지
+      showToast(errors[0]?.message ?? `${errors.length}건 저장 실패. 다시 시도해주세요.`);
+      return;
+    }
+    setMembers(prev => prev.map(m => drafts[m.id] ? { ...m, ...drafts[m.id] } : m));
+    // 커스텀 값을 새로 반영
+    setCustomValues(prev => {
+      const next = { ...prev };
+      customRowIds.forEach(memberId => {
+        const row = { ...(next[memberId] ?? {}) };
+        Object.entries(customDrafts[memberId]).forEach(([fieldId, value]) => {
+          if (value === '') delete row[fieldId];
+          else row[fieldId] = value;
+        });
+        if (Object.keys(row).length === 0) delete next[memberId];
+        else next[memberId] = row;
+      });
+      return next;
+    });
+    setDrafts({});
+    setCustomDrafts({});
+    showToast(`저장되었습니다.`);
+  };
+
+  const addCustomField = async (field: NewCustomField) => {
+    if (!adminClubId || !field.name.trim()) return;
+    const order = customFields.length;
+    const { error } = await supabase
+      .from('club_custom_fields')
+      .insert({
+        club_id: adminClubId,
+        name: field.name.trim(),
+        display_order: order,
+        field_type: field.field_type,
+        options: field.options,
+        required: field.required,
+      });
+    if (error) {
+      showToast(error.code === '23505' ? '같은 이름의 필드가 이미 있습니다.' : '필드 추가에 실패했습니다.');
+      return;
+    }
+    await loadCustomFields(adminClubId);
+    showToast('필드가 추가되었습니다.');
+  };
+
+  const reorderCustomField = async (fieldId: string, dir: -1 | 1) => {
+    if (!adminClubId) return;
+    const arr = [...customFields];
+    const idx = arr.findIndex(f => f.id === fieldId);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= arr.length) return;
+    [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
+    setCustomFields(arr.map((f, i) => ({ ...f, display_order: i }))); // 낙관적 반영
+    // N개 update가 비원자적이라 일부만 실패하면 display_order가 깨질 수 있음 →
+    // 한 건이라도 실패하면 DB 실제값으로 재동기화(부분쓰기 포함)하고 알린다.
+    const results = await Promise.all(arr.map((f, i) =>
+      supabase.from('club_custom_fields').update({ display_order: i }).eq('id', f.id)
+    ));
+    if (results.some(r => r.error)) {
+      showToast('필드 순서 변경에 실패했습니다.');
+      await loadCustomFields(adminClubId);
+    }
+  };
+
+  const deleteCustomField = async (fieldId: string) => {
+    if (!adminClubId) return;
+    const { error } = await supabase.from('club_custom_fields').delete().eq('id', fieldId);
+    if (error) { showToast('필드 삭제에 실패했습니다.'); return; }
+    // 해당 필드의 drafts/hidden 정리
+    setCustomDrafts(prev => {
+      const next: typeof prev = {};
+      Object.entries(prev).forEach(([memberId, fieldDrafts]) => {
+        const remaining = { ...fieldDrafts };
+        delete remaining[fieldId];
+        if (Object.keys(remaining).length > 0) next[memberId] = remaining;
+      });
+      return next;
+    });
+    if (hiddenCustomCols.has(fieldId)) {
+      const next = new Set(hiddenCustomCols);
+      next.delete(fieldId);
+      persistHiddenCols(next);
+    }
+    await loadCustomFields(adminClubId);
+    showToast('필드가 삭제되었습니다.');
+  };
+
+  const handleExportExcel = async () => {
+    const rows = filtered.map(m => {
+      const base: Record<string, string | number | null | undefined> = {
+        '이름': memberName(m),
+        '학교': memberUniversity(m),
+        '기수': m.generation ?? '',
+        '출석률': m.attendanceRate != null ? `${m.attendanceRate}%` : '',
+        '상태': m.status,
+      };
+      customFields.forEach(f => {
+        base[f.name] = customValues[m.id]?.[f.id] ?? '';
+      });
+      return base;
+    });
+    await downloadExcel(rows, '부원명단', '부원');
+    showToast(`${rows.length}명의 명단을 다운로드했습니다.`);
+  };
+
+  const toggleCustomColVisibility = (fieldId: string) => {
+    const next = new Set(hiddenCustomCols);
+    if (next.has(fieldId)) next.delete(fieldId);
+    else next.add(fieldId);
+    persistHiddenCols(next);
   };
 
   const getVal = <K extends keyof MemberDraft>(m: Member, key: K): string => {
@@ -158,55 +538,253 @@ export default function MembersAdmin() {
     return (m[key] as string) ?? '';
   };
 
-  const filtered = members.filter(m =>
+  const matchesSearch = (m: Member) =>
     !search ||
-    (m.profiles?.name ?? '').includes(search) ||
-    (m.profiles?.major ?? '').includes(search)
+    memberName(m).includes(search) ||
+    memberUniversity(m).includes(search);
+  const matchesGen = (m: Member) => {
+    if (viewGen === GEN_ALL) return true;
+    return m.generation === viewGen;
+  };
+  const matchesColFilters = (m: Member) => {
+    for (const [col, vals] of Object.entries(colFilters)) {
+      if (!vals || vals.size === 0) continue;
+      const v = ((m as unknown) as Record<string, unknown>)[col];
+      const display = v == null || v === '' ? '(미지정)' : String(v);
+      if (!vals.has(display)) return false;
+    }
+    return true;
+  };
+  // 큰 명단에서 매 렌더(키 입력)마다 전체를 재계산하지 않도록 캐싱. 값은 기존과 동일.
+  const genPool = useMemo(() => members.filter(matchesGen), [members, viewGen]);
+  const filtered = useMemo(
+    () => genPool.filter(m => matchesSearch(m) && matchesColFilters(m)),
+    [genPool, search, colFilters],
   );
+  const isFiltering = search.trim() !== '' || Object.keys(colFilters).length > 0;
+
+  // 윈도잉: 큰 명단(controlled input × 커스텀필드)을 "화면에 보이는 행만" DOM 에 둔다.
+  // 1000명+ 에서도 항상 ~15행만 렌더 → 프리즈 없음. (소규모면 전부 보이므로 동일)
+  const scrollRef = useRef<HTMLElement | null>(null);   // 스크롤 컨테이너(<main>)
+  const listRef = useRef<HTMLDivElement | null>(null);  // 행이 절대배치되는 relative 컨테이너
+  const [scrollMargin, setScrollMargin] = useState(0);
+  // 표 시작 위치(스크롤 컨테이너 기준 오프셋)를 측정. 위쪽 툴바/배너 높이가 바뀌면 갱신.
+  useLayoutEffect(() => {
+    const sc = scrollRef.current, li = listRef.current;
+    if (!sc || !li) return;
+    const m = Math.round(li.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop);
+    setScrollMargin(prev => (prev === m ? prev : m));
+  });
+  const rowV = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 68,
+    overscan: 8,
+    scrollMargin,
+  });
+
+  const uniqueValues = (col: keyof Member): string[] => {
+    const pool = genPool;
+    const set = new Set<string>();
+    pool.forEach(m => {
+      const v = m[col];
+      set.add(v == null || v === '' ? '(미지정)' : String(v));
+    });
+    return Array.from(set).sort();
+  };
+
+  const toggleColFilter = (col: string, value: string) => {
+    setColFilters(prev => {
+      const next = { ...prev };
+      const set = new Set(next[col] ?? []);
+      if (set.has(value)) set.delete(value);
+      else set.add(value);
+      if (set.size === 0) delete next[col];
+      else next[col] = set;
+      return next;
+    });
+  };
+
+  const clearColFilter = (col: string) => {
+    setColFilters(prev => {
+      const next = { ...prev };
+      delete next[col];
+      return next;
+    });
+  };
+
+  const draftMemberIds = new Set([
+    ...Object.keys(drafts),
+    ...Object.keys(customDrafts),
+  ]);
+  const draftCount = draftMemberIds.size;
+  const visibleCustomFields = customFields.filter(f => !hiddenCustomCols.has(f.id));
+  // 헤더와 모든 행이 공유하는 컬럼 정의 → 정렬 흔들림(jitter) 없음
+  const gridCols = `48px minmax(160px,1.6fr) minmax(140px,1.2fr) 120px 150px 130px ` +
+    visibleCustomFields.map(() => 'minmax(140px,1fr)').join(' ');
+
+  const chartData = useMemo(() => {
+    const byGen = new Map<string, number[]>();
+    members.forEach(m => {
+      if (!m.generation || m.attendanceRate == null) return;
+      if (!byGen.has(m.generation)) byGen.set(m.generation, []);
+      byGen.get(m.generation)!.push(m.attendanceRate);
+    });
+    return Array.from(byGen.entries())
+      .map(([generation, rates]) => ({
+        generation,
+        avg: Math.round(rates.reduce((a, b) => a + b, 0) / rates.length),
+        count: rates.length,
+      }))
+      .sort((a, b) => a.generation.localeCompare(b.generation));
+  }, [members]);
+  const selectedCount = selectedIds.size;
+  const allVisibleChecked = filtered.length > 0 && filtered.every(m => selectedIds.has(m.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (allVisibleChecked) {
+        const next = new Set(prev);
+        filtered.forEach(m => next.delete(m.id));
+        return next;
+      }
+      const next = new Set(prev);
+      filtered.forEach(m => next.add(m.id));
+      return next;
+    });
+  };
+
+  const applyBulk = (patch: MemberDraft) => {
+    setDrafts(prev => {
+      const next = { ...prev };
+      selectedIds.forEach(id => {
+        next[id] = { ...(next[id] ?? {}), ...patch };
+      });
+      return next;
+    });
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <AdminHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 border-r border-black bg-white flex flex-col p-4 overflow-y-auto shrink-0">
-          <AdminSidebar />
-        </aside>
-
-        <main className="flex-1 bg-gray-100 p-8 overflow-y-auto">
-          <div className="max-w-5xl flex flex-col gap-6">
-            <div className="flex justify-between items-end border-b border-black pb-6">
+    <>
+        <main ref={scrollRef} className="flex-1 bg-sand-50 p-8 overflow-y-auto">
+          <div className={`max-w-5xl flex flex-col gap-6 ${draftCount > 0 && activeTab === 'members' ? 'pb-32' : ''}`}>
+            <div className="flex justify-between items-end border-b border-sand-200 pb-6">
               <div>
-                <h2 className="text-4xl font-black mb-2">부원 명단 관리</h2>
-                <p className="text-gray-500 font-bold">동아리 멤버 현황 및 역할/상태를 관리합니다.</p>
+                <h2 className="text-4xl font-black text-ink mb-2">부원 명단 관리</h2>
+                <p className="text-sand-500 font-medium">동아리 멤버 현황 및 역할/상태를 관리합니다.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowPullModal(true)}
+                  className="px-4 py-2 border border-sand-200 rounded-ctl font-bold bg-white text-ink hover:bg-sand-50 shadow-soft flex items-center gap-2"
+                >
+                  <Download className="w-5 h-5" strokeWidth={2.5} /> 합격자 끌어오기
+                </button>
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="btn-grad px-6 py-2 rounded-ctl font-bold text-white shadow-btn flex items-center gap-2"
+                >
+                  <UserPlus className="w-5 h-5" strokeWidth={2.5} /> 구성원 추가
+                </button>
+              </div>
+            </div>
+
+            {/* 현재 활동 기수 배너 */}
+            <div className="bg-white border border-sand-200 rounded-card p-4 shadow-soft flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-brand" strokeWidth={2.5} />
+                <span className="font-bold text-sm text-ink">현재 활동 기수</span>
+              </div>
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setGenPickerOpen(v => !v); }}
+                  className="px-3 py-1.5 border border-sand-300 rounded-ctl font-bold text-sm flex items-center gap-1 bg-white hover:bg-sand-50 min-w-[100px] justify-between"
+                >
+                  {currentGeneration ?? '미지정'}
+                  <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
+                </button>
+                {genPickerOpen && (
+                  <div
+                    className="absolute top-full left-0 mt-1 z-20 bg-white border border-sand-200 rounded-card shadow-soft-lg min-w-[140px] max-h-60 overflow-y-auto"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {generations.length === 0 ? (
+                      <p className="px-3 py-2 text-xs font-medium text-sand-400">먼저 [기수 관리]에서 기수를 추가하세요.</p>
+                    ) : (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const r = await updateClubGenerations(generations, null);
+                            setGenPickerOpen(false);
+                            if (r.error) showToast(`변경 실패: ${r.error}`);
+                          }}
+                          className="block w-full text-left px-3 py-2 text-xs font-medium hover:bg-sand-50 border-b border-sand-200 text-sand-500"
+                        >
+                          (미지정)
+                        </button>
+                        {generations.map(g => (
+                          <button
+                            key={g}
+                            onClick={async () => {
+                              const r = await updateClubGenerations(generations, g);
+                              setGenPickerOpen(false);
+                              if (r.error) showToast(`변경 실패: ${r.error}`);
+                            }}
+                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint ${g === currentGeneration ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => setShowInviteModal(true)}
-                className="px-6 py-2 border border-black font-black bg-orange-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-px active:translate-y-1 active:shadow-none flex items-center gap-2"
+                onClick={() => setShowCloseGenModal(true)}
+                disabled={!currentGeneration}
+                className="px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-bad-bg font-bold text-xs flex items-center gap-1 disabled:opacity-40"
+                title="현재 기수의 활동중 부원을 모두 '수료' 처리합니다."
               >
-                <UserPlus className="w-5 h-5" /> 부원 초대
+                <Archive className="w-3 h-3" strokeWidth={2.5} /> 기수 마감
+              </button>
+              <button
+                onClick={() => setShowGenManager(true)}
+                className="ml-auto px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-xs flex items-center gap-1"
+              >
+                <Settings className="w-3 h-3" strokeWidth={2.5} /> 기수 목록 관리
               </button>
             </div>
 
             {/* 탭 */}
-            <div className="flex gap-0 border-2 border-black w-fit">
+            <div className="flex gap-0 border border-sand-200 rounded-ctl overflow-hidden w-fit">
               <button
                 onClick={() => setActiveTab('members')}
-                className={`px-5 py-2.5 font-black text-sm border-r-2 border-black transition-colors flex items-center gap-2 ${
-                  activeTab === 'members' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                className={`px-5 py-2.5 font-bold text-sm border-r border-sand-200 transition-colors flex items-center gap-2 ${
+                  activeTab === 'members' ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-sand-50'
                 }`}
               >
-                <Users className="w-4 h-4" /> 부원 명단
+                <Users className="w-4 h-4" strokeWidth={2.5} /> 부원 명단
               </button>
               <button
                 onClick={() => setActiveTab('join-requests')}
-                className={`px-5 py-2.5 font-black text-sm transition-colors flex items-center gap-2 ${
-                  activeTab === 'join-requests' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'
+                className={`px-5 py-2.5 font-bold text-sm transition-colors flex items-center gap-2 ${
+                  activeTab === 'join-requests' ? 'bg-brand text-white' : 'bg-white text-ink hover:bg-sand-50'
                 }`}
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4" strokeWidth={2.5} />
                 합류 신청
                 {joinRequests.length > 0 && (
-                  <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 font-black rounded-full">
+                  <span className="bg-brand text-white text-xs px-1.5 py-0.5 font-bold rounded-full">
                     {joinRequests.length}
                   </span>
                 )}
@@ -218,40 +796,40 @@ export default function MembersAdmin() {
               <div className="flex flex-col gap-3">
                 {joinFetching ? (
                   <div className="flex justify-center py-16">
-                    <Loader className="w-8 h-8 animate-spin text-orange-500" />
+                    <Loader className="w-8 h-8 animate-spin text-brand" strokeWidth={2.5} />
                   </div>
                 ) : joinRequests.length === 0 ? (
-                  <div className="bg-white border border-black p-12 text-center">
-                    <Bell className="w-10 h-10 mx-auto text-gray-200 mb-3" />
-                    <p className="font-bold text-gray-400">대기 중인 합류 신청이 없습니다.</p>
+                  <div className="bg-white border border-sand-200 rounded-card p-12 text-center">
+                    <Bell className="w-10 h-10 mx-auto text-sand-200 mb-3" strokeWidth={2.5} />
+                    <p className="font-medium text-sand-400">대기 중인 합류 신청이 없습니다.</p>
                   </div>
                 ) : (
                   joinRequests.map(req => (
-                    <div key={req.id} className="bg-white border border-black p-5 flex flex-col gap-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <div key={req.id} className="bg-white border border-sand-200 rounded-card p-5 flex flex-col gap-4 shadow-soft">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-black text-lg">{req.profiles?.name ?? '—'}</p>
-                          <p className="text-sm font-bold text-gray-400">{req.profiles?.email}</p>
+                          <p className="font-black text-lg text-ink">{req.profiles?.name ?? '—'}</p>
+                          <p className="text-sm font-medium text-sand-400">{req.profiles?.email}</p>
                           {(req.profiles?.university || req.profiles?.major) && (
-                            <p className="text-sm font-bold text-gray-400">
+                            <p className="text-sm font-medium text-sand-400">
                               {[req.profiles.university, req.profiles.major].filter(Boolean).join(' · ')}
                             </p>
                           )}
                         </div>
                         <div className="text-right shrink-0">
                           {req.role_title && (
-                            <span className="inline-block border-2 border-black px-2 py-0.5 text-xs font-black mb-1">
+                            <span className="inline-block border border-sand-300 rounded-ctl px-2 py-0.5 text-xs font-bold text-ink mb-1">
                               희망 직책: {req.role_title}
                             </span>
                           )}
-                          <p className="text-xs font-bold text-gray-400">
-                            {new Date(req.created_at).toLocaleDateString('ko-KR')}
+                          <p className="text-xs font-medium text-sand-400">
+                            {formatDate(req.created_at)}
                           </p>
                         </div>
                       </div>
 
                       {req.intro && (
-                        <div className="bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600 whitespace-pre-line">
+                        <div className="bg-sand-50 border border-sand-200 rounded-ctl px-4 py-3 text-sm font-medium text-sand-600 whitespace-pre-line">
                           {req.intro}
                         </div>
                       )}
@@ -260,17 +838,17 @@ export default function MembersAdmin() {
                         <button
                           onClick={() => handleJoinDecision(req, '거절')}
                           disabled={joinProcessing[req.id]}
-                          className="flex-1 py-2.5 border-2 border-black font-black text-sm hover:bg-gray-100 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
+                          className="flex-1 py-2.5 border border-sand-300 rounded-ctl font-bold text-sm text-ink hover:bg-sand-50 disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
                         >
-                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <XCircle className="w-4 h-4" strokeWidth={2.5} />}
                           거절
                         </button>
                         <button
                           onClick={() => handleJoinDecision(req, '승인')}
                           disabled={joinProcessing[req.id]}
-                          className="flex-1 py-2.5 bg-orange-500 border-2 border-black font-black text-sm hover:bg-black hover:text-orange-500 disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+                          className="flex-1 py-2.5 btn-grad rounded-ctl font-bold text-sm text-white shadow-btn disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
                         >
-                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                          {joinProcessing[req.id] ? <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} /> : <CheckCircle className="w-4 h-4" strokeWidth={2.5} />}
                           승인 (운영진 등록)
                         </button>
                       </div>
@@ -280,227 +858,443 @@ export default function MembersAdmin() {
               </div>
             )}
 
-            {/* ── 부원 명단 탭 ───────────────────────────────────── */}
+            {/* ── 부원 명단 탭 ───────── */}
             {activeTab === 'members' && <>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2 px-4 py-2 border border-black bg-black text-white font-black">
-                <Users className="w-4 h-4" />
-                전체 부원 <span className="bg-white text-black px-2 py-0.5 rounded-full text-xs">{members.filter(m => m.status === '활동중').length}명</span>
+            {selectedCount > 0 ? (
+              <div className="flex justify-between items-center btn-grad rounded-card p-3 shadow-soft">
+                <div className="flex items-center gap-3 text-white">
+                  <span className="font-bold text-sm">
+                    <strong>{selectedCount}명</strong> 선택됨
+                  </span>
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="text-xs font-bold underline hover:no-underline"
+                  >
+                    선택 취소
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value=""
+                    onChange={e => {
+                      if (!e.target.value) return;
+                      applyBulk({ status: e.target.value as MemberStatus });
+                      e.target.value = '';
+                    }}
+                    className="field px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink font-bold text-xs cursor-pointer"
+                  >
+                    <option value="">상태 변경 ▾</option>
+                    {(['활동중','수료','탈퇴','활동정지'] as MemberStatus[]).map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <select
+                    value=""
+                    onChange={e => {
+                      if (!e.target.value) return;
+                      applyBulk({ role: e.target.value as Member['role'] });
+                      e.target.value = '';
+                    }}
+                    className="field px-3 py-1.5 border border-sand-300 rounded-ctl bg-white text-ink font-bold text-xs cursor-pointer"
+                  >
+                    <option value="">역할 변경 ▾</option>
+                    {(['운영진','부원'] as Member['role'][]).map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="이름 또는 학과 검색"
-                  className="pl-9 pr-4 py-2 border border-black outline-none focus:border-orange-500 font-bold"
-                />
-              </div>
-            </div>
-
-            {Object.keys(drafts).length > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 text-orange-700 font-bold text-sm">
-                <Info className="w-4 h-4 shrink-0" />
-                변경된 행은 주황색으로 표시됩니다. 각 행의 <strong>저장</strong> 버튼을 눌러 확정하세요.
+            ) : (
+              <div className="flex justify-between items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* 기수 보기 드롭다운 (D3: 탭 단일화) */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setViewGenOpen(v => !v); }}
+                      className="px-3 py-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-sm flex items-center gap-1.5 min-w-[130px] justify-between"
+                    >
+                      <span className="flex items-center gap-1.5"><Users className="w-4 h-4" strokeWidth={2.5} />{viewGen === GEN_ALL ? '전체 기수' : viewGen}{viewGen === currentGeneration && viewGen !== GEN_ALL ? ' (현재)' : ''}</span>
+                      <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
+                    </button>
+                    {viewGenOpen && (
+                      <div className="absolute top-full left-0 mt-1 z-20 bg-white border border-sand-200 rounded-card shadow-soft-lg min-w-[150px] max-h-72 overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => { setViewGen(GEN_ALL); setViewGenOpen(false); }}
+                          className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint border-b border-sand-200 ${viewGen === GEN_ALL ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
+                        >
+                          전체 기수
+                        </button>
+                        {genDesc.map(g => (
+                          <button
+                            key={g}
+                            onClick={() => { setViewGen(g); setViewGenOpen(false); }}
+                            className={`block w-full text-left px-3 py-2 text-sm font-bold hover:bg-brand-tint flex items-center justify-between ${g === viewGen ? 'bg-brand-tint text-brand-dark' : 'text-ink'}`}
+                          >
+                            {g}
+                            {g === currentGeneration && <span className="text-[10px] font-bold text-brand">현재</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {/* 상태 분포 (현재 기수 보기 기준) — 상태별 색 차등 */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="flex items-center gap-1.5 px-3 py-2 rounded-ctl bg-ink text-white font-bold text-xs">
+                      전체 <span className="bg-white text-ink px-1.5 py-0.5 rounded-full">{genPool.length}</span>
+                    </span>
+                    {(['활동중','수료','탈퇴','활동정지'] as MemberStatus[]).map(s => {
+                      const cnt = genPool.filter(m => m.status === s).length;
+                      return (
+                        <span key={s} className={`flex items-center gap-1.5 px-3 py-2 rounded-ctl font-bold text-xs ${STATUS_BADGE[s]}`}>
+                          {s} <span className="bg-white/70 px-1.5 py-0.5 rounded-full">{cnt}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {/* 필터 결과 인원수 (M2-2) */}
+                  {isFiltering && (
+                    <span className="text-sm font-bold text-brand">필터 결과 총 {filtered.length}명</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sand-400" strokeWidth={2.5} />
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="이름 또는 학과 검색"
+                      className="field pl-9 pr-4 py-2 border border-sand-300 rounded-ctl font-medium"
+                    />
+                  </div>
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={filtered.length === 0}
+                    title="엑셀 다운로드 (현재 필터링 결과)"
+                    className="px-3 py-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold text-sm flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" strokeWidth={2.5} /> 엑셀
+                  </button>
+                  <button
+                    onClick={() => setShowColumnSettings(true)}
+                    title="항목 설정"
+                    className="p-2 border border-sand-300 rounded-ctl bg-white text-ink hover:bg-sand-50 font-bold"
+                  >
+                    <Settings className="w-4 h-4" strokeWidth={2.5} />
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className="bg-white border border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            {draftCount > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-tint border border-brand/30 rounded-card text-brand-dark font-medium text-sm">
+                <Info className="w-4 h-4 shrink-0" strokeWidth={2.5} />
+                <span>변경된 행은 주황색으로 표시됩니다. 하단의 <strong>저장</strong> 버튼을 눌러 모두 한번에 확정하세요.</span>
+              </div>
+            )}
+
+            <div className="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden">
               {fetching ? (
-                <div className="flex justify-center py-16"><Loader className="w-8 h-8 animate-spin text-orange-500" /></div>
+                <LoadingScreen />
               ) : members.length === 0 ? (
                 <div className="flex flex-col items-center gap-4 py-16 text-center">
-                  <div className="w-16 h-16 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-gray-300" />
+                  <div className="w-16 h-16 border border-dashed border-sand-200 rounded-card flex items-center justify-center">
+                    <Users className="w-8 h-8 text-sand-300" strokeWidth={2.5} />
                   </div>
-                  <p className="text-gray-400 font-bold">아직 등록된 부원이 없습니다.</p>
+                  <p className="text-sand-400 font-medium">아직 등록된 부원이 없습니다.</p>
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-black text-white font-black text-sm border border-black hover:bg-orange-500 hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 btn-grad text-white font-bold text-sm rounded-ctl shadow-btn transition-colors"
                   >
-                    <UserPlus className="w-4 h-4" /> 첫 번째 부원 초대하기
+                    <UserPlus className="w-4 h-4" strokeWidth={2.5} /> 첫 구성원 추가하기
                   </button>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 border-b border-black text-sm">
-                      <th className="p-4 font-black">이름</th>
-                      <th className="p-4 font-black">기수</th>
-                      <th className="p-4 font-black">직책</th>
-                      <th className="p-4 font-black">역할</th>
-                      <th className="p-4 font-black">출석률</th>
-                      <th className="p-4 font-black">상태</th>
-                      <th className="p-4 font-black w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filtered.length === 0 ? (
-                      <tr><td colSpan={7} className="p-8 text-center text-gray-500 font-bold">검색 결과가 없습니다.</td></tr>
-                    ) : filtered.map(m => {
-                      const isDirty = hasDraft(m.id);
-                      const isSaving = saving[m.id];
-                      return (
-                        <tr key={m.id} className={`transition-colors ${isDirty ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
-                          <td className="p-4 font-black text-lg">
-                            {m.profiles?.name ?? '—'}
-                            {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-orange-500" />}
-                            <p className="text-xs font-normal text-gray-400">{m.profiles?.email}</p>
-                            <p className="text-xs font-normal text-gray-400">{m.profiles?.major}</p>
-                          </td>
-                          <td className="p-4">
-                            <input
-                              value={getVal(m, 'generation')}
-                              onChange={e => setDraft(m.id, { generation: e.target.value || null })}
-                              className="w-16 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
-                              placeholder="기수"
-                            />
-                          </td>
-                          <td className="p-4">
-                            <input
-                              value={getVal(m, 'position')}
-                              onChange={e => setDraft(m.id, { position: e.target.value || null })}
-                              className="w-24 border border-gray-300 p-1 text-sm font-bold outline-none focus:border-orange-500"
-                              placeholder="직책"
-                            />
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={(drafts[m.id]?.role ?? m.role) as string}
-                              onChange={e => setDraft(m.id, { role: e.target.value as '운영진' | '부원' })}
-                              className="border border-black text-sm font-bold p-1 outline-none cursor-pointer bg-white"
-                            >
-                              <option>운영진</option>
-                              <option>부원</option>
-                            </select>
-                          </td>
-                          <td className="p-4">
-                            {m.attendanceRate != null ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-20 h-2.5 bg-gray-200 border border-gray-300">
-                                  <div className="h-full bg-orange-500" style={{ width: `${m.attendanceRate}%` }} />
-                                </div>
-                                <span className="font-black text-sm">{m.attendanceRate}%</span>
-                              </div>
-                            ) : <span className="text-gray-400 text-sm font-bold">—</span>}
-                          </td>
-                          <td className="p-4">
-                            <select
-                              value={(drafts[m.id]?.status ?? m.status) as string}
-                              onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
-                              className={`border text-xs font-bold p-1.5 outline-none cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
-                            >
-                              {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
-                            </select>
-                          </td>
-                          <td className="p-4">
-                            {isDirty && (
-                              <button
-                                onClick={() => saveMember(m.id)}
-                                disabled={isSaving}
-                                title="변경사항 저장"
-                                className="flex items-center gap-1 px-3 py-1.5 bg-black text-white text-xs font-black hover:bg-orange-500 hover:text-black disabled:opacity-50 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
+                <div className="text-left">
+                  {/* 헤더 — 모든 행과 동일한 gridCols 공유 → 컬럼 정렬 보장 */}
+                  <div className="grid bg-sand-50 border-b border-sand-200 text-sm font-bold text-sand-500" style={{ gridTemplateColumns: gridCols }}>
+                    <div className="p-4">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleChecked}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 accent-brand cursor-pointer"
+                        aria-label="전체 선택"
+                      />
+                    </div>
+                    <div className="p-4">이름</div>
+                    <div className="p-4">학교</div>
+                    <ColumnHeaderFilter label="기수" col="generation" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
+                    <div className="p-4">출석률</div>
+                    <ColumnHeaderFilter label="상태" col="status" colFilters={colFilters} openFilterCol={openFilterCol} setOpenFilterCol={setOpenFilterCol} uniqueValues={uniqueValues} toggleColFilter={toggleColFilter} clearColFilter={clearColFilter} />
+                    {visibleCustomFields.map(f => (
+                      <div key={f.id} className="p-4">{f.name}{f.required && <span className="text-bad-fg ml-0.5">*</span>}</div>
+                    ))}
+                  </div>
+
+                  {/* 바디 — 윈도잉: 보이는 행만 DOM 에 둔다(절대배치) */}
+                  {filtered.length === 0 ? (
+                    <div className="p-8 text-center text-sand-500 font-medium">표시할 부원이 없습니다.</div>
+                  ) : (
+                    <div ref={listRef} style={{ position: 'relative', height: rowV.getTotalSize() }}>
+                      {rowV.getVirtualItems().map(item => {
+                        const m = filtered[item.index];
+                        const isDirty = hasDraft(m.id);
+                        const isSelected = selectedIds.has(m.id);
+                        return (
+                          <div
+                            key={item.key}
+                            data-index={item.index}
+                            ref={rowV.measureElement}
+                            className={`grid border-b border-sand-200 transition-colors ${isSelected ? 'bg-brand-tint' : isDirty ? 'bg-brand-tint/50' : 'bg-white hover:bg-sand-50'}`}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${item.start - scrollMargin}px)`, gridTemplateColumns: gridCols }}
+                          >
+                            <div className="p-4">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelect(m.id)}
+                                className="w-4 h-4 accent-brand cursor-pointer"
+                                aria-label={`${memberName(m)} 선택`}
+                              />
+                            </div>
+                            <div className="p-4 font-black text-lg text-ink">
+                              {memberName(m)}
+                              {m.role === '운영진' && <Award className="w-4 h-4 inline-block ml-1 text-brand" strokeWidth={2.5} />}
+                              {!m.profiles && (
+                                <span className="ml-2 px-1.5 py-0.5 bg-sand-100 rounded-md font-medium text-[10px] align-middle text-sand-500">
+                                  계정 미연결
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-4 font-medium text-sm text-sand-600">
+                              {memberUniversity(m) || <span className="text-sand-300 font-medium">—</span>}
+                            </div>
+                            <div className="p-4">
+                              <select
+                                value={getVal(m, 'generation')}
+                                onChange={e => setDraft(m.id, { generation: e.target.value || null })}
+                                className="field w-24 border border-sand-300 rounded-ctl p-1 text-sm font-bold bg-white cursor-pointer"
                               >
-                                {isSaving ? <Loader className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                저장
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                <option value="">—</option>
+                                {generations.map(g => <option key={g} value={g}>{g}</option>)}
+                                {/* 목록에 없는 기존 값도 표시 */}
+                                {getVal(m, 'generation') && !generations.includes(getVal(m, 'generation')) && (
+                                  <option value={getVal(m, 'generation')}>{getVal(m, 'generation')} (목록 외)</option>
+                                )}
+                              </select>
+                            </div>
+                            <div className="p-4">
+                              {m.attendanceRate != null ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2.5 bg-sand-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-brand" style={{ width: `${m.attendanceRate}%` }} />
+                                  </div>
+                                  <span className="font-bold text-sm text-ink">{m.attendanceRate}%</span>
+                                </div>
+                              ) : <span className="text-sand-400 text-sm font-medium">—</span>}
+                            </div>
+                            <div className="p-4">
+                              <select
+                                value={(drafts[m.id]?.status ?? m.status) as string}
+                                onChange={e => setDraft(m.id, { status: e.target.value as MemberStatus })}
+                                className={`field text-xs font-bold p-1.5 rounded-ctl cursor-pointer ${STATUS_BADGE[(drafts[m.id]?.status ?? m.status) as MemberStatus]}`}
+                              >
+                                {(['활동중', '수료', '탈퇴', '활동정지'] as MemberStatus[]).map(s => <option key={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            {visibleCustomFields.map(f => (
+                              <div key={f.id} className="p-4">
+                                {renderCustomInput(f, m)}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
+
+            {chartData.length > 0 && (
+              <div className="bg-white border border-sand-200 rounded-card shadow-soft p-5">
+                <h3 className="font-black text-sm text-ink mb-3 flex items-center gap-2">
+                  📊 기수별 평균 출석률
+                </h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 10 }}>
+                    <XAxis dataKey="generation" tick={{ fontWeight: 700, fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number) => [`${value}%`, '평균 출석률']}
+                      labelFormatter={(label: string) => `${label} (${chartData.find(d => d.generation === label)?.count}명)`}
+                    />
+                    <Bar dataKey="avg" fill="#EC6A2C">
+                      <LabelList dataKey="avg" position="top" formatter={(v: number) => `${v}%`} style={{ fontWeight: 700, fontSize: 11 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
             </>}
 
           </div>
         </main>
-      </div>
 
       {showInviteModal && (
         <InviteModal
           clubId={adminClubId!}
+          generations={generations}
+          defaultGeneration={currentGeneration ?? ''}
           onClose={() => setShowInviteModal(false)}
           onSuccess={() => { showToast('부원이 추가되었습니다.'); if (adminClubId) loadMembers(adminClubId); }}
         />
       )}
 
-      {toast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-black text-white px-6 py-4 border border-white font-bold flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(249,115,22,0.5)]">
-          <Check className="w-4 h-4 text-green-400" /> {toast}
+      {showPullModal && adminClubId && (
+        <PullApplicantsModal
+          clubId={adminClubId}
+          generations={generations}
+          defaultGeneration={currentGeneration ?? ''}
+          onClose={() => setShowPullModal(false)}
+          onSuccess={(count) => {
+            setShowPullModal(false);
+            showToast(`${count}명을 명단에 추가했습니다.`);
+            loadMembers(adminClubId);
+          }}
+        />
+      )}
+
+      {showGenManager && (
+        <GenManagerModal
+          generations={generations}
+          currentGeneration={currentGeneration}
+          onClose={() => setShowGenManager(false)}
+          onUpdate={async (next) => {
+            const nextCurrent = currentGeneration && !next.includes(currentGeneration) ? null : currentGeneration;
+            const r = await updateClubGenerations(next, nextCurrent);
+            if (r.error) showToast(`저장 실패: ${r.error}`);
+            else showToast('기수 목록이 저장되었습니다.');
+            return r;
+          }}
+        />
+      )}
+
+      {showCloseGenModal && currentGeneration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-7 flex flex-col gap-5">
+            <div className="flex items-start gap-3">
+              <Archive className="w-7 h-7 text-brand shrink-0 mt-0.5" strokeWidth={2.5} />
+              <div>
+                <h2 className="text-2xl font-black text-ink mb-1">기수 마감</h2>
+                <p className="text-sand-600 font-medium text-sm">
+                  <strong className="text-ink">{currentGeneration}</strong> 의 활동중 부원
+                  ({members.filter(m => m.status === '활동중' && m.generation === currentGeneration).length}명)을
+                  모두 <strong className="text-ink">수료</strong> 상태로 변경합니다.<br />
+                  마감 후에는 현재 활동 기수가 비워집니다.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCloseGenModal(false)}
+                disabled={closingGen}
+                className="flex-1 py-3 border border-sand-300 rounded-ctl font-bold text-ink hover:bg-sand-50 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCloseCurrentGen}
+                disabled={closingGen}
+                className="flex-1 py-3 btn-grad text-white rounded-ctl font-bold shadow-btn disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {closingGen && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
+                마감하기
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function InviteModal({ clubId, onClose, onSuccess }: { clubId: string; onClose: () => void; onSuccess: () => void }) {
-  const [email, setEmail] = useState('');
-  const [generation, setGeneration] = useState('');
-  const [role, setRole] = useState<'부원' | '운영진'>('부원');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+      {showColumnSettings && (
+        <ColumnSettingsModal
+          fields={customFields}
+          hiddenCols={hiddenCustomCols}
+          onAdd={addCustomField}
+          onDelete={deleteCustomField}
+          onToggleVisibility={toggleCustomColVisibility}
+          onReorder={reorderCustomField}
+          onClose={() => setShowColumnSettings(false)}
+        />
+      )}
 
-  const handleInvite = async () => {
-    if (!email.trim()) return;
-    setLoading(true); setError('');
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email.trim())
-      .maybeSingle();
-    if (!profile) { setError('해당 이메일로 가입된 계정을 찾을 수 없습니다.'); setLoading(false); return; }
-
-    const { error: insertErr } = await supabase
-      .from('club_members')
-      .insert({ club_id: clubId, user_id: profile.id, role, generation: generation.trim() || null, status: '활동중' });
-    setLoading(false);
-    if (insertErr?.code === '23505') { setError('이미 등록된 부원입니다.'); return; }
-    if (insertErr) { setError(insertErr.message); return; }
-    onSuccess(); onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] w-full max-w-md mx-4 p-8 flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-black">부원 초대</h2>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
-        </div>
-        <p className="text-gray-500 font-bold text-sm">OURCLUB에 가입된 계정을 이메일로 검색하여 추가합니다.</p>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="font-black text-sm">이메일 *</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="gildong@university.ac.kr"
-              className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="font-black text-sm">기수</label>
-              <input value={generation} onChange={e => setGeneration(e.target.value)} placeholder="14기"
-                className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="font-black text-sm">역할</label>
-              <select value={role} onChange={e => setRole(e.target.value as '부원' | '운영진')}
-                className="w-full p-3 border border-black font-bold outline-none focus:border-orange-500 bg-white cursor-pointer">
-                <option>부원</option>
-                <option>운영진</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        {error && <p className="text-red-600 font-bold text-sm">{error}</p>}
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 border-2 border-black font-black hover:bg-gray-100">취소</button>
-          <button onClick={handleInvite} disabled={loading || !email.trim()}
-            className="flex-1 py-3 bg-black text-white font-black hover:bg-orange-500 hover:text-black disabled:opacity-50 flex items-center justify-center gap-2">
-            {loading && <Loader className="w-4 h-4 animate-spin" />} 추가하기
+      {/* 하단 고정 저장 바 (drafts 있을 때만) */}
+      {draftCount > 0 && activeTab === 'members' && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 btn-grad rounded-card px-6 py-3 shadow-soft-lg flex items-center gap-4">
+          <span className="font-bold text-sm text-white">
+            <strong>{draftCount}명</strong>의 변경사항이 있습니다
+          </span>
+          <button
+            onClick={() => {
+              setDrafts({});
+              setCustomDrafts({});
+              showToast('변경사항을 취소했습니다.');
+            }}
+            className="px-3 py-1.5 rounded-ctl bg-white text-ink font-bold text-xs hover:bg-sand-50"
+          >
+            취소
+          </button>
+          <button
+            onClick={() => setShowSaveModal(true)}
+            disabled={bulkSaving}
+            className="px-4 py-1.5 bg-ink text-white font-bold text-xs rounded-ctl hover:bg-ink/90 disabled:opacity-50 flex items-center gap-1"
+          >
+            {bulkSaving ? <Loader className="w-3 h-3 animate-spin" strokeWidth={2.5} /> : <Save className="w-3 h-3" strokeWidth={2.5} />}
+            저장
           </button>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* 일괄 저장 확인 모달 */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft-lg w-full max-w-md mx-4 p-8 flex flex-col gap-5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-7 h-7 text-brand shrink-0 mt-0.5" strokeWidth={2.5} />
+              <div>
+                <h2 className="text-2xl font-black text-ink mb-1">변경사항 저장</h2>
+                <p className="text-sand-600 font-medium text-sm">
+                  총 <strong className="text-ink">{draftCount}명</strong>의 회원 정보가 변경되었습니다.<br />
+                  정말로 저장하시겠습니까?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                disabled={bulkSaving}
+                className="flex-1 py-3 border border-sand-300 rounded-ctl font-bold text-ink hover:bg-sand-50 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={saveAll}
+                disabled={bulkSaving}
+                className="flex-1 py-3 btn-grad text-white rounded-ctl font-bold shadow-btn disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {bulkSaving && <Loader className="w-4 h-4 animate-spin" strokeWidth={2.5} />}
+                저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-8 right-8 z-50 bg-ink text-white px-6 py-4 rounded-card font-medium flex items-center gap-2 shadow-soft-lg">
+          <Check className="w-4 h-4 text-ok-fg" strokeWidth={2.5} /> {toast}
+        </div>
+      )}
+    </>
   );
 }

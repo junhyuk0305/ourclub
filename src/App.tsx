@@ -1,37 +1,110 @@
-import React from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider, useAdmin } from './contexts/AdminContext';
 import { CorpProvider, useCorp } from './contexts/CorpContext';
+
+const PROFILE_SETUP_PATH = '/profile-setup';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import {
-  Home, Clubs, B2BLounge, TextPage, InfoPage, Stories, StoryDetail,
-  ClubDetail, ClubApply, ClubRecruit, ClubStories, Onboarding, ClubSetup, ClubJoin, ClubRegister
-} from './pages/public';
-import { MyPage } from './pages/user';
-import {
-  Workspace, RecruitAdmin, FormBuilder, AttendanceAdmin, MembersAdmin,
-  DashboardAdmin, B2BAdmin, B2BProposalAdmin, FeedbackAdmin, PostsAdmin, SettingsAdmin
-} from './pages/admin';
-import { CorpDashboard } from './pages/corp';
-import { Registrations, JoinRequests } from './pages/master';
+import { LoadingScreen } from './components/ui/LoadingScreen';
+import { INFO_PAGES } from './data/infoPages';
+import { STORY_ENABLED } from './lib/features';
+import { prefetchCommonRoutes } from './lib/preload';
 
-// 로그인 전용 보호 라우트
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+// 라우트 단위 코드 스플리팅: 페이지별 개별 모듈을 지연 로딩(배럴이 아닌 파일 직접 import 해야 청크가 쪼개짐).
+// 레이아웃(Header/Footer)·컨텍스트는 항상 필요하므로 eager 유지.
+// public
+const Home = lazy(() => import('./pages/public/Home'));
+const Clubs = lazy(() => import('./pages/public/Clubs'));
+const ClubDetail = lazy(() => import('./pages/public/ClubDetail'));
+const ClubRecruit = lazy(() => import('./pages/public/ClubRecruit'));
+const ClubApply = lazy(() => import('./pages/public/ClubApply'));
+const B2BLounge = lazy(() => import('./pages/public/B2BLounge'));
+const ForClubs = lazy(() => import('./pages/public/ForClubs'));
+const Stories = lazy(() => import('./pages/public/Stories'));
+const StoryDetail = lazy(() => import('./pages/public/StoryDetail'));
+const InfoPage = lazy(() => import('./pages/public/InfoPage'));
+const ClubStories = lazy(() => import('./pages/public/ClubStories'));
+const Onboarding = lazy(() => import('./pages/public/Onboarding'));
+const ProfileSetup = lazy(() => import('./pages/public/ProfileSetup'));
+const ClubSetup = lazy(() => import('./pages/public/ClubSetup'));
+const ClubJoin = lazy(() => import('./pages/public/ClubJoin'));
+const ClubRegister = lazy(() => import('./pages/public/ClubRegister'));
+const CorpRegister = lazy(() => import('./pages/public/CorpRegister'));
+const ClubDemoPage = lazy(() => import('./pages/public/ClubDemoPage'));
+// user
+const MyPage = lazy(() => import('./pages/user/MyPage'));
+const CertificateView = lazy(() => import('./pages/user/CertificateView'));
+// admin — 공통 셸은 eager(즉시 표시), 개별 페이지는 lazy
+import AdminLayout from './pages/admin/AdminLayout';
+const Workspace = lazy(() => import('./pages/admin/Workspace'));
+const AttendanceCreate = lazy(() => import('./pages/admin/AttendanceCreate'));
+const AttendanceList = lazy(() => import('./pages/admin/AttendanceList'));
+const AttendanceDetail = lazy(() => import('./pages/admin/AttendanceDetail'));
+const AttendanceExcuses = lazy(() => import('./pages/admin/AttendanceExcuses'));
+const MembersAdmin = lazy(() => import('./pages/admin/MembersAdmin'));
+const MembersAnalytics = lazy(() => import('./pages/admin/MembersAnalytics'));
+const DashboardAdmin = lazy(() => import('./pages/admin/DashboardAdmin'));
+const B2BAdmin = lazy(() => import('./pages/admin/B2BAdmin'));
+const B2BProposalAdmin = lazy(() => import('./pages/admin/B2BProposalAdmin'));
+const FeedbackAdmin = lazy(() => import('./pages/admin/FeedbackAdmin'));
+const PostsAdmin = lazy(() => import('./pages/admin/PostsAdmin'));
+const SettingsAdmin = lazy(() => import('./pages/admin/SettingsAdmin'));
+const RecruitmentsList = lazy(() => import('./pages/admin/RecruitmentsList'));
+const RecruitmentDetail = lazy(() => import('./pages/admin/RecruitmentDetail'));
+const RecruitInsights = lazy(() => import('./pages/admin/RecruitInsights'));
+// corp — 공통 셸은 eager, 개별 페이지는 lazy
+import CorpLayout from './pages/corp/CorpLayout';
+const CorpDashboard = lazy(() => import('./pages/corp/CorpDashboard'));
+const CorpScouts = lazy(() => import('./pages/corp/CorpScouts'));
+// master — 공통 셸은 eager, 개별 페이지는 lazy
+import { MasterLayout } from './pages/master/MasterLayout';
+const Overview = lazy(() => import('./pages/master/Overview'));
+const ClubsAdmin = lazy(() => import('./pages/master/ClubsAdmin'));
+const Registrations = lazy(() => import('./pages/master/Registrations'));
+const JoinRequests = lazy(() => import('./pages/master/JoinRequests'));
+const CorpRequests = lazy(() => import('./pages/master/CorpRequests'));
+
+// 미로그인 시 로그인 페이지로 보내되, 원래 가려던 위치를 기억
+function RedirectToLogin() {
+  const location = useLocation();
+  return <Navigate to="/login" replace state={{ from: location }} />;
+}
+
+// 프로필 미완성 시 프로필 작성으로 보내되, 원래 가려던 위치를 기억
+function RedirectToProfileSetup() {
+  const location = useLocation();
+  return <Navigate to={PROFILE_SETUP_PATH} replace state={{ from: location }} />;
+}
+
+// 로그인만 필요한 라우트 (프로필 완성 게이트 제외 — /profile-setup 자체용)
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
-  if (loading) return null;
-  if (!session) return <Navigate to="/login" replace />;
+  if (loading) return <LoadingScreen />;
+  if (!session) return <RedirectToLogin />;
+  return <>{children}</>;
+}
+
+// 로그인 + 프로필 완성 필요 (학생/부원 영역). 기업·마스터는 면제.
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { session, loading, isProfileComplete, isMaster } = useAuth();
+  const { isCorpUser, loading: corpLoading } = useCorp();
+  if (loading || corpLoading) return <LoadingScreen />;
+  if (!session) return <RedirectToLogin />;
+  if (!isMaster && !isCorpUser && !isProfileComplete) return <RedirectToProfileSetup />;
   return <>{children}</>;
 }
 
 // 운영진 전용 보호 라우트
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading, isProfileComplete, isMaster } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  if (authLoading || adminLoading) return null;
-  if (!session) return <Navigate to="/login" replace />;
+  if (authLoading || adminLoading) return <LoadingScreen />;
+  if (!session) return <RedirectToLogin />;
+  // 운영진(학생)도 프로필 완성 필요. 마스터는 면제.
+  if (!isMaster && !isProfileComplete) return <RedirectToProfileSetup />;
   // 미승인 신청자 포함 비운영진 → club-setup(대기 화면 or 분기 선택)으로
   if (!isAdmin) return <Navigate to="/club-setup" replace />;
   return <>{children}</>;
@@ -40,8 +113,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 // 마스터 전용 보호 라우트
 function MasterRoute({ children }: { children: React.ReactNode }) {
   const { session, isMaster, loading } = useAuth();
-  if (loading) return null;
-  if (!session) return <Navigate to="/login" replace />;
+  if (loading) return <LoadingScreen />;
+  if (!session) return <RedirectToLogin />;
   if (!isMaster) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -51,24 +124,50 @@ function CorpRoute({ children }: { children: React.ReactNode }) {
   const { session, loading: authLoading } = useAuth();
   const { isCorpUser, loading: corpLoading } = useCorp();
 
-  if (authLoading || corpLoading) return null;
-  if (!session) return <Navigate to="/login" replace />;
+  if (authLoading || corpLoading) return <LoadingScreen />;
+  if (!session) return <RedirectToLogin />;
   if (!isCorpUser) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
   const location = useLocation();
+
+  // 첫 페인트 이후 유휴 시간에 자주 이동하는 공개 페이지 청크를 미리 받아 네비게이션 깜박임 방지
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(prefetchCommonRoutes);
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(prefetchCommonRoutes, 1500);
+    return () => clearTimeout(t);
+  }, []);
   const isDashboardLayout =
     location.pathname.startsWith('/admin') ||
     location.pathname.startsWith('/corp') ||
     location.pathname.startsWith('/master') ||
-    location.pathname === '/workspace';
+    location.pathname === '/workspace' ||
+    location.pathname === '/demo';
+  // 동아리 상세 페이지(/clubs/:id, 단 /clubs/:id/... 하위는 제외)에서는 헤더를 hover 시에만 노출
+  const isClubIntroPage = /^\/clubs\/[^/]+\/?$/.test(location.pathname);
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-orange-500 selection:text-white flex flex-col">
-      {!isDashboardLayout && <Header />}
+    <div className="min-h-screen bg-white text-ink font-sans selection:bg-brand selection:text-white flex flex-col">
+      {!isDashboardLayout && !isClubIntroPage && <Header />}
+      {!isDashboardLayout && isClubIntroPage && (
+        // hover trigger 영역(헤더 높이 h-16=64px 만큼) + Header(absolute, translateY로 숨김/표시)
+        <div className="fixed top-0 inset-x-0 z-[60] group/hovernav" style={{ height: '64px' }} aria-label="navigation hover area">
+          <div className="absolute inset-x-0 top-0 -translate-y-full group-hover/hovernav:translate-y-0 transition-transform duration-300 ease-out">
+            <Header />
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col">
+        <Suspense fallback={<LoadingScreen />}>
         <Routes>
           {/* 공개 */}
           <Route path="/"               element={<Home />} />
@@ -76,124 +175,136 @@ function AppRoutes() {
           <Route path="/clubs/:id"      element={<ClubDetail />} />
           <Route path="/clubs/:id/recruit" element={<ClubRecruit />} />
           <Route path="/clubs/:id/apply" element={<ClubApply />} />
-          <Route path="/clubs/:id/stories" element={<ClubStories />} />
+          {STORY_ENABLED && <Route path="/clubs/:id/stories" element={<ClubStories />} />}
           <Route path="/b2b"            element={<B2BLounge />} />
-          <Route path="/stories"         element={<Stories />} />
-          <Route path="/stories/:id"    element={<StoryDetail />} />
+          <Route path="/for-clubs"      element={<ForClubs />} />
+          {STORY_ENABLED && <Route path="/stories"         element={<Stories />} />}
+          {STORY_ENABLED && <Route path="/stories/:id"    element={<StoryDetail />} />}
           <Route path="/login"          element={<Onboarding />} />
+          <Route path="/profile-setup"  element={<RequireAuth><ProfileSetup /></RequireAuth>} />
+          <Route path="/demo"           element={<ClubDemoPage />} />
 
           {/* 로그인 전용 */}
           <Route path="/mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
+          <Route path="/certificate/:id" element={<ProtectedRoute><CertificateView /></ProtectedRoute>} />
           <Route path="/club-setup" element={<ProtectedRoute><ClubSetup /></ProtectedRoute>} />
           <Route path="/club-join" element={<ProtectedRoute><ClubJoin /></ProtectedRoute>} />
           <Route path="/club-register" element={<ProtectedRoute><ClubRegister /></ProtectedRoute>} />
 
-          {/* 운영진 전용 */}
-          <Route path="/workspace"            element={<AdminRoute><Workspace /></AdminRoute>} />
-          <Route path="/admin/dashboard"      element={<AdminRoute><DashboardAdmin /></AdminRoute>} />
-          <Route path="/admin/recruit"        element={<AdminRoute><RecruitAdmin /></AdminRoute>} />
-          <Route path="/admin/form-builder"   element={<AdminRoute><FormBuilder /></AdminRoute>} />
-          <Route path="/admin/attendance"     element={<AdminRoute><AttendanceAdmin /></AdminRoute>} />
-          <Route path="/admin/members"        element={<AdminRoute><MembersAdmin /></AdminRoute>} />
-          <Route path="/admin/b2b"            element={<AdminRoute><B2BAdmin /></AdminRoute>} />
-          <Route path="/admin/b2b/proposal"   element={<AdminRoute><B2BProposalAdmin /></AdminRoute>} />
-          <Route path="/admin/feedback"       element={<AdminRoute><FeedbackAdmin /></AdminRoute>} />
-          <Route path="/admin/posts"          element={<AdminRoute><PostsAdmin /></AdminRoute>} />
-          <Route path="/admin/settings"       element={<AdminRoute><SettingsAdmin /></AdminRoute>} />
+          {/* 운영진 전용 — 공통 레이아웃(헤더+사이드바)을 한 번만 마운트, 콘텐츠만 Outlet 교체 */}
+          <Route element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route path="/admin/dashboard"      element={<DashboardAdmin />} />
+            {/* 신규 모집·지원 관리 (탭 통합 구조) */}
+            <Route path="/admin/recruitments"        element={<RecruitmentsList />} />
+            <Route path="/admin/recruitments/:id"    element={<RecruitmentDetail />} />
+            <Route path="/admin/recruit-insights"    element={<RecruitInsights />} />
+            <Route path="/admin/sessions/new"   element={<AttendanceCreate />} />
+            <Route path="/admin/sessions"       element={<AttendanceList />} />
+            <Route path="/admin/sessions/:id"   element={<AttendanceDetail />} />
+            <Route path="/admin/attendance-excuses" element={<AttendanceExcuses />} />
+            <Route path="/admin/members"        element={<MembersAdmin />} />
+            <Route path="/admin/members-analytics" element={<MembersAnalytics />} />
+            <Route path="/admin/b2b"            element={<B2BAdmin />} />
+            <Route path="/admin/b2b/proposal"   element={<B2BProposalAdmin />} />
+            <Route path="/admin/feedback"       element={<FeedbackAdmin />} />
+            <Route path="/admin/settings"       element={<SettingsAdmin />} />
+          </Route>
 
-          {/* 마스터 */}
-          <Route path="/master/registrations" element={<MasterRoute><Registrations /></MasterRoute>} />
-          <Route path="/master/join-requests"  element={<MasterRoute><JoinRequests /></MasterRoute>} />
-          <Route path="/master" element={<Navigate to="/master/registrations" replace />} />
+          {/* 운영진 전용 — 독립 풀스크린 셸 (공통 레이아웃 미적용) */}
+          <Route path="/workspace"            element={<AdminRoute><Workspace /></AdminRoute>} />
+          {STORY_ENABLED && <Route path="/admin/posts" element={<AdminRoute><PostsAdmin /></AdminRoute>} />}
+
+          {/* 구버전 라우트 호환 — 신규/통합 라우트로 리다이렉트 (외부 링크·북마크) */}
+          <Route path="/admin/recruit-page"        element={<Navigate to="/admin/recruitments" replace />} />
+          <Route path="/admin/recruit-dashboard"   element={<Navigate to="/admin/recruit-insights" replace />} />
+          <Route path="/admin/recruit-analytics"   element={<Navigate to="/admin/recruit-insights?tab=analytics" replace />} />
+          <Route path="/admin/recruit"        element={<Navigate to="/admin/recruitments" replace />} />
+          <Route path="/admin/form-builder"   element={<Navigate to="/admin/recruitments" replace />} />
+          <Route path="/admin/attendance"     element={<Navigate to="/admin/sessions/new" replace />} />
+
+          {/* 마스터 — 공통 레이아웃(헤더+사이드바)을 한 번만 마운트 */}
+          <Route element={<MasterRoute><MasterLayout /></MasterRoute>}>
+            <Route path="/master"               element={<Overview />} />
+            <Route path="/master/clubs"         element={<ClubsAdmin />} />
+            <Route path="/master/registrations" element={<Registrations />} />
+            <Route path="/master/join-requests"  element={<JoinRequests />} />
+            <Route path="/master/corp-requests"  element={<CorpRequests />} />
+          </Route>
 
           {/* 기업 */}
-          <Route path="/corp/dashboard" element={<CorpRoute><CorpDashboard /></CorpRoute>} />
+          <Route path="/corp/register"  element={<RequireAuth><CorpRegister /></RequireAuth>} />
+          <Route element={<CorpRoute><CorpLayout /></CorpRoute>}>
+            <Route path="/corp/dashboard" element={<CorpDashboard />} />
+            <Route path="/corp/scouts"    element={<CorpScouts />} />
+          </Route>
           <Route path="/corp/*"         element={<Navigate to="/corp/dashboard" replace />} />
 
-          {/* 안내 */}
-          <Route path="/privacy" element={
-            <InfoPage
-              title="개인정보처리방침"
-              category="정책 및 약관"
-              updatedAt="2026.05.01"
-              sections={[
-                { heading: "수집하는 개인정보 항목", body: "OURCLUB은 서비스 제공을 위해 다음 정보를 수집합니다.\n\n• 필수: 이름, 이메일 주소, 비밀번호(암호화 저장)\n• 선택: 학교명, 학과, 학번, 전화번호, 포트폴리오 URL, 기술 스택\n• 자동 수집: 서비스 이용 기록, 접속 IP, 쿠키(Supabase 인증 토큰)" },
-                { heading: "개인정보 수집 및 이용 목적", body: "수집한 개인정보는 아래 목적에만 이용합니다.\n\n① 회원 식별 및 로그인 인증\n② 동아리 지원서 제출 및 관리\n③ 기업-동아리 B2B 매칭 서비스 제공\n④ 서비스 공지 및 중요 안내 전달\n⑤ 부정 이용 방지 및 분쟁 해결" },
-                { heading: "개인정보 보유 및 이용 기간", body: "• 회원 탈퇴 시: 즉시 파기 (단, 관련 법령에 따라 일부 기록은 보존)\n• 전자상거래법: 계약·청약 철회 기록 5년, 소비자 불만 기록 3년\n• 통신비밀보호법: 로그인 기록 3개월\n\n보존 기간 종료 후에는 복구 불가능한 방법으로 즉시 파기합니다." },
-                { heading: "개인정보의 제3자 제공", body: "OURCLUB은 이용자의 개인정보를 원칙적으로 외부에 제공하지 않습니다.\n\n단, 다음 경우는 예외입니다.\n• 이용자가 사전에 동의한 경우 (예: B2B 매칭 시 기업 담당자에게 지원서 공개)\n• 법령의 규정에 의거하거나 수사기관의 적법한 요청이 있는 경우" },
-                { heading: "이용자의 권리와 행사 방법", body: "이용자는 언제든지 아래 권리를 행사할 수 있습니다.\n\n• 개인정보 열람 요청\n• 오류 정정 요청\n• 삭제(회원 탈퇴) 요청\n• 처리 정지 요청\n\n권리 행사는 마이페이지 설정 또는 이메일(privacy@ourclub.kr)로 가능하며, 10영업일 이내 처리합니다." },
-              ]}
+          {/* 안내 — 콘텐츠는 src/data/infoPages.ts 에서 관리 */}
+          {INFO_PAGES.map((p) => (
+            <Route
+              key={p.slug}
+              path={`/${p.slug}`}
+              element={
+                <InfoPage
+                  title={p.title}
+                  category={p.category}
+                  updatedAt={p.updatedAt}
+                  sections={p.sections}
+                />
+              }
             />
-          } />
-          <Route path="/terms" element={
-            <InfoPage
-              title="서비스 이용약관"
-              category="정책 및 약관"
-              updatedAt="2026.05.01"
-              sections={[
-                { heading: "목적 및 적용 범위", body: "본 약관은 OURCLUB(이하 '서비스')이 제공하는 동아리-기업 매칭 플랫폼의 이용 조건 및 절차에 관한 사항을 규정합니다.\n\n서비스에 가입하거나 이용하는 모든 회원(학생, 동아리 운영진, 기업 담당자)에게 적용됩니다." },
-                { heading: "서비스 이용", body: "• 이메일 인증을 완료한 회원만 서비스를 이용할 수 있습니다.\n• 동아리 운영진 기능은 OURCLUB이 인증한 클럽의 운영진에 한해 제공됩니다.\n• 기업 대시보드 기능은 사업자 인증을 완료한 기업 파트너에 한해 제공됩니다.\n• 서비스는 PC 및 모바일 웹 브라우저를 통해 이용할 수 있습니다." },
-                { heading: "이용자 의무", body: "회원은 다음 행위를 해서는 안 됩니다.\n\n① 타인의 개인정보 도용 또는 허위 정보 등록\n② 서비스를 통해 스팸, 광고성 메시지 무단 전송\n③ 플랫폼 코드 역공학, 크롤링, 자동화 스크래핑\n④ 다른 회원에게 불이익을 주는 행위\n\n위반 시 사전 통보 없이 계정이 정지 또는 삭제될 수 있습니다." },
-                { heading: "서비스 변경 및 중단", body: "OURCLUB은 운영상 필요한 경우 서비스의 전부 또는 일부를 변경하거나 중단할 수 있습니다.\n\n• 정기 점검: 사전 공지 후 진행\n• 긴급 중단: 보안 사고, 시스템 장애 등 불가피한 경우 사후 공지\n• 서비스 종료 시 최소 30일 전 이메일로 사전 고지합니다." },
-              ]}
-            />
-          } />
-          <Route path="/auth-process" element={
-            <InfoPage
-              title="인증 동아리 절차 안내"
-              category="동아리용 서비스"
-              updatedAt="2026.05.01"
-              sections={[
-                { heading: "인증 동아리(오렌지 뱃지)란?", body: "OURCLUB이 활동 실적, 구성원 신원, 재정 투명성, 운영 방식을 직접 심사해 공식 인증한 동아리입니다.\n\n인증을 완료한 동아리에는 '오렌지 뱃지'가 부여되며, 플랫폼 내 B2B 프로젝트 열람 및 지원 권한이 주어집니다." },
-                { heading: "신청 자격", body: "아래 조건을 모두 충족하는 동아리가 신청할 수 있습니다.\n\n✓ 대학생 중심으로 구성된 팀 (졸업생 혼합 가능)\n✓ 3개월 이상 정기적으로 활동한 기록 보유\n✓ 구성원 5인 이상\n✓ 활동 기록(SNS, 노션, 활동 보고서 등) 제출 가능" },
-                { heading: "제출 서류", body: "아래 서류를 OURCLUB 인증 신청 이메일(auth@ourclub.kr)로 제출하세요.\n\n① 동아리 소개서 (자유 형식, 1~3페이지)\n② 최근 3개월 활동 내역 (날짜·내용·참가 인원 포함)\n③ 현재 구성원 명단 (이름·소속 학교·역할)\n④ 재정 내역 요약 (회비 수입·지출 내역)\n⑤ 운영진 신분증 사본 (개인정보 마스킹 후)" },
-                { heading: "심사 절차 및 기간", body: "서류 접수 완료 후 아래 순서로 진행됩니다.\n\n1단계. 서류 접수 확인 (1영업일 이내 회신)\n2단계. 1차 서면 심사 (5~7영업일)\n3단계. 2차 화상 인터뷰 (30분, 일정 조율 후 진행)\n4단계. 최종 승인 및 뱃지 부여\n\n전체 소요 기간은 약 2~3주이며, 미승인 시 사유를 안내합니다." },
-                { heading: "인증 동아리 혜택", body: "오렌지 뱃지 동아리에게는 다음 혜택이 제공됩니다.\n\n🔶 플랫폼 검색 결과 상단 노출\n🔶 B2B 프로젝트 공고 열람 및 지원 권한\n🔶 기업의 직접 제안(스카우트) 수신\n🔶 동아리 전용 1-Page 홈페이지 빌더 사용\n🔶 모집 지원자 관리 대시보드 제공\n🔶 연간 활동 성과 리포트 발급" },
-              ]}
-            />
-          } />
-          <Route path="/corporate-join" element={
-            <InfoPage
-              title="기업 파트너 가입 안내"
-              category="기업용 서비스"
-              updatedAt="2026.05.01"
-              sections={[
-                { heading: "기업 파트너란?", body: "OURCLUB 기업 파트너는 검증된 대학생 동아리와 B2B 협업 프로젝트를 진행하거나, 우수 인재를 발굴하고자 하는 기업·기관·스타트업을 위한 계정입니다.\n\n기업 파트너로 가입하면 전용 대시보드에서 프로젝트 공고 등록, 지원서 검토, 동아리 직접 제안 등 모든 매칭 과정을 관리할 수 있습니다." },
-                { heading: "가입 자격", body: "아래 중 하나에 해당하면 신청 가능합니다.\n\n• 사업자등록증을 보유한 법인 사업자\n• 사업자등록증을 보유한 개인 사업자\n• 비영리 기관·협회 (별도 서류 안내)\n\n* 개인 자격(사업자 미등록)으로는 기업 파트너 가입이 불가합니다." },
-                { heading: "가입 절차", body: "① 기업 정보 입력: 상호명, 사업자등록번호, 담당자 정보\n② 사업자등록증 업로드 (PDF 또는 이미지)\n③ OURCLUB 운영팀 검토 (1~2영업일)\n④ 담당자 연락처로 확인 연락\n⑤ 기업 대시보드 계정 활성화\n\n가입 문의: corp@ourclub.kr" },
-                { heading: "제공 서비스", body: "기업 파트너에게는 아래 서비스가 제공됩니다.\n\n📋 B2B 프로젝트 공고 등록 (무제한)\n🔍 인증 동아리 검색 및 필터링\n📩 관심 동아리 직접 제안 기능\n📊 지원 현황 칸반 보드 (미열람 → 검토 → 미팅 → 매칭 완료)\n📄 동아리별 제안서 열람 및 상태 관리\n📈 매칭 결과 리포트 (분기별)" },
-              ]}
-            />
-          } />
-          <Route path="/project-guide" element={
-            <InfoPage
-              title="프로젝트 등록 방법"
-              category="기업용 서비스"
-              updatedAt="2026.05.01"
-              sections={[
-                { heading: "프로젝트 등록이란?", body: "기업이 원하는 협업 과제(마케팅, 개발, 리서치, 행사 등)를 공고로 등록하면, OURCLUB의 인증 동아리들이 제안서를 작성해 지원하는 B2B 매칭 시스템입니다.\n\n선발된 동아리와 기업이 협업을 진행하며, 프로젝트 결과물에 대한 보상(활동비, 후원금, 인턴 기회 등)은 기업이 직접 설정합니다." },
-                { heading: "등록 전 준비사항", body: "원활한 등록을 위해 아래 내용을 미리 준비하세요.\n\n✓ 기업 파트너 계정 인증 완료 상태\n✓ 프로젝트 목표 및 기대 결과물 정의\n✓ 협업 기간 (시작일 ~ 종료일)\n✓ 필요한 역량 또는 동아리 유형\n✓ 보상 내용 (활동비, 현물 지원, 수료증 등)\n✓ 지원 마감일" },
-                { heading: "등록 절차", body: "① 기업 대시보드 로그인\n② 상단 '새 프로젝트 등록' 버튼 클릭\n③ 프로젝트 제목, 카테고리, 예산, 마감일, 상세 설명 입력\n④ 필요 역량 태그 추가 (예: #마케팅 #SNS운영)\n⑤ '게시 요청' 제출\n⑥ OURCLUB 검토 후 인증 동아리에 공개 (보통 1영업일 이내)" },
-                { heading: "매칭 과정", body: "공고 게시 후 아래 과정으로 매칭이 진행됩니다.\n\n1. 인증 동아리가 공고를 보고 제안서 작성 후 지원\n2. 기업 대시보드에서 지원 동아리 목록 및 제안서 확인\n3. 관심 동아리에 '미팅 요청' 상태로 변경\n4. 직접 연락 또는 플랫폼 내 채팅으로 미팅 진행\n5. 최종 협업 동아리 '매칭 완료' 처리" },
-                { heading: "유의사항", body: "• 허위·과장된 공고 내용은 계정 정지 사유가 됩니다.\n• 보상 내용은 공고에 명시한 조건을 반드시 이행해야 합니다.\n• 동아리와의 분쟁 발생 시 OURCLUB은 중재 역할을 할 수 있으나, 계약 당사자는 기업과 동아리입니다.\n• 공고 내용 수정은 지원자가 없을 때만 가능합니다. 지원자 발생 후 중요 내용 변경 시 기존 지원자에게 개별 고지해야 합니다." },
-              ]}
-            />
-          } />
+          ))}
         </Routes>
+        </Suspense>
       </div>
       {!isDashboardLayout && <Footer />}
     </div>
   );
 }
 
+// 렌더 크래시가 앱 전체 화이트스크린이 되지 않도록 격리 + Sentry 리포트.
+function AppErrorFallback() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-ink p-6 text-center">
+      <p className="font-black text-2xl mb-2">문제가 발생했습니다</p>
+      <p className="text-sm text-sand-500 mb-6">일시적인 오류일 수 있어요. 페이지를 새로고침해 주세요.</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-5 py-2.5 btn-grad text-white font-black rounded-ctl shadow-btn hover:-translate-y-0.5 transition-transform"
+      >
+        새로고침
+      </button>
+    </div>
+  );
+}
+
+// @sentry/react를 엔트리에 정적 포함하지 않기 위한 경량 ErrorBoundary.
+// 렌더 크래시를 격리하고, 로드된 경우 Sentry로 리포트(미로드 시 무시).
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    // Sentry를 엔트리에 끌어들이지 않도록 리포트 시점에만 동적 로드.
+    import('./lib/sentry').then((m) => m.captureException(error)).catch(() => {});
+  }
+  render() {
+    if (this.state.hasError) return <AppErrorFallback />;
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AdminProvider>
-        <CorpProvider>
-          <AppRoutes />
-        </CorpProvider>
-      </AdminProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AdminProvider>
+          <CorpProvider>
+            <AppRoutes />
+          </CorpProvider>
+        </AdminProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

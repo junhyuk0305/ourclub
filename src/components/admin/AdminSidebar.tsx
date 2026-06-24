@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Palette, Briefcase, Calendar, CheckSquare, Users, Edit3, Settings, MessageSquare, FileText, ChevronDown, ChevronRight, Globe, ClipboardList, PenTool } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Users, Settings, ChevronDown, ChevronRight, Palette, ClipboardList } from 'lucide-react';
+import { STORY_ENABLED } from '../../lib/features';
 
 type MenuItem = {
   name: string;
   path: string;
+  match?: (pathname: string) => boolean; // 하위 경로까지 활성 처리할 때
 };
 
 type MenuGroup = {
@@ -17,13 +19,19 @@ type MenuGroup = {
 export function AdminSidebar() {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    '웹사이트 관리': true,
+    '커스터마이징': true,
     '모집 및 지원 관리': true,
     '멤버 및 활동 관리': true,
     '운영 및 성과 평가': true
   });
 
-  const isActive = (path: string) => location.pathname === path || (path !== '/workspace' && path !== '/admin/dashboard' && location.pathname.startsWith(path));
+  const EXACT_ONLY = ['/workspace', '/admin/dashboard', '/admin/sessions'];
+  const isActive = (path: string) =>
+    location.pathname === path ||
+    (!EXACT_ONLY.includes(path) && location.pathname.startsWith(path + '/'));
+
+  const itemActive = (item: MenuItem) =>
+    item.match ? item.match(location.pathname) : isActive(item.path);
 
   const toggleGroup = (groupName: string) => {
     setOpenGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
@@ -31,19 +39,13 @@ export function AdminSidebar() {
 
   const menuGroups: MenuGroup[] = [
     { name: '대시보드', path: '/admin/dashboard', icon: LayoutDashboard },
-    { 
-      name: '웹사이트 관리', 
-      icon: Globe,
-      items: [
-        { name: '1-Page 프로필 꾸미기', path: '/workspace' }
-      ]
-    },
+    { name: '1PAGE 웹 디자인', path: '/workspace', icon: Palette },
     {
       name: '모집 및 지원 관리',
       icon: ClipboardList,
       items: [
-        { name: '지원서 폼 빌더', path: '/admin/form-builder' },
-        { name: '리크루팅 진행 상황', path: '/admin/recruit' }
+        { name: '전체 모집', path: '/admin/recruitments' },
+        { name: '모집 분석', path: '/admin/recruit-insights' },
       ]
     },
     {
@@ -51,15 +53,20 @@ export function AdminSidebar() {
       icon: Users,
       items: [
         { name: '부원 명단 관리', path: '/admin/members' },
-        { name: '출석 및 세션 관리', path: '/admin/attendance' }
+        { name: '명단 분석', path: '/admin/members-analytics' },
+        {
+          name: '전체 세션 관리',
+          path: '/admin/sessions',
+          match: (p) => p.startsWith('/admin/sessions') || p.startsWith('/admin/attendance-excuses'),
+        },
       ]
     },
     {
       name: '운영 및 성과 평가',
       icon: Briefcase,
       items: [
-        { name: 'B2B 프로젝트 수주', path: '/admin/b2b' },
-        { name: '스토리 포스트 발행', path: '/admin/posts' },
+        { name: '기업 협업 프로젝트', path: '/admin/b2b' },
+        ...(STORY_ENABLED ? [{ name: '스토리 포스트 발행', path: '/admin/posts' }] : []),
         { name: '만족도 조사 (Pulse)', path: '/admin/feedback' }
       ]
     },
@@ -78,13 +85,13 @@ export function AdminSidebar() {
             <Link
               key={group.name}
               to={group.path}
-              className={`p-3 text-left transition-all flex items-center gap-3 ${
+              className={`p-3 rounded-ctl text-left transition-all flex items-center gap-3 ${
                 isSelected
-                  ? 'font-black text-white border border-black bg-orange-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
-                  : 'font-bold text-gray-600 hover:bg-gray-100'
+                  ? 'font-black text-white btn-grad shadow-btn'
+                  : 'font-bold text-sand-600 hover:bg-sand-50'
               }`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-sm">{group.name}</span>
             </Link>
           );
@@ -92,35 +99,35 @@ export function AdminSidebar() {
 
         // 그룹 + 서브메뉴
         const isOpen = openGroups[group.name];
-        const isChildActive = group.items?.some(item => isActive(item.path));
+        const isChildActive = group.items?.some(itemActive);
 
         return (
-          <div key={group.name} className="flex flex-col mt-1 pt-1 border-t border-gray-100 first:border-t-0 first:mt-0 first:pt-0">
+          <div key={group.name} className="flex flex-col mt-1 pt-1 border-t border-sand-200 first:border-t-0 first:mt-0 first:pt-0">
             <button
               onClick={() => toggleGroup(group.name)}
               className={`py-2.5 px-3 text-left transition-all flex items-center justify-between font-bold text-xs uppercase tracking-widest ${
-                isChildActive ? 'text-orange-600' : 'text-gray-400'
-              } hover:text-black`}
+                isChildActive ? 'text-brand-dark' : 'text-sand-400'
+              } hover:text-ink`}
             >
               <div className="flex items-center gap-2">
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" strokeWidth={2.5} />
                 <span>{group.name}</span>
               </div>
               {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </button>
 
             {isOpen && group.items && (
-              <div className="flex flex-col ml-6 gap-0.5 border-l-2 border-gray-100 pl-1 mb-1">
+              <div className="flex flex-col ml-6 gap-0.5 border-l border-sand-200 pl-1 mb-1">
                 {group.items.map(item => {
-                  const isSelected = isActive(item.path);
+                  const isSelected = itemActive(item);
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={`py-2.5 px-3 text-left transition-all text-sm relative ${
+                      className={`py-2.5 px-3 rounded-ctl text-left transition-all text-sm relative ${
                         isSelected
-                          ? 'font-black text-black bg-orange-50 border-l-4 border-orange-500 -ml-[2px] pl-[14px]'
-                          : 'font-bold text-gray-500 hover:bg-gray-100 hover:text-black'
+                          ? 'font-black text-ink bg-brand-tint border-l-4 border-brand -ml-[1px] pl-[15px]'
+                          : 'font-bold text-sand-500 hover:bg-sand-50 hover:text-ink'
                       }`}
                     >
                       {item.name}

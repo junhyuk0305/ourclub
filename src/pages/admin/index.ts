@@ -1,7 +1,12 @@
 export { default as Workspace } from './Workspace';
-export { default as RecruitAdmin } from './RecruitAdmin';
-export { default as FormBuilder } from './FormBuilder';
-export { default as AttendanceAdmin } from './AttendanceAdmin';
+export { default as RecruitmentsList } from './RecruitmentsList';
+export { default as RecruitmentDetail } from './RecruitmentDetail';
+export { default as RecruitInsights } from './RecruitInsights';
+export { default as RecruitDashboard } from './RecruitDashboard';
+export { default as RecruitAnalytics } from './RecruitAnalytics';
+export { default as AttendanceCreate } from './AttendanceCreate';
+export { default as AttendanceList } from './AttendanceList';
+export { default as AttendanceDetail } from './AttendanceDetail';
 export { default as MembersAdmin } from './MembersAdmin';
 export { default as DashboardAdmin } from './DashboardAdmin';
 export { default as B2BAdmin } from './B2BAdmin';

@@ -5,11 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>OurClub — IA & User Flow</title>
 <style>
-/* ─── Reset & Base ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f5f5; color: #111; font-size: 13px; }
 
-/* ─── Header ─── */
 header {
   background: #111; color: #fff;
   padding: 28px 48px 22px;
@@ -19,7 +17,6 @@ header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
 header h1 span { color: #f97316; }
 header p { font-size: 11px; color: #777; margin-top: 4px; }
 
-/* ─── Tab Nav ─── */
 .tab-nav {
   display: flex; gap: 0;
   background: #fff; border-bottom: 2px solid #e5e5e5;
@@ -35,170 +32,79 @@ header p { font-size: 11px; color: #777; margin-top: 4px; }
 .tab-btn.active { color: #f97316; border-bottom-color: #f97316; }
 .tab-btn:hover:not(.active) { color: #333; }
 
-/* ─── Content Panels ─── */
 .panel { display: none; padding: 36px 48px 60px; max-width: 1280px; margin: 0 auto; }
 .panel.active { display: block; }
 
-/* ─── Section titles ─── */
-.section-title {
-  font-size: 18px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.3px;
-}
+.section-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.3px; }
 .section-sub { font-size: 12px; color: #888; margin-bottom: 28px; }
 
-/* ════════════════════════════════════
-   IA TREE
-════════════════════════════════════ */
+/* IA per-role cards */
 .ia-root { display: flex; flex-direction: column; gap: 32px; }
-
 .ia-role { background: #fff; border-radius: 12px; border: 1px solid #e8e8e8; overflow: hidden; }
-.ia-role-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 14px 20px; font-weight: 700; font-size: 13px;
-}
-.ia-role-header .badge {
-  font-size: 10px; font-weight: 700; padding: 3px 10px;
-  border-radius: 999px; letter-spacing: 0.5px;
-}
+.ia-role-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; font-weight: 700; font-size: 13px; }
+.ia-role-header .badge { font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.5px; }
 .badge-pub  { background:#dbeafe; color:#1d4ed8; }
 .badge-user { background:#dcfce7; color:#15803d; }
 .badge-adm  { background:#fff7ed; color:#c2410c; }
 .badge-corp { background:#f3e8ff; color:#7e22ce; }
 .badge-sys  { background:#f1f5f9; color:#475569; }
 
-.ia-tree { padding: 0 20px 20px; }
-
-/* Tree lines */
-.tree-node { position: relative; padding-left: 20px; margin-top: 8px; }
-.tree-node::before {
-  content: ''; position: absolute; left: 0; top: 10px;
-  width: 12px; height: 1px; background: #d1d5db;
+.ia-list { padding: 6px 20px 20px; display:flex; flex-direction:column; gap:8px; }
+.ia-row {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:8px 12px; border-radius:8px; background:#fafafa; border:1px solid #efefef;
 }
-.tree-node::after {
-  content: ''; position: absolute; left: 0; top: -6px;
-  width: 1px; height: 24px; background: #d1d5db;
-}
-.tree-node:last-child::after { height: 16px; }
+.ia-row.hi { background:#fff7ed; border-color:#fed7aa; }
+.ia-row .ico { font-size:13px; }
+.ia-row .lbl { font-weight:700; font-size:12px; white-space:nowrap; }
+.ia-row .rt  { font-size:10px; color:#94a3b8; font-family:monospace; }
+.ia-row .ds  { font-size:11px; color:#777; margin-left:auto; text-align:right; max-width:55%; }
 
-.node-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px; border-radius: 6px;
-  background: #fafafa; border: 1px solid #efefef;
-  width: fit-content; min-width: 220px;
-}
-.node-row.highlight { background: #fff7ed; border-color: #fed7aa; }
-.node-icon { font-size: 13px; }
-.node-label { font-weight: 600; font-size: 12px; }
-.node-route { font-size: 10px; color: #aaa; font-family: monospace; margin-left: 4px; }
-.node-desc { font-size: 10px; color: #999; margin-left: 8px; border-left: 1px solid #e5e5e5; padding-left: 8px; }
+/* Overview */
+.ia-overview { background:#fff; border-radius:12px; border:1px solid #e8e8e8; padding:28px 32px; margin-bottom:32px; }
+.ia-overview h2 { font-size:14px; font-weight:700; margin-bottom:18px; }
+.ov-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+.ov-col { border:1px solid #eee; border-radius:10px; overflow:hidden; }
+.ov-head { padding:10px 14px; font-weight:800; font-size:12px; text-align:center; border:2px solid; }
+.ov-head.pub  { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
+.ov-head.user { background:#dcfce7; border-color:#86efac; color:#15803d; }
+.ov-head.adm  { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
+.ov-head.corp { background:#f3e8ff; border-color:#d8b4fe; color:#7e22ce; }
+.ov-head.sys  { background:#f1f5f9; border-color:#cbd5e1; color:#475569; }
+.ov-pills { display:flex; flex-direction:column; gap:4px; padding:12px; }
+.ov-pills span { font-size:10px; padding:4px 9px; border-radius:6px; background:#f8fafc; border:1px solid #eef1f4; color:#475569; }
 
-/* Nested children */
-.tree-children { padding-left: 20px; border-left: 1px solid #e5e5e5; margin-left: 6px; }
-.tree-children .tree-node::after { height: 24px; }
-
-/* ════════════════════════════════════
-   USER FLOWS
-════════════════════════════════════ */
-.flows-grid { display: flex; flex-direction: column; gap: 44px; }
+/* Flows */
+.flows-grid { display: flex; flex-direction: column; gap: 36px; }
 .flow-block { background: #fff; border-radius: 12px; border: 1px solid #e8e8e8; overflow: hidden; }
-.flow-header { padding: 14px 24px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0; }
+.flow-header { padding: 14px 24px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0; flex-wrap:wrap; }
 .flow-header h3 { font-size: 14px; font-weight: 700; }
 .flow-header p { font-size: 11px; color: #888; margin-left: auto; }
-.flow-body { padding: 24px; overflow-x: auto; }
+.flow-header .badge { font-size:10px; padding:3px 10px; border-radius:999px; font-weight:700; }
+.flow-body { padding: 22px 24px; }
 
-/* Flowchart */
-.flowchart { display: flex; align-items: flex-start; gap: 0; min-width: max-content; }
-.flow-col { display: flex; flex-direction: column; align-items: center; }
-
-/* Node types */
-.fc-node {
-  border-radius: 8px; padding: 9px 14px;
-  font-size: 11px; font-weight: 600; text-align: center;
-  white-space: pre-line; line-height: 1.4;
-  min-width: 110px; max-width: 140px;
+.steps { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.step {
+  border-radius: 8px; padding: 9px 13px; font-size: 11px; font-weight: 600;
+  line-height: 1.4; min-width: 96px; max-width: 200px; white-space: pre-line;
 }
-.fc-start  { background:#111; color:#fff; border-radius:999px; padding: 8px 18px; min-width:90px; }
-.fc-end    { background:#111; color:#fff; border-radius:999px; padding: 8px 18px; min-width:90px; font-size:10px; }
-.fc-page   { background:#f8fafc; border:1.5px solid #cbd5e1; color:#334155; }
-.fc-action { background:#fff7ed; border:1.5px solid #fed7aa; color:#92400e; }
-.fc-gate   { background:#fef3c7; border:1.5px solid #fcd34d; color:#78350f;
-             transform: rotate(0deg); clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%);
-             width:90px; height:56px; display:flex; align-items:center; justify-content:center;
-             padding: 6px; min-width: unset; }
-.fc-success{ background:#dcfce7; border:1.5px solid #86efac; color:#166534; }
-.fc-error  { background:#fee2e2; border:1.5px solid #fca5a5; color:#991b1b; }
-.fc-system { background:#f1f5f9; border:1.5px solid #cbd5e1; color:#475569; font-style: italic; }
+.s-start  { background:#111; color:#fff; border-radius:999px; padding:8px 16px; min-width:auto; }
+.s-end    { background:#166534; color:#fff; border-radius:999px; padding:8px 16px; min-width:auto; }
+.s-page   { background:#f8fafc; border:1.5px solid #cbd5e1; color:#334155; }
+.s-act    { background:#fff7ed; border:1.5px solid #fed7aa; color:#92400e; }
+.s-gate   { background:#fef3c7; border:1.5px solid #fcd34d; color:#78350f; font-weight:800; }
+.s-ok     { background:#dcfce7; border:1.5px solid #86efac; color:#166534; }
+.s-err    { background:#fee2e2; border:1.5px solid #fca5a5; color:#991b1b; }
+.s-sys    { background:#f1f5f9; border:1.5px solid #cbd5e1; color:#475569; font-style:italic; }
+.arr { color:#cbd5e1; font-size:16px; flex-shrink:0; }
+.branch { display:flex; flex-direction:column; gap:6px; padding:6px 0 6px 14px; border-left:2px dashed #e2e8f0; margin:6px 0 6px 6px; }
+.branch .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tag { font-size:9px; font-weight:800; padding:2px 7px; border-radius:999px; }
+.tag-y { background:#dcfce7; color:#15803d; }
+.tag-n { background:#fee2e2; color:#991b1b; }
 
-/* Arrow */
-.fc-arrow {
-  display: flex; align-items: center;
-  padding: 0 4px; flex-shrink: 0; align-self: center; margin-top: -4px;
-}
-.fc-arrow::after { content:'→'; font-size:18px; color:#d1d5db; }
-.fc-arrow.label-top { flex-direction: column-reverse; }
-.fc-arrow .arr-label { font-size:9px; color:#f97316; font-weight:700; margin-bottom:2px; }
-
-/* Vertical arrow */
-.fc-down { display:flex; flex-direction:column; align-items:center; gap:0; }
-.fc-down::after { content:'↓'; font-size:16px; color:#d1d5db; line-height:1; margin:2px 0; }
-.fc-down .arr-label { font-size:9px; color:#f97316; font-weight:700; }
-
-/* branch */
-.fc-branch { display:flex; align-items:flex-start; gap:0; }
-.fc-branch-col { display:flex; flex-direction:column; align-items:center; }
-
-/* note */
-.flow-note {
-  font-size:10px; color:#94a3b8; margin-top:14px;
-  padding: 8px 14px; background:#f8fafc; border-radius:6px;
-  border-left: 3px solid #e2e8f0;
-}
-
-/* ─── IA Overview diagram ─── */
-.ia-overview {
-  background:#fff; border-radius:12px; border:1px solid #e8e8e8;
-  padding:32px; margin-bottom:32px;
-}
-.ia-overview h2 { font-size:14px; font-weight:700; margin-bottom:20px; }
-
-.tree-h { display:flex; gap:0; align-items:flex-start; }
-.tree-v { display:flex; flex-direction:column; gap:0; }
-.branch-line-h { width:30px; height:2px; background:#e5e5e5; align-self:center; flex-shrink:0; }
-.branch-connector {
-  display:flex; flex-direction:column; justify-content:space-between;
-  border-left:2px solid #e5e5e5; margin-left:0; padding-left:0;
-  position:relative;
-}
-.branch-item {
-  display:flex; align-items:center; gap:0;
-  position:relative;
-}
-.branch-stub { width:24px; height:2px; background:#e5e5e5; flex-shrink:0; }
-
-.root-node {
-  background:#111; color:#fff; font-weight:800; font-size:13px;
-  padding:14px 22px; border-radius:10px;
-  align-self:center; white-space:nowrap;
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-}
-.root-node span { font-size:10px; font-weight:400; color:#888; }
-
-.role-node {
-  padding:10px 16px; border-radius:8px;
-  font-weight:700; font-size:12px; text-align:center;
-  min-width:100px; border:2px solid;
-}
-.role-node.pub  { background:#dbeafe; border-color:#93c5fd; color:#1d4ed8; }
-.role-node.user { background:#dcfce7; border-color:#86efac; color:#15803d; }
-.role-node.adm  { background:#fff7ed; border-color:#fed7aa; color:#c2410c; }
-.role-node.corp { background:#f3e8ff; border-color:#d8b4fe; color:#7e22ce; }
-
-.page-pill {
-  font-size:10px; padding:4px 10px; border-radius:999px;
-  background:#f8fafc; border:1px solid #e2e8f0; color:#475569;
-  white-space:nowrap; margin:3px 0;
-}
-
-.role-pages { display:flex; flex-direction:column; gap:3px; padding-left:10px; margin-left:10px; border-left:2px solid #e5e5e5; }
+.flow-note { font-size:10px; color:#94a3b8; margin-top:14px; padding:8px 14px; background:#f8fafc; border-radius:6px; border-left:3px solid #e2e8f0; line-height:1.7; }
+.flow-note.warn { background:#fffbeb; border-left-color:#fcd34d; color:#92400e; }
 </style>
 </head>
 <body>
@@ -206,743 +112,385 @@ header p { font-size: 11px; color: #777; margin-top: 4px; }
 <header>
   <div>
     <h1>Our<span>Club</span> &nbsp;IA & User Flow</h1>
-    <p>정보 구조(IA) · 역할별 유저 플로우 다이어그램</p>
+    <p>정보 구조(IA) · 역할별 유저 플로우 — 코드 기준 동기화</p>
   </div>
-  <div style="font-size:11px;color:#555;">2026-04-30</div>
+  <div style="font-size:11px;color:#555;">2026-06-09</div>
 </header>
 
-<!-- Tab Navigation -->
 <div class="tab-nav">
-  <button class="tab-btn active" onclick="showTab('ia')">🗂 정보구조 (IA)</button>
-  <button class="tab-btn" onclick="showTab('flow')">🔀 유저 플로우</button>
+  <button class="tab-btn active" onclick="showTab('ia', event)">🗂 정보구조 (IA)</button>
+  <button class="tab-btn" onclick="showTab('flow', event)">🔀 유저 플로우</button>
 </div>
 
-<!-- ══════════════════════════════════════
-     PANEL 1 : IA
-══════════════════════════════════════ -->
+<!-- ══════════ PANEL 1 : IA ══════════ -->
 <div class="panel active" id="tab-ia">
   <div class="section-title">Information Architecture</div>
-  <div class="section-sub">OurClub 서비스의 전체 페이지 계층 구조 · 라우트 · 접근 권한</div>
+  <div class="section-sub">OurClub 서비스 페이지 계층 · 라우트 · 접근 권한 — <b>역할 5종</b> (라우트 출처: src/App.tsx)</div>
 
-  <!-- Overview Tree Diagram -->
   <div class="ia-overview">
-    <h2>전체 구조 개요</h2>
-    <div class="tree-h">
-      <!-- Root -->
-      <div class="root-node">
-        OurClub
-        <span>ourclub.io</span>
+    <h2>전체 구조 개요 (역할별 진입)</h2>
+    <div class="ov-grid">
+      <div class="ov-col">
+        <div class="ov-head pub">🌐 Public<br/><span style="font-weight:400;font-size:10px;">비회원</span></div>
+        <div class="ov-pills">
+          <span>/ 홈</span><span>/clubs 탐색</span><span>/clubs/:id 상세</span>
+          <span>/clubs/:id/recruit 공고</span><span>/clubs/:id/apply 지원</span>
+          <span>/b2b · /stories</span><span>/login · /profile-setup</span><span>/getting-started … /terms</span>
+        </div>
       </div>
-      <div class="branch-line-h"></div>
-
-      <!-- 4 Role branches -->
-      <div style="display:flex;flex-direction:column;justify-content:space-between;border-left:2px solid #e5e5e5;padding-left:0;gap:20px;">
-
-        <!-- Public -->
-        <div class="branch-item">
-          <div class="branch-stub"></div>
-          <div class="role-node pub">🌐 Public<br/><span style="font-size:10px;font-weight:400;">비회원</span></div>
-          <div class="role-pages">
-            <span class="page-pill">/ 홈</span>
-            <span class="page-pill">/clubs 동아리 목록</span>
-            <span class="page-pill">/clubs/:id 상세</span>
-            <span class="page-pill">/clubs/:id/recruit 공고</span>
-            <span class="page-pill">/clubs/:id/apply 지원서</span>
-            <span class="page-pill">/b2b B2B 라운지</span>
-            <span class="page-pill">/stories 커뮤니티</span>
-            <span class="page-pill">/login 로그인</span>
-            <span class="page-pill">/privacy · /terms 약관</span>
-          </div>
+      <div class="ov-col">
+        <div class="ov-head user">👤 User<br/><span style="font-weight:400;font-size:10px;">학생 / 부원</span></div>
+        <div class="ov-pills">
+          <span>/mypage 마이페이지</span><span>ㄴ 지원 내역</span><span>ㄴ 활동 및 출결</span>
+          <span>ㄴ 스크랩</span><span>ㄴ 알림</span>
+          <span>/club-setup 운영 시작</span><span>/club-register · /club-join</span>
         </div>
-
-        <!-- User -->
-        <div class="branch-item">
-          <div class="branch-stub"></div>
-          <div class="role-node user">👤 User<br/><span style="font-size:10px;font-weight:400;">일반 학생</span></div>
-          <div class="role-pages">
-            <span class="page-pill">/mypage 마이페이지</span>
-            <span class="page-pill" style="margin-left:12px;">ㄴ 지원 내역</span>
-            <span class="page-pill" style="margin-left:12px;">ㄴ 출석 체크</span>
-            <span class="page-pill" style="margin-left:12px;">ㄴ 활동 이력</span>
-            <span class="page-pill" style="margin-left:12px;">ㄴ 스크랩 목록</span>
-            <span class="page-pill" style="margin-left:12px;">ㄴ 알림 설정</span>
-          </div>
-        </div>
-
-        <!-- Admin -->
-        <div class="branch-item">
-          <div class="branch-stub"></div>
-          <div class="role-node adm">🛠 Admin<br/><span style="font-size:10px;font-weight:400;">동아리 운영진</span></div>
-          <div class="role-pages">
-            <span class="page-pill">/admin/dashboard 대시보드</span>
-            <span class="page-pill">/workspace 웹빌더</span>
-            <span class="page-pill">/admin/recruit 리크루팅</span>
-            <span class="page-pill">/admin/form-builder 폼 빌더</span>
-            <span class="page-pill">/admin/attendance 출석 관리</span>
-            <span class="page-pill">/admin/members 부원 관리</span>
-            <span class="page-pill">/admin/b2b B2B 지원</span>
-            <span class="page-pill">/admin/b2b/proposal 제안서</span>
-            <span class="page-pill">/admin/feedback Pulse 조사</span>
-            <span class="page-pill">/admin/posts 스토리 포스트</span>
-            <span class="page-pill">/admin/settings 동아리 설정</span>
-          </div>
-        </div>
-
-        <!-- Corp -->
-        <div class="branch-item">
-          <div class="branch-stub"></div>
-          <div class="role-node corp">🏢 Corp<br/><span style="font-size:10px;font-weight:400;">기업 담당자</span></div>
-          <div class="role-pages">
-            <span class="page-pill">/corp/dashboard 기업 대시보드</span>
-            <span class="page-pill">/corp/scouts 동아리 스카우팅</span>
-          </div>
-        </div>
-
       </div>
+      <div class="ov-col">
+        <div class="ov-head adm">🛠 Admin<br/><span style="font-weight:400;font-size:10px;">동아리 운영진</span></div>
+        <div class="ov-pills">
+          <span>/admin/dashboard</span><span>/workspace 웹빌더</span>
+          <span>/admin/recruitments 모집·지원</span><span>/admin/sessions 출석</span>
+          <span>/admin/attendance-excuses</span><span>/admin/members 부원</span>
+          <span>/admin/b2b · /feedback</span><span>/admin/posts · /settings</span>
+        </div>
+      </div>
+      <div class="ov-col">
+        <div class="ov-head sys">🛡 Master<br/><span style="font-weight:400;font-size:10px;">플랫폼 운영자</span></div>
+        <div class="ov-pills">
+          <span>/master 운영 대시보드</span><span>/master/clubs 동아리</span>
+          <span>/master/registrations 등록 심사</span><span>/master/join-requests 합류 심사</span><span>/master/corp-requests 기업 심사</span>
+        </div>
+      </div>
+      <div class="ov-col">
+        <div class="ov-head corp">🏢 Corp<br/><span style="font-weight:400;font-size:10px;">기업 담당자</span></div>
+        <div class="ov-pills">
+          <span>/corp/register 가입</span><span>/corp/dashboard</span><span>/corp/scouts 스카우팅</span>
+        </div>
+      </div>
+    </div>
+    <div class="flow-note" style="margin-top:18px;">
+      역할은 단일 컬럼이 아니라 <b>독립 판정</b>: 학생(로그인) · 운영진(club_members.role='운영진') ·
+      마스터(global_admins) · 기업(corp_members). 한 계정이 복수 역할 동시 보유 가능.
+      가드: RequireAuth / ProtectedRoute(+프로필) / AdminRoute / MasterRoute / CorpRoute.
     </div>
   </div>
 
-  <!-- Detailed IA per Role -->
   <div class="ia-root">
 
     <!-- PUBLIC -->
     <div class="ia-role">
-      <div class="ia-role-header" style="background:#eff6ff;">
-        <span class="badge badge-pub">Public</span>
-        🌐 비회원 공개 영역 — 인증 없이 접근 가능
+      <div class="ia-role-header" style="background:#eff6ff;"><span class="badge badge-pub">Public</span>🌐 비회원 공개 영역 — 인증 없이 접근</div>
+      <div class="ia-list">
+        <div class="ia-row"><span class="ico">🏠</span><span class="lbl">홈</span><span class="rt">/</span><span class="ds">큐레이션 · 통계 · 주요 CTA</span></div>
+        <div class="ia-row"><span class="ico">🔍</span><span class="lbl">동아리 탐색</span><span class="rt">/clubs</span><span class="ds">검색 · 카테고리 · 모집중 토글 · 스크랩</span></div>
+        <div class="ia-row"><span class="ico">📋</span><span class="lbl">동아리 상세</span><span class="rt">/clubs/:id</span><span class="ds">웹빌더 블록 렌더 · D-Day · 지원 CTA</span></div>
+        <div class="ia-row"><span class="ico">📢</span><span class="lbl">모집 공고</span><span class="rt">/clubs/:id/recruit</span><span class="ds">진행중 공고 · JD 마크다운 모달 → apply?rid=</span></div>
+        <div class="ia-row hi"><span class="ico">✍️</span><span class="lbl">지원서 작성</span><span class="rt">/clubs/:id/apply?rid=</span><span class="ds">동적 폼 · 상태 분기 · 로그인 필요</span></div>
+        <div class="ia-row"><span class="ico">📰</span><span class="lbl">동아리 스토리</span><span class="rt">/clubs/:id/stories</span><span class="ds">동아리별 스토리 목록</span></div>
+        <div class="ia-row"><span class="ico">🤝</span><span class="lbl">B2B 라운지</span><span class="rt">/b2b</span><span class="ds">프로젝트 마켓 · 매칭 사례</span></div>
+        <div class="ia-row"><span class="ico">📰</span><span class="lbl">커뮤니티 스토리</span><span class="rt">/stories · /stories/:id</span><span class="ds">피드 · 하이라이트 · 상세</span></div>
+        <div class="ia-row"><span class="ico">🔐</span><span class="lbl">온보딩 / 로그인</span><span class="rt">/login · /profile-setup</span><span class="ds">이메일·Google · 프로필 필수값 작성</span></div>
+        <div class="ia-row"><span class="ico">📄</span><span class="lbl">안내 · 약관 · 데모</span><span class="rt">/getting-started … /privacy · /terms · /demo</span><span class="ds">정적 안내 12종 · 동아리 데모</span></div>
       </div>
-      <div class="ia-tree">
+    </div>
 
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">🏠</span>
-            <span class="node-label">홈</span>
-            <span class="node-route">/</span>
-            <span class="node-desc">서비스 진입점 · 큐레이션 · 주요 CTA</span>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">🔍</span>
-            <span class="node-label">동아리 탐색</span>
-            <span class="node-route">/clubs</span>
-            <span class="node-desc">검색 · 카테고리 필터 · 모집중 토글</span>
-          </div>
-          <div class="tree-children">
-            <div class="tree-node">
-              <div class="node-row">
-                <span class="node-icon">📋</span>
-                <span class="node-label">동아리 상세</span>
-                <span class="node-route">/clubs/:id</span>
-                <span class="node-desc">프로필 · 통계 · 포트폴리오</span>
-              </div>
-              <div class="tree-children">
-                <div class="tree-node">
-                  <div class="node-row">
-                    <span class="node-icon">📢</span>
-                    <span class="node-label">모집 공고</span>
-                    <span class="node-route">/clubs/:id/recruit</span>
-                    <span class="node-desc">JD 목록 · 모달 상세</span>
-                  </div>
-                  <div class="tree-children">
-                    <div class="tree-node">
-                      <div class="node-row highlight">
-                        <span class="node-icon">✍️</span>
-                        <span class="node-label">지원서 작성</span>
-                        <span class="node-route">/clubs/:id/apply?rid=</span>
-                        <span class="node-desc">동적 폼 · 제출 · 로그인 필요</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">🤝</span>
-            <span class="node-label">B2B 라운지</span>
-            <span class="node-route">/b2b</span>
-            <span class="node-desc">프로젝트 마켓플레이스 · 매칭 성공 사례</span>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">📰</span>
-            <span class="node-label">커뮤니티 스토리</span>
-            <span class="node-route">/stories</span>
-            <span class="node-desc">아티클 피드 · 하이라이트 슬라이더</span>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">🔐</span>
-            <span class="node-label">온보딩 / 로그인</span>
-            <span class="node-route">/login</span>
-            <span class="node-desc">역할 선택 → 회원가입 / 로그인</span>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row">
-            <span class="node-icon">📄</span>
-            <span class="node-label">약관 페이지</span>
-            <span class="node-route">/privacy · /terms · /auth-process · …</span>
-            <span class="node-desc">정적 텍스트 콘텐츠</span>
-          </div>
-        </div>
-
+    <!-- ONBOARDING / LIFECYCLE -->
+    <div class="ia-role">
+      <div class="ia-role-header" style="background:#f0fdf4;"><span class="badge badge-user">Auth</span>🚪 운영 시작 · 동아리 라이프사이클 — 로그인 공통(ProtectedRoute)</div>
+      <div class="ia-list">
+        <div class="ia-row hi"><span class="ico">🚪</span><span class="lbl">운영 시작 분기</span><span class="rt">/club-setup</span><span class="ds">부원가입 / 합류 / 등록 분기 · 대기 상태 표시 · 12초 폴링</span></div>
+        <div class="ia-row"><span class="ico">➕</span><span class="lbl">새 동아리 등록</span><span class="rt">/club-register</span><span class="ds">3-step: 기본정보·안전서류·안전설문 → club_registration_requests</span></div>
+        <div class="ia-row"><span class="ico">👥</span><span class="lbl">기존 동아리 합류</span><span class="rt">/club-join</span><span class="ds">동아리 검색 · 직책·소개 → club_join_requests</span></div>
       </div>
     </div>
 
     <!-- USER -->
     <div class="ia-role">
-      <div class="ia-role-header" style="background:#f0fdf4;">
-        <span class="badge badge-user">User</span>
-        👤 일반 학생 — 로그인 후 접근 (/mypage)
-      </div>
-      <div class="ia-tree">
-        <div class="tree-node">
-          <div class="node-row highlight">
-            <span class="node-icon">👤</span>
-            <span class="node-label">마이페이지</span>
-            <span class="node-route">/mypage</span>
-            <span class="node-desc">개인 활동 허브</span>
-          </div>
-          <div class="tree-children">
-            <div class="tree-node"><div class="node-row"><span class="node-icon">📝</span><span class="node-label">지원 내역 탭</span><span class="node-desc">지원한 동아리 · 진행 상태</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-icon">✅</span><span class="node-label">출석 체크 탭</span><span class="node-desc">4자리 코드 입력 → 출석 인증</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-icon">📊</span><span class="node-label">활동 이력 탭</span><span class="node-desc">동아리별 출석률 · 세션 목록</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-icon">🔖</span><span class="node-label">스크랩 탭</span><span class="node-desc">북마크한 동아리 · 해제</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-icon">💬</span><span class="node-label">Pulse 응답 배너</span><span class="node-desc">활성 설문 → 별점 + 코멘트</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-icon">⚙️</span><span class="node-label">프로필 수정 모달</span><span class="node-desc">이름·연락처·학교·전공·스킬</span></div></div>
-          </div>
-        </div>
+      <div class="ia-role-header" style="background:#f0fdf4;"><span class="badge badge-user">User</span>👤 일반 학생 — 로그인 후 (/mypage)</div>
+      <div class="ia-list">
+        <div class="ia-row hi"><span class="ico">👤</span><span class="lbl">마이페이지</span><span class="rt">/mypage</span><span class="ds">개인 활동 허브 · 로그아웃 · 회원 탈퇴</span></div>
+        <div class="ia-row"><span class="ico">📝</span><span class="lbl">지원 내역 탭</span><span class="rt"></span><span class="ds">지원 동아리 · 진행 상태</span></div>
+        <div class="ia-row"><span class="ico">✅</span><span class="lbl">활동 및 출결 탭</span><span class="rt"></span><span class="ds">4자리 코드 출석 · 출석률 · 세션 이력</span></div>
+        <div class="ia-row"><span class="ico">🔖</span><span class="lbl">스크랩 탭</span><span class="rt"></span><span class="ds">북마크한 동아리(CLUB) · 해제</span></div>
+        <div class="ia-row"><span class="ico">🔔</span><span class="lbl">알림 탭</span><span class="rt"></span><span class="ds">알림 히스토리(notifications) — 설정 아님</span></div>
+        <div class="ia-row"><span class="ico">💬</span><span class="lbl">Pulse 배너 / 역할 배너 / 프로필 모달</span><span class="rt"></span><span class="ds">활성 설문 응답 · 운영/기업 전환 · 프로필 수정</span></div>
       </div>
     </div>
 
     <!-- ADMIN -->
     <div class="ia-role">
-      <div class="ia-role-header" style="background:#fff7ed;">
-        <span class="badge badge-adm">Admin</span>
-        🛠 동아리 운영진 — AdminRoute 보호 (/admin/*)
+      <div class="ia-role-header" style="background:#fff7ed;"><span class="badge badge-adm">Admin</span>🛠 동아리 운영진 — AdminRoute (로그인+프로필+운영진 멤버십)</div>
+      <div class="ia-list">
+        <div class="ia-row"><span class="ico">📊</span><span class="lbl">대시보드</span><span class="rt">/admin/dashboard</span><span class="ds">핵심 지표 · 최근 지원자 · 활성 동아리 전환</span></div>
+        <div class="ia-row hi"><span class="ico">🖥️</span><span class="lbl">1-Page 웹빌더</span><span class="rt">/workspace</span><span class="ds">블록 에디터 · 프리셋 · 자동저장 · 발행</span></div>
+        <div class="ia-row hi"><span class="ico">🗂️</span><span class="lbl">모집·지원 통합 관리</span><span class="rt">/admin/recruitments · /:id</span><span class="ds">목록 + 상세 4탭(지원자·공고·지원서·프로세스)</span></div>
+        <div class="ia-row"><span class="ico">📈</span><span class="lbl">리크루팅 대시보드·애널리틱스·랜딩</span><span class="rt">/admin/recruit-dashboard · -analytics · -page</span><span class="ds">단계 요약 · 유입 분석 · 채용 포털 카피</span></div>
+        <div class="ia-row"><span class="ico">✅</span><span class="lbl">출석 관리</span><span class="rt">/admin/sessions · /new · /:id</span><span class="ds">세션 생성(코드+만료) · 라이브 · 수동 수정</span></div>
+        <div class="ia-row"><span class="ico">📨</span><span class="lbl">결석 사유 관리</span><span class="rt">/admin/attendance-excuses</span><span class="ds">사유 신청 검토 · 승인(공결)/반려 · 캘린더</span></div>
+        <div class="ia-row"><span class="ico">👥</span><span class="lbl">부원 관리 · 통계</span><span class="rt">/admin/members · -analytics</span><span class="ds">인라인 편집 · 초대 · 합격자 끌어오기 · 커스텀 필드</span></div>
+        <div class="ia-row"><span class="ico">💼</span><span class="lbl">B2B 지원 · 제안서</span><span class="rt">/admin/b2b · /b2b/proposal</span><span class="ds">탐색 · 제안 작성·발송 · 내 지원 현황</span></div>
+        <div class="ia-row"><span class="ico">💬</span><span class="lbl">Pulse 만족도</span><span class="rt">/admin/feedback</span><span class="ds">생성 · 분포 차트 · 익명 응답</span></div>
+        <div class="ia-row"><span class="ico">✍️</span><span class="lbl">스토리 포스트</span><span class="rt">/admin/posts</span><span class="ds">작성 · 발행 토글 · 이미지</span></div>
+        <div class="ia-row"><span class="ico">⚙️</span><span class="lbl">동아리 설정</span><span class="rt">/admin/settings</span><span class="ds">슬러그 · 기본정보 · SNS · 권한</span></div>
       </div>
-      <div class="ia-tree">
+      <div class="flow-note warn" style="margin:0 20px 16px;">
+        레거시 라우트는 신규로 <b>리다이렉트</b>됨: /admin/recruit·/admin/form-builder → /admin/recruitments,
+        /admin/attendance → /admin/sessions/new. (구버전 직접 접근: -legacy)
+      </div>
+    </div>
 
-        <div class="tree-node"><div class="node-row"><span class="node-icon">📊</span><span class="node-label">대시보드</span><span class="node-route">/admin/dashboard</span><span class="node-desc">핵심 지표 4종 · 최근 지원자 · 퀵링크</span></div></div>
-
-        <div class="tree-node">
-          <div class="node-row highlight">
-            <span class="node-icon">🖥️</span>
-            <span class="node-label">1-Page 웹빌더</span>
-            <span class="node-route">/workspace</span>
-            <span class="node-desc">WYSIWYG 블록 에디터 · 자동저장 · 발행</span>
-          </div>
-          <div class="tree-children">
-            <div class="tree-node"><div class="node-row"><span class="node-label">위젯 패널</span><span class="node-desc">인트로·통계·CTA·이미지·D-Day·갤러리·스페이서</span></div></div>
-            <div class="tree-node"><div class="node-row"><span class="node-label">속성 패널</span><span class="node-desc">테마 컬러 · 커버이미지 · 해시태그</span></div></div>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row highlight">
-            <span class="node-icon">📝</span>
-            <span class="node-label">폼 빌더</span>
-            <span class="node-route">/admin/form-builder</span>
-            <span class="node-desc">공고 생성 · 파이프라인 설정 · 질문 편집</span>
-          </div>
-        </div>
-
-        <div class="tree-node">
-          <div class="node-row highlight">
-            <span class="node-icon">🗂️</span>
-            <span class="node-label">리크루팅 파이프라인</span>
-            <span class="node-route">/admin/recruit</span>
-            <span class="node-desc">칸반 · 리스트 뷰 · CSV · 이메일 발송</span>
-          </div>
-          <div class="tree-children">
-            <div class="tree-node"><div class="node-row"><span class="node-label">지원자 상세 모달</span><span class="node-desc">지원서 · 평가·메모 · 면접질문 탭</span></div></div>
-          </div>
-        </div>
-
-        <div class="tree-node"><div class="node-row"><span class="node-icon">✅</span><span class="node-label">출석 관리</span><span class="node-route">/admin/attendance</span><span class="node-desc">세션 생성 · 라이브 코드 · 수동 수정</span></div></div>
-
-        <div class="tree-node"><div class="node-row"><span class="node-icon">👥</span><span class="node-label">부원 관리</span><span class="node-route">/admin/members</span><span class="node-desc">테이블 인라인 편집 · 초대 · 상태 변경</span></div></div>
-
-        <div class="tree-node">
-          <div class="node-row"><span class="node-icon">💼</span><span class="node-label">B2B 지원</span><span class="node-route">/admin/b2b</span><span class="node-desc">탐색 · 내 지원 현황</span></div>
-          <div class="tree-children">
-            <div class="tree-node"><div class="node-row"><span class="node-label">제안서 작성</span><span class="node-route">/admin/b2b/proposal</span><span class="node-desc">프로젝트 선택 · 본문 작성 · 발송</span></div></div>
-          </div>
-        </div>
-
-        <div class="tree-node"><div class="node-row"><span class="node-icon">💬</span><span class="node-label">Pulse 만족도 조사</span><span class="node-route">/admin/feedback</span><span class="node-desc">생성 · 응답 분석 · 분포 차트</span></div></div>
-        <div class="tree-node"><div class="node-row"><span class="node-icon">✍️</span><span class="node-label">스토리 포스트</span><span class="node-route">/admin/posts</span><span class="node-desc">작성 · 발행 토글 · 삭제</span></div></div>
-        <div class="tree-node"><div class="node-row"><span class="node-icon">⚙️</span><span class="node-label">동아리 설정</span><span class="node-route">/admin/settings</span><span class="node-desc">슬러그 · 기본정보 · SNS · 권한</span></div></div>
-
+    <!-- MASTER -->
+    <div class="ia-role">
+      <div class="ia-role-header" style="background:#f8fafc;"><span class="badge badge-sys">Master</span>🛡 플랫폼 운영자 — MasterRoute (global_admins)</div>
+      <div class="ia-list">
+        <div class="ia-row hi"><span class="ico">🛡️</span><span class="lbl">운영 대시보드</span><span class="rt">/master</span><span class="ds">등록 심사 대기 · SLA 초과 · 합류 대기 · 인증 현황</span></div>
+        <div class="ia-row"><span class="ico">🏷️</span><span class="lbl">동아리 관리</span><span class="rt">/master/clubs</span><span class="ds">전체 동아리 · 인증 배지 토글</span></div>
+        <div class="ia-row"><span class="ico">📋</span><span class="lbl">동아리 등록 심사</span><span class="rt">/master/registrations</span><span class="ds">서류·설문 검토 · 승인 시 동아리+운영진 생성</span></div>
+        <div class="ia-row"><span class="ico">🤝</span><span class="lbl">합류 신청 심사</span><span class="rt">/master/join-requests</span><span class="ds">합류 검토 · 승인 시 운영진 등록</span></div>
+        <div class="ia-row"><span class="ico">💼</span><span class="lbl">기업 가입 심사</span><span class="rt">/master/corp-requests</span><span class="ds">기업 신청 검토 · 승인 시 기업+담당자 생성(RPC)</span></div>
       </div>
     </div>
 
     <!-- CORP -->
     <div class="ia-role">
-      <div class="ia-role-header" style="background:#faf5ff;">
-        <span class="badge badge-corp">Corp</span>
-        🏢 기업 담당자 — CorpRoute 보호 (/corp/*)
+      <div class="ia-role-header" style="background:#faf5ff;"><span class="badge badge-corp">Corp</span>🏢 기업 담당자 — CorpRoute (corp_members)</div>
+      <div class="ia-list">
+        <div class="ia-row hi"><span class="ico">📝</span><span class="lbl">기업 회원가입</span><span class="rt">/corp/register</span><span class="ds">기업 정보 제출 → 마스터 승인 → 담당자 등록 (RequireAuth)</span></div>
+        <div class="ia-row hi"><span class="ico">🏢</span><span class="lbl">기업 대시보드</span><span class="rt">/corp/dashboard</span><span class="ds">발주 프로젝트 · 지원 동아리 칸반(미열람→검토중→미팅요청→매칭완료)</span></div>
+        <div class="ia-row"><span class="ico">🔭</span><span class="lbl">동아리 스카우팅</span><span class="rt">/corp/scouts</span><span class="ds">동아리 풀 탐색 · 프라이빗 제안</span></div>
       </div>
-      <div class="ia-tree">
-        <div class="tree-node">
-          <div class="node-row highlight">
-            <span class="node-icon">🏢</span>
-            <span class="node-label">기업 대시보드</span>
-            <span class="node-route">/corp/dashboard</span>
-            <span class="node-desc">발주 프로젝트 · 지원 동아리 칸반 (4단계)</span>
-          </div>
-          <div class="tree-children">
-            <div class="tree-node"><div class="node-row"><span class="node-label">미열람 → 검토중 → 미팅요청 → 매칭완료</span></div></div>
-          </div>
-        </div>
-        <div class="tree-node"><div class="node-row"><span class="node-icon">🔭</span><span class="node-label">동아리 스카우팅</span><span class="node-route">/corp/scouts</span><span class="node-desc">동아리 풀 탐색 · 프라이빗 제안</span></div></div>
+      <div class="flow-note" style="margin:0 20px 16px;">
+        기업 온보딩 = 마스터 승인 모델(동아리 등록과 동일). /corp/register 제출 → /master/corp-requests 심사 →
+        approve_corp_registration RPC가 corporations + corp_members(담당자) 생성.
       </div>
     </div>
 
-  </div><!-- ia-root -->
-</div><!-- panel ia -->
+  </div>
+</div>
 
-
-<!-- ══════════════════════════════════════
-     PANEL 2 : USER FLOWS
-══════════════════════════════════════ -->
+<!-- ══════════ PANEL 2 : FLOWS ══════════ -->
 <div class="panel" id="tab-flow">
   <div class="section-title">User Flow Diagrams</div>
-  <div class="section-sub">역할별 핵심 시나리오 · 5가지 주요 플로우</div>
+  <div class="section-sub">역할별 핵심 시나리오 · 6가지 주요 플로우</div>
 
   <div class="flows-grid">
 
-    <!-- FLOW 1 : 학생 동아리 지원 -->
+    <!-- FLOW 1 -->
     <div class="flow-block">
       <div class="flow-header">
-        <span class="badge badge-user" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#dcfce7;color:#15803d;">User</span>
+        <span class="badge badge-user">User</span>
         <h3>Flow 1 — 학생의 동아리 지원</h3>
-        <p>비회원 진입 → 탐색 → 로그인 → 지원 완료</p>
+        <p>비회원 진입 → 탐색 → JD 확인 → 로그인 → 지원</p>
       </div>
       <div class="flow-body">
-        <div class="flowchart">
-
-          <div class="flow-col">
-            <div class="fc-node fc-start">시작</div>
-          </div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col">
-            <div class="fc-node fc-page">🏠 홈 (/)
-페이지 진입</div>
-          </div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col">
-            <div class="fc-node fc-page">🔍 동아리 탐색
-/clubs</div>
-          </div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col">
-            <div class="fc-node fc-page">📋 동아리 상세
-/clubs/:id</div>
-          </div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col">
-            <div class="fc-node fc-action">📢 모집 공고 확인
-JD 모달 열기</div>
-          </div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col">
-            <div class="fc-node fc-gate" title="로그인 여부">로그인?</div>
-          </div>
-
-          <!-- 분기 -->
-          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-left:4px;">
-
-            <!-- YES -->
-            <div style="display:flex;align-items:center;gap:0;">
-              <div style="display:flex;flex-direction:column;align-items:center;">
-                <span style="font-size:9px;color:#15803d;font-weight:700;margin-right:4px;">YES</span>
-                <div style="width:30px;height:2px;background:#86efac;"></div>
-              </div>
-              <div class="flow-col" style="margin-left:8px;">
-                <div class="fc-node fc-page">✍️ 지원서 작성
-/clubs/:id/apply</div>
-              </div>
-              <div class="fc-arrow"></div>
-              <div class="flow-col">
-                <div class="fc-node fc-action">기본정보 자동완성
-동적 질문 답변</div>
-              </div>
-              <div class="fc-arrow"></div>
-              <div class="flow-col">
-                <div class="fc-node fc-gate" title="중복/마감">마감?
-중복?</div>
-              </div>
-              <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-left:4px;">
-                <div style="display:flex;align-items:center;gap:0;">
-                  <div style="width:20px;height:2px;background:#fca5a5;"></div>
-                  <span style="font-size:9px;color:#991b1b;font-weight:700;margin-left:2px;margin-right:4px;">YES</span>
-                  <div class="fc-node fc-error" style="padding:6px 10px;font-size:10px;">안내 메시지
-표시</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:0;">
-                  <div style="width:20px;height:2px;background:#86efac;"></div>
-                  <span style="font-size:9px;color:#15803d;font-weight:700;margin-left:2px;margin-right:4px;">NO</span>
-                  <div class="fc-node fc-action" style="padding:6px 10px;font-size:10px;">최종 제출</div>
-                  <div class="fc-arrow"></div>
-                  <div class="fc-node fc-success">🎉 지원 완료
-확인 화면</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- NO -->
-            <div style="display:flex;align-items:center;gap:0;margin-top:4px;">
-              <div style="display:flex;flex-direction:column;align-items:center;">
-                <span style="font-size:9px;color:#991b1b;font-weight:700;margin-right:4px;">NO</span>
-                <div style="width:30px;height:2px;background:#fca5a5;"></div>
-              </div>
-              <div class="flow-col" style="margin-left:8px;">
-                <div class="fc-node fc-page">🔐 로그인
-/login</div>
-              </div>
-              <div class="fc-arrow"></div>
-              <div class="flow-col">
-                <div class="fc-node fc-system" style="font-size:10px;">redirect back
-→ /apply</div>
-              </div>
-            </div>
-
-          </div>
-
+        <div class="steps">
+          <div class="step s-start">시작</div><span class="arr">→</span>
+          <div class="step s-page">🏠 홈
+/</div><span class="arr">→</span>
+          <div class="step s-page">🔍 탐색
+/clubs</div><span class="arr">→</span>
+          <div class="step s-page">📋 상세
+/clubs/:id</div><span class="arr">→</span>
+          <div class="step s-page">📢 공고
+/clubs/:id/recruit</div><span class="arr">→</span>
+          <div class="step s-act">📑 JD 모달
+'지원폼 작성하기'</div><span class="arr">→</span>
+          <div class="step s-page">✍️ 지원서
+/apply?rid=</div><span class="arr">→</span>
+          <div class="step s-gate">로그인?</div>
         </div>
-        <div class="flow-note">* 이미 지원한 경우 / 마감된 공고 / 임시저장 상태 공고는 각각 다른 안내 화면으로 분기됩니다.</div>
+        <div class="branch">
+          <div class="row"><span class="tag tag-n">NO</span><div class="step s-page">🔐 /login</div><span class="arr">→</span><div class="step s-sys">로그인 후 원래 위치 복귀</div></div>
+          <div class="row"><span class="tag tag-y">YES</span><div class="step s-gate">상태 분기</div>
+            <div class="step s-err">임시저장 → '미공개'</div>
+            <div class="step s-err">모집 전 → '시작 전'</div>
+            <div class="step s-err">마감 → '마감'</div>
+            <div class="step s-err">중복 → '이미 지원'</div>
+            <div class="step s-act">정상 → 폼 작성</div><span class="arr">→</span>
+            <div class="step s-ok">🎉 지원 완료</div>
+          </div>
+        </div>
+        <div class="flow-note">제출 시 recruitment_applications insert(status=파이프라인 1단계). 발행본 폼(deployed_form_schema) 우선. 이름·연락처는 프로필 자동완성되나 재입력 가능.</div>
+        <div class="flow-note warn">주의: rid 직접 링크는 모집-상태 필터를 우회(임시저장만 차단). '진행중'/'모집중' 두 상태 라벨 혼용 + 마감일(deadline) 별도 판정이라 상태-마감 불일치 가능.</div>
       </div>
     </div>
 
-    <!-- FLOW 2 : 운영진 리크루팅 -->
+    <!-- FLOW 2 : LIFECYCLE -->
     <div class="flow-block">
       <div class="flow-header">
-        <span class="badge badge-adm" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#fff7ed;color:#c2410c;">Admin</span>
-        <h3>Flow 2 — 운영진 리크루팅 파이프라인 운영</h3>
-        <p>공고 생성 → 지원자 검토 → 단계 이동 → 합격 통보</p>
+        <span class="badge badge-user">User</span><span class="badge badge-sys">Master</span>
+        <h3>Flow 2 — 동아리 개설·합류 라이프사이클</h3>
+        <p>가입 → 분기 → 신청 → 마스터 심사 → 운영진 권한</p>
       </div>
       <div class="flow-body">
-        <div class="flowchart">
-
-          <div class="flow-col"><div class="fc-node fc-start">운영진<br/>로그인</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-page">📊 대시보드
-/admin/dashboard</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-page">📝 폼 빌더
-/admin/form-builder</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">공고 생성
-파이프라인 · 질문 설정</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">🚀 발행하기
-(status → 모집중)</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-system">지원자 제출
-(학생 플로우)</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-page">🗂️ 파이프라인
-/admin/recruit</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">지원자 카드 클릭
-상세 모달 열기</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">지원서 검토
-점수 · 메모 기록</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">단계 이동
-칸반 드래그
-or 버튼 클릭</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-gate" title="이메일">이메일
-발송?</div></div>
-
-          <div style="display:flex;flex-direction:column;gap:8px;margin-left:4px;">
-            <div style="display:flex;align-items:center;gap:4px;">
-              <div style="width:20px;height:2px;background:#86efac;"></div>
-              <span style="font-size:9px;color:#15803d;font-weight:700;">YES</span>
-              <div class="fc-node fc-action" style="font-size:10px;padding:6px 10px;">템플릿 편집
-이메일 발송</div>
-              <div class="fc-arrow"></div>
-              <div class="fc-node fc-success">단계 이동
-완료</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:4px;">
-              <div style="width:20px;height:2px;background:#fca5a5;"></div>
-              <span style="font-size:9px;color:#991b1b;font-weight:700;">NO</span>
-              <div class="fc-node fc-success">이메일 없이
-단계 이동</div>
-            </div>
-          </div>
-
+        <div class="steps">
+          <div class="step s-start">회원가입</div><span class="arr">→</span>
+          <div class="step s-page">🚪 운영 시작
+/club-setup</div><span class="arr">→</span>
+          <div class="step s-gate">의도?</div>
         </div>
-        <div class="flow-note">* 멀티 선택 후 일괄 이동(리스트 뷰), CSV 내보내기도 동일 페이지에서 가능합니다.</div>
+        <div class="branch">
+          <div class="row"><span class="tag" style="background:#fef9c3;color:#854d0e;">부원</span><div class="step s-page">/clubs 둘러보기</div><span class="arr">→</span><div class="step s-sys">지원 → 합격 시 운영진이 부원으로 등록(수동)</div></div>
+          <div class="row"><span class="tag" style="background:#dbeafe;color:#1d4ed8;">합류</span><div class="step s-page">/club-join</div><span class="arr">→</span><div class="step s-sys">club_join_requests (대기중)</div><span class="arr">→</span><div class="step s-act">🛡 마스터/운영진 심사</div><span class="arr">→</span><div class="step s-ok">승인 → 운영진</div></div>
+          <div class="row"><span class="tag" style="background:#ffedd5;color:#c2410c;">등록</span><div class="step s-page">/club-register
+(3-step)</div><span class="arr">→</span><div class="step s-sys">club_registration_requests
+(검토대기)</div><span class="arr">→</span><div class="step s-act">🛡 /master/registrations
+심사 2~3주</div>
+            <div class="step s-err">보완요청 → 수정 재제출</div>
+            <div class="step s-ok">승인 → 동아리+운영진 생성+인증</div>
+          </div>
+        </div>
+        <div class="flow-note">승인 시 RPC approve_club_registration: clubs 생성 + 신청자 club_members(운영진) + is_certified=true. 합류 승인: club_members(운영진,활동중) insert.</div>
+        <div class="flow-note warn">알려진 이슈: /club-setup은 승인되면 navigate('/admin/dashboard')하지만 AdminContext가 즉시 재조회되지 않아(deps user.id/isMaster) isAdmin이 갱신 안 되면 다시 /club-setup으로 튕길 수 있음 → 새로고침 필요.</div>
       </div>
     </div>
 
-    <!-- FLOW 3 : 출석 관리 -->
+    <!-- FLOW 3 : RECRUIT -->
     <div class="flow-block">
       <div class="flow-header">
-        <span style="display:flex;gap:6px;">
-          <span class="badge badge-adm" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#fff7ed;color:#c2410c;">Admin</span>
-          <span class="badge badge-user" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#dcfce7;color:#15803d;">User</span>
-        </span>
-        <h3>Flow 3 — 출석 체크 (운영진 ↔ 학생)</h3>
-        <p>세션 생성 → 코드 공유 → 학생 인증</p>
+        <span class="badge badge-adm">Admin</span>
+        <h3>Flow 3 — 운영진 리크루팅 파이프라인</h3>
+        <p>공고 생성 → 발행 → 지원 수신 → 검토·이동 → 부원 전환</p>
       </div>
       <div class="flow-body">
-        <div style="display:flex;gap:40px;flex-wrap:wrap;">
-
-          <!-- 운영진 사이드 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:12px;">🛠 운영진</div>
-            <div class="flowchart" style="flex-direction:column;align-items:flex-start;gap:0;">
-              <div class="flow-col"><div class="fc-node fc-page">출석 관리
-/admin/attendance</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">세션명 입력
-날짜 선택</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">코드 생성 버튼
-→ 10분 타이머 시작</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-page" style="background:#fff7ed;border-color:#fed7aa;">🔴 LIVE 화면
-대형 4자리 코드 표시</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">타이머 종료 or
-출석 마감 클릭</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">수동 수정
-(출석·지각·결석)</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-success">세션 종료
-출결 기록 저장</div></div>
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;padding-top:80px;">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-              <span style="font-size:9px;color:#888;">코드 구두 공유</span>
-              <span style="font-size:22px;color:#d1d5db;">⟷</span>
-              <span style="font-size:9px;color:#888;">Supabase 실시간</span>
-            </div>
-          </div>
-
-          <!-- 학생 사이드 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:12px;">👤 학생 (User)</div>
-            <div class="flowchart" style="flex-direction:column;align-items:flex-start;gap:0;">
-              <div class="flow-col"><div class="fc-node fc-page">마이페이지
-/mypage</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">4자리 코드 입력</div></div>
-              <div style="height:16px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-gate" title="유효성">코드
-유효?</div></div>
-              <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
-                <div style="display:flex;align-items:center;gap:4px;">
-                  <div style="width:20px;height:2px;background:#86efac;"></div>
-                  <span style="font-size:9px;color:#15803d;font-weight:700;">YES</span>
-                  <div class="fc-node fc-success" style="font-size:10px;padding:6px 10px;">✅ 출석 인증<br/>완료</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:4px;">
-                  <div style="width:20px;height:2px;background:#fca5a5;"></div>
-                  <span style="font-size:9px;color:#991b1b;font-weight:700;">NO</span>
-                  <div class="fc-node fc-error" style="font-size:10px;padding:6px 10px;">에러 메시지<br/>재입력</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div class="steps">
+          <div class="step s-start">운영진</div><span class="arr">→</span>
+          <div class="step s-page">🗂️ 모집 목록
+/admin/recruitments</div><span class="arr">→</span>
+          <div class="step s-act">공고 생성
+(임시저장)</div><span class="arr">→</span>
+          <div class="step s-page">상세 4탭
+공고·지원서·프로세스</div><span class="arr">→</span>
+          <div class="step s-act">🚀 발행
+status→진행중
+deployed_form_schema</div><span class="arr">→</span>
+          <div class="step s-sys">지원자 제출
+(Flow 1)</div>
         </div>
-        <div class="flow-note">* 코드는 생성 후 10분간 유효합니다. 만료 후에는 운영진이 수동으로 출결을 수정할 수 있습니다.</div>
+        <div class="steps" style="margin-top:12px;">
+          <div class="step s-page">지원자 탭
+칸반 / 리스트</div><span class="arr">→</span>
+          <div class="step s-act">상세 모달
+점수·메모·면접질문</div><span class="arr">→</span>
+          <div class="step s-act">단계 이동
+(드래그/버튼)</div><span class="arr">→</span>
+          <div class="step s-sys">📩 인앱 알림 발송
+(실이메일 추후)</div><span class="arr">→</span>
+          <div class="step s-act">최종합격</div><span class="arr">→</span>
+          <div class="step s-ok">👥 합격자 끌어오기
+→ club_members (수동)</div>
+        </div>
+        <div class="flow-note">리스트 뷰 멀티선택 일괄 이동 · CSV 내보내기 동일 페이지. 재발행 시 form_version 증가 + 변경 경고. "최대 3개 공고" 제한은 현재 코드에 없음.</div>
+        <div class="flow-note warn">부원 전환은 <b>자동이 아님</b> — 부원 관리의 '합격자 끌어오기'(RPC pull_applicants_to_members)로 운영진이 수동 실행. (학생 안내문 "합격하면 자동 부원" 문구와 불일치)</div>
       </div>
     </div>
 
-    <!-- FLOW 4 : B2B 플로우 -->
+    <!-- FLOW 4 : ATTENDANCE -->
     <div class="flow-block">
       <div class="flow-header">
-        <span style="display:flex;gap:6px;">
-          <span class="badge badge-corp" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#f3e8ff;color:#7e22ce;">Corp</span>
-          <span class="badge badge-adm" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#fff7ed;color:#c2410c;">Admin</span>
-        </span>
-        <h3>Flow 4 — B2B 프로젝트 매칭 (기업 ↔ 운영진)</h3>
-        <p>프로젝트 등록 → 제안서 접수 → 칸반 검토 → 매칭</p>
+        <span class="badge badge-adm">Admin</span><span class="badge badge-user">User</span>
+        <h3>Flow 4 — 출석 체크 & 결석 사유</h3>
+        <p>세션 코드 → 학생 인증 → 사유 신청·심사</p>
       </div>
       <div class="flow-body">
-        <div style="display:flex;gap:32px;flex-wrap:wrap;">
-
-          <!-- 기업 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#7e22ce;margin-bottom:12px;">🏢 기업 담당자</div>
-            <div class="flowchart" style="flex-direction:column;align-items:flex-start;gap:0;">
-              <div class="flow-col"><div class="fc-node fc-page">기업 대시보드
-/corp/dashboard</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">새 프로젝트 의뢰
-제목·카테고리·예산</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-system">프로젝트
-공개 등록</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-page">칸반 보드
-제안서 수신 확인</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">카드 드래그
-미열람→검토중→미팅요청</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">채팅하기 버튼
-(미팅요청 단계)</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-success">매칭 완료
-컬럼으로 이동</div></div>
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;padding-top:60px;">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-              <span style="font-size:9px;color:#888;">제안서 접수</span>
-              <span style="font-size:22px;color:#d1d5db;">⟷</span>
-              <span style="font-size:9px;color:#888;">Supabase</span>
-            </div>
-          </div>
-
-          <!-- 운영진 -->
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:12px;">🛠 동아리 운영진</div>
-            <div class="flowchart" style="flex-direction:column;align-items:flex-start;gap:0;">
-              <div class="flow-col"><div class="fc-node fc-page">B2B 탐색 탭
-/admin/b2b</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-page">공개 프로젝트
-카드 확인</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">제안서 작성
-/admin/b2b/proposal</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">프로젝트 선택
-제안 본문 작성</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-action">제안서 발송</div></div>
-              <div style="height:14px;width:2px;background:#e5e5e5;margin-left:55px;"></div>
-              <div class="flow-col"><div class="fc-node fc-success">내 지원 탭에서
-현황 확인</div></div>
-            </div>
-          </div>
-
+        <div class="steps">
+          <div class="step s-page">🛠 출석 생성
+/admin/sessions/new</div><span class="arr">→</span>
+          <div class="step s-act">세션명·날짜·대상
+만료 10분(1~180)</div><span class="arr">→</span>
+          <div class="step s-page">🔴 LIVE
+4자리 코드 + 타이머</div>
+          <span class="arr">⟷</span>
+          <div class="step s-page">👤 /mypage
+활동 및 출결</div><span class="arr">→</span>
+          <div class="step s-act">4자리 입력</div><span class="arr">→</span>
+          <div class="step s-gate">유효?</div>
         </div>
-        <div class="flow-note">* 기업은 /corp/scouts 에서 동아리를 먼저 탐색하고 프라이빗 제안을 직접 발송할 수도 있습니다.</div>
+        <div class="branch">
+          <div class="row"><span class="tag tag-y">YES</span><div class="step s-ok">✅ 출석 인증</div></div>
+          <div class="row"><span class="tag tag-n">NO</span><div class="step s-err">만료·자격·중복 안내</div></div>
+        </div>
+        <div class="steps" style="margin-top:12px;">
+          <div class="step s-act">결석 시: 학생 사유 신청</div><span class="arr">→</span>
+          <div class="step s-page">🛠 /admin/attendance-excuses</div><span class="arr">→</span>
+          <div class="step s-gate">심사</div>
+          <div class="step s-ok">승인 → 공결</div>
+          <div class="step s-err">반려(사유)</div>
+        </div>
+        <div class="flow-note">출결 상태: 출석·지각·결석·공결. 만료 후/예외는 운영진이 세션 상세에서 수동 수정. 사유 신청 상태: 대기·승인·반려·취소(attendance_excuse_requests).</div>
       </div>
     </div>
 
-    <!-- FLOW 5 : Pulse 만족도 -->
+    <!-- FLOW 5 : B2B -->
     <div class="flow-block">
       <div class="flow-header">
-        <span style="display:flex;gap:6px;">
-          <span class="badge badge-adm" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#fff7ed;color:#c2410c;">Admin</span>
-          <span class="badge badge-user" style="font-size:10px;padding:3px 10px;border-radius:999px;font-weight:700;background:#dcfce7;color:#15803d;">User</span>
-        </span>
-        <h3>Flow 5 — Pulse 만족도 조사</h3>
-        <p>운영진 생성 → 부원 응답 → 결과 분석</p>
+        <span class="badge badge-corp">Corp</span><span class="badge badge-adm">Admin</span>
+        <h3>Flow 5 — B2B 프로젝트 매칭</h3>
+        <p>프로젝트 등록 → 제안 접수 → 칸반 검토 → 매칭</p>
       </div>
       <div class="flow-body">
-        <div class="flowchart">
-
-          <div class="flow-col"><div class="fc-node fc-page" style="background:#fff7ed;border-color:#fed7aa;">운영진
-/admin/feedback</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">설문 생성
-제목 입력</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-system">is_active = true
-DB 반영</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-page" style="background:#dcfce7;border-color:#86efac;">학생
-/mypage 접속</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">Pulse 배너 표시
-(활성 설문 자동노출)</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">참여하기 클릭
-모달 열기</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">별점 (1~5)
-코멘트 입력(선택)</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">익명으로
-제출</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-success">응답 저장
-완료 화면</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-page" style="background:#fff7ed;border-color:#fed7aa;">운영진
-결과 분석</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">평균점수·응답률
-분포 차트·코멘트 확인</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-action">설문 종료
-(비활성화)</div></div>
-          <div class="fc-arrow"></div>
-
-          <div class="flow-col"><div class="fc-node fc-end">완료</div></div>
-
+        <div class="steps">
+          <div class="step s-page">🏢 /corp/dashboard</div><span class="arr">→</span>
+          <div class="step s-act">새 프로젝트 의뢰
+제목·카테고리·예산</div><span class="arr">→</span>
+          <div class="step s-sys">b2b_projects 공개</div>
+          <span class="arr">⟷</span>
+          <div class="step s-page">🛠 /admin/b2b 탐색</div><span class="arr">→</span>
+          <div class="step s-act">제안서 작성·발송
+/admin/b2b/proposal</div><span class="arr">→</span>
+          <div class="step s-sys">b2b_applications (미열람)</div>
         </div>
-        <div class="flow-note">* 설문 종료 후 재활성화 가능. 부원에게는 클럽 소속 여부 기준으로 배너가 노출됩니다.</div>
+        <div class="steps" style="margin-top:12px;">
+          <div class="step s-page">🏢 칸반 보드</div><span class="arr">→</span>
+          <div class="step s-act">카드 드래그
+미열람→검토중→미팅요청</div><span class="arr">→</span>
+          <div class="step s-act">채팅 요청
+(미팅요청 단계)</div><span class="arr">→</span>
+          <div class="step s-ok">매칭 완료</div>
+        </div>
+        <div class="flow-note">기업은 /corp/scouts에서 동아리를 먼저 탐색하고 프라이빗 제안도 가능. 운영진은 '내 지원' 탭에서 현황 확인.</div>
       </div>
     </div>
 
-  </div><!-- flows-grid -->
-</div><!-- panel flow -->
+    <!-- FLOW 6 : PULSE -->
+    <div class="flow-block">
+      <div class="flow-header">
+        <span class="badge badge-adm">Admin</span><span class="badge badge-user">User</span>
+        <h3>Flow 6 — Pulse 만족도 조사</h3>
+        <p>설문 생성 → 부원 응답 → 결과 분석</p>
+      </div>
+      <div class="flow-body">
+        <div class="steps">
+          <div class="step s-page">🛠 /admin/feedback</div><span class="arr">→</span>
+          <div class="step s-act">설문 생성
+(status=진행중)</div><span class="arr">→</span>
+          <div class="step s-page">👤 /mypage</div><span class="arr">→</span>
+          <div class="step s-act">Pulse 배너
+(활동중 부원 한정)</div><span class="arr">→</span>
+          <div class="step s-act">별점(1~5)+코멘트
+익명 제출</div><span class="arr">→</span>
+          <div class="step s-page">🛠 결과 분석
+평균·응답률·분포</div><span class="arr">→</span>
+          <div class="step s-end">설문 종료</div>
+        </div>
+        <div class="flow-note">배너는 학생이 status='활동중'인 club_members 소속이고, 그 동아리에 진행중 설문이 있을 때만 노출. 종료 후 재활성화 가능.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <div style="text-align:center;font-size:11px;color:#ccc;padding:24px 0 40px;">
-  OurClub Internal · IA & User Flow · 2026-04-30
+  OurClub Internal · IA & User Flow · 2026-06-09 (코드 동기화)
 </div>
 
 <script>
-function showTab(name) {
+function showTab(name, ev) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  event.target.classList.add('active');
+  (ev ? ev.currentTarget : null)?.classList.add('active');
 }
 </script>
 </body>

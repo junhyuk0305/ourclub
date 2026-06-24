@@ -7,12 +7,16 @@ import {
 import { FadeInText } from '../../components/ui/FadeInText';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { formatDate } from '../../lib/format';
 import { useAuth } from '../../contexts/AuthContext';
 import { MarkdownViewer } from '../../components/ui/MarkdownViewer';
 import { Modal } from '../../components/ui/Modal';
+import { ContractNatureBanner } from '../../components/b2b/B2BNotices';
+import { BannerSlider } from '../../components/ui/BannerSlider';
+import { getBanners } from '../../data/banners';
 const SUCCESS_CASES = [
   { id: 1, title: '마제스티 x (주)뷰티이노베이션', desc: '3주 만에 신제품 팝업 스토어 기획 및 방문객 1,000명 달성', img: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=500&q=60' },
-  { id: 2, title: '코드크래프트 x 테크스타트', desc: 'B2B SaaS 서비스 사용성 개선 리포트 제공 및 산학협력 체결', img: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=500&q=60' },
+  { id: 2, title: '코드크래프트 x 테크스타트', desc: 'SaaS 서비스 사용성 개선 리포트 제공 및 산학협력 체결', img: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=500&q=60' },
   { id: 3, title: '플래너스 x 커리어네트웍스', desc: '전국 대학생 취업 박람회 부스 공동 기획 및 운영 완료', img: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?auto=format&fit=crop&w=500&q=60' },
 ];
 
@@ -34,56 +38,57 @@ interface LiveProject {
 // ── Hero ───────────────────────────────────────────────────────────────────
 
 function LoungeHero({
-  openCount, onCorpAction,
+  openCount, completedCount, onCorpAction,
 }: {
   openCount: number;
+  completedCount: number;
   onCorpAction: () => void;
 }) {
   return (
-    <section className="bg-black text-white border-b border-black flex flex-col md:flex-row relative overflow-hidden">
+    <section className="bg-ink text-white flex flex-col md:flex-row relative overflow-hidden">
       <div
         className="absolute inset-0 opacity-20 pointer-events-none"
         style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
       />
-      <div className="flex-1 p-8 md:p-16 relative z-10 flex flex-col justify-center border-b md:border-b-0 md:border-r border-gray-800">
-        <div className="flex items-center gap-2 mb-4 text-orange-500">
-          <Briefcase className="w-6 h-6" />
-          <span className="font-bold tracking-widest text-sm">B2B PROJECT LOUNGE</span>
+      <div className="flex-1 p-8 md:p-16 relative z-10 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/15">
+        <div className="flex items-center gap-2 mb-4 text-brand">
+          <Briefcase className="w-6 h-6" strokeWidth={2.5} />
+          <span className="font-bold tracking-widest text-sm">COMPANY PROJECT LOUNGE</span>
         </div>
         <FadeInText as="h1" className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight mb-6">
-          안전이 검증된 동아리에게<br />실무를 제안하세요.
+          동아리·학회에게<br />진짜 프로젝트를 제안하세요.
         </FadeInText>
-        <p className="text-gray-400 font-medium text-lg max-w-xl mb-10">
-          100% 신원 및 활동 투명성이 입증된 <strong className="text-white">오렌지 뱃지 동아리</strong>만
-          접근할 수 있는 익스클루시브 프로젝트 게시판입니다. 동아리와의 B2B 협업으로 기업의 태스크를 해결하세요.
+        <p className="text-sand-300 font-medium text-lg max-w-xl mb-10">
+          OURCLUB의 동아리·학회와 함께 마케팅·개발·리서치 같은 실무 과제를 해결하세요.
+          인증을 마친 곳에는 <strong className="text-white">오렌지 뱃지</strong>가 붙어, 믿고 함께할 팀을 골라 협업할 수 있습니다.
         </p>
-        <div className="bg-white text-black p-6 border border-white max-w-xl">
+        <div className="bg-white text-ink p-6 rounded-card shadow-soft max-w-xl">
           <h3 className="font-black text-xl mb-2 flex items-center gap-2">
-            <Building className="w-5 h-5" /> 기업이신가요?
+            <Building className="w-5 h-5" strokeWidth={2.5} /> 기업이신가요?
           </h3>
-          <p className="text-gray-600 font-medium text-sm mb-4">
-            대학생 동아리와의 협업 일감을 등록하고 검증된 제안을 받아보세요.
+          <p className="text-sand-600 font-medium text-sm mb-4">
+            동아리·학회와의 협업 프로젝트를 등록하고 제안을 받아보세요.
           </p>
           <button
             onClick={onCorpAction}
-            className="w-full bg-orange-500 border border-black py-3 font-black text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            className="w-full btn-grad text-white rounded-ctl shadow-btn py-3 font-black text-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
           >
-            우리 기업 프로젝트 등록하기 <ArrowRight className="w-5 h-5" />
+            우리 기업 프로젝트 등록하기 <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
           </button>
         </div>
       </div>
 
       <div className="w-full md:w-80 flex flex-col relative z-10">
-        <div className="flex-1 border-b border-gray-800 p-8 flex flex-col justify-center bg-gray-900/50">
-          <p className="text-sm font-bold text-gray-400 mb-2">현재 모집 중인 프로젝트</p>
+        <div className="flex-1 border-b border-white/15 p-8 flex flex-col justify-center bg-white/5">
+          <p className="text-sm font-bold text-sand-300 mb-2">현재 모집 중인 프로젝트</p>
           <div className="text-5xl font-black text-white flex items-end gap-2">
-            {openCount}<span className="text-2xl text-orange-500 mb-1">건</span>
+            {openCount}<span className="text-2xl text-brand mb-1">건</span>
           </div>
         </div>
-        <div className="flex-1 p-8 flex flex-col justify-center bg-gray-900/50">
-          <p className="text-sm font-bold text-gray-400 mb-2">누적 매칭 완료 프로젝트</p>
+        <div className="flex-1 p-8 flex flex-col justify-center bg-white/5">
+          <p className="text-sm font-bold text-sand-300 mb-2">누적 협업 완료 프로젝트</p>
           <div className="text-5xl font-black text-white flex items-end gap-2">
-            385<span className="text-2xl text-gray-500 mb-1">건</span>
+            {completedCount}<span className="text-2xl text-sand-400 mb-1">건</span>
           </div>
         </div>
       </div>
@@ -109,32 +114,32 @@ function ProjectRow({
 
   const formatDeadline = (d: string | null) => {
     if (!d) return null;
-    return new Date(d).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) + ' 마감';
+    return formatDate(d, 'monthDay') + ' 마감';
   };
 
   return (
     <div
-      className={`flex flex-col lg:flex-row border-b border-black group transition-colors ${
-        isOpen ? 'hover:bg-orange-50/50 bg-white' : 'bg-gray-100 opacity-75'
+      className={`flex flex-col lg:flex-row border-b border-sand-200 group transition-colors ${
+        isOpen ? 'hover:bg-sand-50 bg-white' : 'bg-sand-50 opacity-70'
       }`}
     >
       {/* 기본 정보 */}
       <div className="p-6 lg:w-5/12 flex flex-col justify-center">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           {isOpen ? (
-            <span className="px-2 py-1 text-xs font-black border border-black bg-green-400 text-black">
+            <span className="px-2 py-1 text-xs font-black rounded-ctl bg-ok-bg text-ok-fg">
               {formatDeadline(project.deadline) ?? '모집중'}
             </span>
           ) : (
-            <span className="px-2 py-1 text-xs font-black border border-black bg-gray-400 text-white">
+            <span className="px-2 py-1 text-xs font-black rounded-ctl bg-off-bg text-off-fg">
               모집마감
             </span>
           )}
-          <span className="px-2 py-1 text-xs font-bold border border-black bg-white">{project.category}</span>
-          <span className="text-sm font-bold text-gray-500">{project.corporations?.name ?? '—'}</span>
+          <span className="px-2 py-1 text-xs font-bold rounded-md bg-ink text-white">{project.category}</span>
+          <span className="text-sm font-bold text-sand-500">{project.corporations?.name ?? '—'}</span>
         </div>
         <h3
-          className="text-2xl font-black leading-tight mb-3 group-hover:text-orange-600 transition-colors cursor-pointer"
+          className="text-2xl font-black leading-tight mb-3 group-hover:text-brand transition-colors cursor-pointer"
           onClick={() => onDetail(project)}
         >
           {project.title}
@@ -142,7 +147,7 @@ function ProjectRow({
         {project.required_skills?.length > 0 && (
           <div className="flex gap-2 flex-wrap">
             {project.required_skills.map(tag => (
-              <span key={tag} className="text-xs font-bold text-gray-500 flex items-center gap-0.5">
+              <span key={tag} className="text-xs font-bold text-sand-500 flex items-center gap-0.5">
                 <Tag className="w-2.5 h-2.5" />{tag}
               </span>
             ))}
@@ -151,34 +156,34 @@ function ProjectRow({
       </div>
 
       {/* 조건/리워드 */}
-      <div className="p-6 lg:w-4/12 border-t lg:border-t-0 lg:border-l border-black flex flex-col justify-center gap-4 bg-gray-50 group-hover:bg-transparent transition-colors">
+      <div className="p-6 lg:w-4/12 border-t lg:border-t-0 lg:border-l border-sand-200 flex flex-col justify-center gap-4 bg-sand-50 group-hover:bg-transparent transition-colors">
         <div>
-          <p className="text-xs font-bold text-gray-500 mb-1 flex items-center gap-1">
+          <p className="text-xs font-bold text-sand-500 mb-1 flex items-center gap-1">
             <DollarSign className="w-3 h-3" /> 리워드/지원
           </p>
-          <p className="font-black text-base text-black">{formatBudget(project.budget)}</p>
+          <p className="font-black text-base text-ink">{formatBudget(project.budget)}</p>
         </div>
       </div>
 
       {/* 액션 */}
-      <div className="p-6 lg:w-3/12 border-t lg:border-t-0 lg:border-l border-black flex flex-col items-center justify-center gap-2 bg-white">
+      <div className="p-6 lg:w-3/12 border-t lg:border-t-0 lg:border-l border-sand-200 flex flex-col items-center justify-center gap-2 bg-white">
         {isOpen ? (
           <>
             <button
               onClick={() => onProposal(project)}
-              className="w-full bg-black text-white font-bold py-3 border border-black hover:bg-orange-500 hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+              className="w-full btn-grad text-white font-bold py-3 rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
             >
-              🔶 수주 제안하기
+              🔶 협업 제안하기
             </button>
             <button
               onClick={() => onDetail(project)}
-              className="w-full text-sm font-bold text-gray-500 hover:text-black flex items-center justify-center gap-1 py-2 border border-gray-200 hover:border-black transition-colors"
+              className="w-full text-sm font-bold bg-white border border-sand-300 text-ink rounded-ctl hover:bg-sand-50 flex items-center justify-center gap-1 py-2 transition-colors"
             >
               상세 보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </>
         ) : (
-          <button disabled className="w-full bg-gray-200 text-gray-500 font-bold py-4 border border-black cursor-not-allowed">
+          <button disabled className="w-full bg-sand-100 text-sand-400 font-bold py-4 rounded-ctl cursor-not-allowed">
             모집이 완료되었습니다
           </button>
         )}
@@ -205,12 +210,12 @@ function ProjectDetailModal({
     <Modal isOpen={true} onClose={onClose} title={project.title} size="2xl">
       {/* 메타 정보 */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <span className="px-2 py-0.5 text-xs font-bold border border-black bg-white">{project.category}</span>
-        <span className="text-sm font-bold text-gray-500">{project.corporations?.name}</span>
+        <span className="px-2 py-0.5 text-xs font-bold rounded-ctl bg-sand-100 text-sand-600">{project.category}</span>
+        <span className="text-sm font-bold text-sand-500">{project.corporations?.name}</span>
         {project.deadline && (
-          <span className="text-xs font-bold text-orange-600 flex items-center gap-1">
+          <span className="text-xs font-bold text-brand flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {new Date(project.deadline).toLocaleDateString('ko-KR')} 마감
+            {formatDate(project.deadline)} 마감
           </span>
         )}
       </div>
@@ -219,7 +224,7 @@ function ProjectDetailModal({
       {project.required_skills?.length > 0 && (
         <div className="flex gap-1.5 flex-wrap mb-4">
           {project.required_skills.map(s => (
-            <span key={s} className="px-2 py-0.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
+            <span key={s} className="px-2 py-0.5 bg-brand-tint text-brand-dark rounded-ctl text-xs font-bold">
               {s}
             </span>
           ))}
@@ -227,25 +232,25 @@ function ProjectDetailModal({
       )}
 
       {/* 예산 */}
-      <div className="px-4 py-3 bg-orange-50 border border-orange-200 flex items-center gap-2 mb-4">
-        <DollarSign className="w-4 h-4 text-orange-500" />
-        <span className="font-black text-orange-700">예산: {formatBudget(project.budget)}</span>
+      <div className="px-4 py-3 bg-brand-tint rounded-card flex items-center gap-2 mb-4">
+        <DollarSign className="w-4 h-4 text-brand" strokeWidth={2.5} />
+        <span className="font-black text-brand-dark">예산: {formatBudget(project.budget)}</span>
       </div>
 
       {/* 설명 */}
       {project.description ? (
         <MarkdownViewer content={project.description} />
       ) : (
-        <p className="text-gray-400 font-bold text-sm">프로젝트 설명이 없습니다.</p>
+        <p className="text-sand-400 font-bold text-sm">프로젝트 설명이 없습니다.</p>
       )}
 
       {/* CTA */}
       {project.status === '모집중' && (
         <button
           onClick={() => { onClose(); onProposal(project); }}
-          className="w-full mt-6 bg-black text-white font-black py-4 border-2 border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-lg"
+          className="w-full mt-6 btn-grad text-white font-black py-4 rounded-ctl shadow-btn transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-lg"
         >
-          🔶 이 프로젝트 수주 제안하기
+          🔶 이 프로젝트 협업 제안하기
         </button>
       )}
     </Modal>
@@ -256,23 +261,23 @@ function ProjectDetailModal({
 
 function SuccessShowcase() {
   return (
-    <section className="border-b border-black bg-black text-white overflow-hidden py-16">
+    <section className="bg-sand-50 overflow-hidden py-16">
       <div className="px-6 md:px-10 mb-10 text-center flex flex-col items-center">
-        <Award className="w-12 h-12 text-orange-500 mb-4" />
-        <FadeInText as="h2" className="text-3xl md:text-4xl font-black tracking-tight mb-4">매칭 성공 사례</FadeInText>
-        <p className="font-medium text-gray-400 max-w-2xl">
+        <Award className="w-12 h-12 text-brand mb-4" strokeWidth={2.5} />
+        <FadeInText as="h2" className="text-3xl md:text-4xl font-black tracking-tight mb-4 text-ink">함께한 프로젝트</FadeInText>
+        <p className="font-medium text-sand-500 max-w-2xl">
           기업의 실무 과제를 OURCLUB의 검증된 동아리들이 훌륭하게 완수해 낸 실제 사례들입니다.
         </p>
       </div>
       <div className="flex overflow-x-auto px-6 md:px-10 gap-6 snap-x hide-scrollbar pb-8">
         {SUCCESS_CASES.map(c => (
-          <div key={c.id} className="min-w-[300px] md:min-w-[400px] border border-white bg-black group hover:-translate-y-2 transition-all snap-center cursor-pointer">
-            <div className="h-48 border-b border-white overflow-hidden">
-              <img src={c.img} alt={c.title} className="w-full h-full object-cover grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500" />
+          <div key={c.id} className="min-w-[300px] md:min-w-[400px] bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:-translate-y-2 transition-all snap-center cursor-pointer">
+            <div className="h-48 overflow-hidden">
+              <img src={c.img} alt={c.title} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
             </div>
             <div className="p-6">
-              <h3 className="text-xl font-black mb-2 text-orange-500">{c.title}</h3>
-              <p className="font-medium text-gray-300 leading-relaxed">{c.desc}</p>
+              <h3 className="text-xl font-black mb-2 text-brand">{c.title}</h3>
+              <p className="font-medium text-sand-600 leading-relaxed">{c.desc}</p>
             </div>
           </div>
         ))}
@@ -292,6 +297,7 @@ export default function B2BLounge() {
   const [query, setQuery]             = useState('');
   const [activeFilter, setActiveFilter] = useState('전체보기');
   const [detailProject, setDetailProject] = useState<LiveProject | null>(null);
+  const [toast, setToast]             = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -308,17 +314,30 @@ export default function B2BLounge() {
 
   const handleProposal = (project: LiveProject) => {
     if (!session) {
-      navigate('/login');
+      setToast('협업 제안은 동아리 운영진만 가능해요. 로그인 페이지로 이동합니다.');
+      setTimeout(() => navigate('/login'), 1200);
       return;
     }
     navigate(`/admin/b2b/proposal?project_id=${project.id}`);
   };
 
+  const resetSearch = () => { setQuery(''); setActiveFilter('전체보기'); };
+
   const handleCorpAction = () => {
-    navigate(session ? '/corp/dashboard' : '/login');
+    // 로그인 유저는 기업 등록 페이지로 — 이미 기업담당자면 거기서 대시보드로, 심사중이면 대기 화면으로 자동 분기.
+    // (바로 /corp/dashboard로 보내면 비-기업 유저가 CorpRoute에서 안내 없이 /login으로 튕김)
+    navigate(session ? '/corp/register' : '/login');
   };
 
   const openProjects = projects.filter(p => p.status === '모집중');
+  const completedCount = projects.filter(p => p.status === '완료').length;
+
+  // 배너의 '누적 매칭 완료' 수치를 실집계로 덮어쓴다 (banners.ts 기본값은 fallback).
+  const loungeSlides = getBanners('lounge').map(s =>
+    s.id === 'lounge-trust'
+      ? { ...s, title: `${completedCount}건 협업이 성사됐어요`, highlight: `${completedCount}건` }
+      : s
+  );
 
   const filtered = projects.filter(p => {
     const matchFilter = activeFilter === '전체보기' || p.category === activeFilter;
@@ -330,29 +349,30 @@ export default function B2BLounge() {
 
   return (
     <>
-      <LoungeHero openCount={openProjects.length} onCorpAction={handleCorpAction} />
+      <LoungeHero openCount={openProjects.length} completedCount={completedCount} onCorpAction={handleCorpAction} />
       <SuccessShowcase />
 
       {/* 프로젝트 탐색 섹션 */}
-      <section className="bg-gray-100 py-12 md:py-16 flex-1 border-b border-black">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="bg-white border border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col min-h-[600px]">
+      <section className="bg-sand-50 py-12 md:py-16 flex-1">
+        <div className="max-w-6xl mx-auto px-6 md:px-12">
+          <ContractNatureBanner className="mb-4 shadow-soft" />
+          <div className="bg-white border border-sand-200 rounded-card shadow-soft flex flex-col min-h-[600px]">
 
             {/* 검색 + 필터 헤더 */}
-            <div className="border-b border-black">
-              <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 border-b border-black">
-                <FadeInText as="h2" className="text-2xl font-black flex items-center gap-2">
-                  <Briefcase className="w-6 h-6" /> 프로젝트 탐색
+            <div className="border-b border-sand-200">
+              <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-sand-50 border-b border-sand-200">
+                <FadeInText as="h2" className="text-2xl font-black flex items-center gap-2 text-ink">
+                  <Briefcase className="w-6 h-6" strokeWidth={2.5} /> 프로젝트 탐색
                 </FadeInText>
-                <div className="flex bg-white border border-black max-w-md w-full">
+                <div className="flex field border border-sand-300 rounded-ctl overflow-hidden max-w-md w-full p-0">
                   <input
                     type="text"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="프로젝트, 기업명 검색..."
-                    className="flex-1 px-4 py-2 outline-none font-bold placeholder:text-gray-400 text-sm"
+                    className="flex-1 px-4 py-2 outline-none bg-transparent font-bold placeholder:text-sand-400 text-sm"
                   />
-                  <div className="bg-black text-white px-4 flex items-center justify-center">
+                  <div className="bg-ink text-white rounded-ctl m-1 px-3 flex items-center justify-center">
                     <Search className="w-4 h-4" />
                   </div>
                 </div>
@@ -364,8 +384,8 @@ export default function B2BLounge() {
                     <button
                       key={f}
                       onClick={() => setActiveFilter(f)}
-                      className={`whitespace-nowrap px-4 py-2 font-bold border border-black text-sm transition-colors ${
-                        activeFilter === f ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                      className={`whitespace-nowrap px-4 py-2 font-bold rounded-ctl text-sm transition-colors ${
+                        activeFilter === f ? 'bg-ink text-white' : 'bg-white border border-sand-300 text-ink hover:bg-sand-50'
                       }`}
                     >
                       {f}
@@ -379,15 +399,23 @@ export default function B2BLounge() {
             <div className="flex flex-col flex-1 bg-white">
               {fetching ? (
                 <div className="flex-1 flex items-center justify-center py-24">
-                  <Loader className="w-8 h-8 animate-spin text-orange-500" />
+                  <Loader className="w-8 h-8 animate-spin text-brand" />
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="flex-1 p-16 flex items-center justify-center">
-                  <div className="text-center text-gray-500 font-bold flex flex-col items-center">
-                    <Filter className="w-10 h-10 mb-4 opacity-50" />
-                    {query
+                  <div className="text-center text-sand-500 font-bold flex flex-col items-center gap-4">
+                    <Filter className="w-10 h-10 opacity-50" />
+                    <p>{query
                       ? `"${query}"에 해당하는 프로젝트가 없습니다.`
-                      : '해당 카테고리에 현재 등록된 프로젝트가 없습니다.'}
+                      : '해당 카테고리에 현재 등록된 프로젝트가 없습니다.'}</p>
+                    {(query || activeFilter !== '전체보기') && (
+                      <button
+                        onClick={resetSearch}
+                        className="px-5 py-2.5 btn-grad text-white font-black text-sm rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all"
+                      >
+                        전체 프로젝트 보기
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -405,6 +433,12 @@ export default function B2BLounge() {
         </div>
       </section>
 
+      <section className="bg-sand-50 px-6 md:px-12 py-8">
+        <div className="max-w-6xl mx-auto">
+          <BannerSlider page="lounge" slides={loungeSlides} />
+        </div>
+      </section>
+
       {/* 상세 보기 모달 */}
       {detailProject && (
         <ProjectDetailModal
@@ -412,6 +446,13 @@ export default function B2BLounge() {
           onClose={() => setDetailProject(null)}
           onProposal={handleProposal}
         />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-white border border-sand-200 text-ink px-5 py-3 font-bold text-sm rounded-card shadow-soft flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-brand-accent shrink-0" />
+          {toast}
+        </div>
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OURCLUB — 마스터 디자인 시스템 (AB · 따뜻한 세련)</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+        colors: {
+          brand: { DEFAULT: '#EC6A2C', dark: '#E85F24', accent: '#F97316', peach: '#F9B384', tint: '#FDF2E9' },
+          ink: '#1F1B18',
+          sand: { 50: '#FAF8F5', 100: '#F3EFE9', 200: '#EBE6DF', 300: '#E6E0D7', 400: '#A89E92', 500: '#7A7066', 600: '#6B6259' },
+        },
+        boxShadow: {
+          soft: '0 2px 12px rgba(31,27,24,.06)',
+          'soft-lg': '0 10px 28px rgba(236,106,44,.16)',
+          btn: '0 6px 16px rgba(236,106,44,.26)',
+        },
+        borderRadius: { card: '16px', ctl: '12px' },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: 'Pretendard', sans-serif; }
+  .btn-grad { background: linear-gradient(135deg,#F2782F,#E85F24); }
+  .cta-grad { background: linear-gradient(135deg,#fff0e3,#fde2cd); }
+  .stat-grad { background: linear-gradient(135deg,#fff7ef,#fdeede); }
+  .thumb-grad { background: linear-gradient(135deg,#faeede,#f5ddc6); }
+  .hero-glow::after { content:''; position:absolute; right:-60px; top:-60px; width:240px; height:240px; border-radius:50%; background: radial-gradient(circle,#fbe3cb,transparent 70%); pointer-events:none; }
+  /* 상태 뱃지 단일 진실원천 */
+  .b { font-size:11px; font-weight:700; padding:3px 9px; border-radius:9px; display:inline-block; }
+  .b-green{background:#e7f3ec;color:#2f7d4f} .b-yellow{background:#fbf2dd;color:#9a7515}
+  .b-blue{background:#e6eef9;color:#2d5fa6} .b-red{background:#fbe9e7;color:#b23b2e}
+  .b-gray{background:#f0ece6;color:#7a7066}
+  /* 카테고리 핀 — 얇은 직사각형(뱃지 결) */
+  .pin { position:absolute; top:10px; left:10px; background:#1F1B18; color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; line-height:1.35; letter-spacing:.01em; }
+  /* 상태 아이콘 — 굵은 글리프로 통일(실제 코드에선 lucide strokeWidth 2.5) */
+  .ico { display:inline-flex; align-items:center; justify-content:center; font-weight:900; border-radius:8px; }
+  .field:focus { outline:none; border-color:#EC6A2C; box-shadow:0 0 0 3px rgba(236,106,44,.15); }
+  ::-webkit-scrollbar{width:10px;height:10px} ::-webkit-scrollbar-thumb{background:#ddd5ca;border-radius:99px;border:2px solid transparent;background-clip:content-box}
+  html{scroll-behavior:smooth}
+</style>
+</head>
+<body class="bg-sand-50 text-ink">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-sand-200">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 btn-grad text-white font-black flex items-center justify-center rounded-ctl text-sm">OC</div>
+      <span class="font-black text-lg tracking-tight">OURCLUB</span>
+      <span class="ml-2 text-xs font-bold text-sand-400">마스터 디자인 시스템 · AB</span>
+    </div>
+    <nav class="hidden lg:flex gap-1 text-sm font-bold overflow-x-auto">
+      <a href="#buttons" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">버튼</a>
+      <a href="#forms" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">폼</a>
+      <a href="#badges" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">뱃지·탭</a>
+      <a href="#cards" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">카드</a>
+      <a href="#board" class="px-3 py-1.5 rounded-ctl btn-grad text-white">동아리 찾기</a>
+      <a href="#table" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">테이블</a>
+      <a href="#feedback" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">모달·알림</a>
+      <a href="#builder" class="px-3 py-1.5 rounded-ctl hover:bg-sand-100">웹빌더 블록</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-12 space-y-20">
+
+  <!-- INTRO + TOKENS -->
+  <section>
+    <span class="inline-block px-3 py-1 rounded-ctl bg-brand-tint text-brand-dark font-bold text-xs mb-5">AB · 따뜻한 세련 — 모든 요소 단일 시스템</span>
+    <h1 class="text-4xl font-black tracking-tight leading-[1.1] mb-4">모든 화면이 <span class="text-brand">한 가족</span>처럼</h1>
+    <p class="text-sand-600 font-medium max-w-2xl leading-relaxed mb-8">웜 화이트 + 차분한 오렌지 3톤 + 옅은 소프트섀도. 게시판·폼·테이블·웹빌더 블록까지 같은 토큰을 씁니다.</p>
+    <div class="grid md:grid-cols-4 gap-3 text-[11px] font-bold">
+      <div class="bg-white border border-sand-200 rounded-card p-4 shadow-soft">
+        <p class="text-sand-400 mb-2">오렌지 3톤</p>
+        <div class="flex gap-1.5"><span class="w-8 h-8 rounded-ctl bg-brand"></span><span class="w-8 h-8 rounded-ctl bg-brand-accent"></span><span class="w-8 h-8 rounded-ctl bg-brand-peach"></span><span class="w-8 h-8 rounded-ctl bg-brand-tint border border-sand-200"></span></div>
+      </div>
+      <div class="bg-white border border-sand-200 rounded-card p-4 shadow-soft">
+        <p class="text-sand-400 mb-2">웜 중성</p>
+        <div class="flex gap-1.5"><span class="w-8 h-8 rounded-ctl bg-ink"></span><span class="w-8 h-8 rounded-ctl bg-sand-600"></span><span class="w-8 h-8 rounded-ctl bg-sand-200"></span><span class="w-8 h-8 rounded-ctl bg-sand-50 border border-sand-200"></span></div>
+      </div>
+      <div class="bg-white border border-sand-200 rounded-card p-4 shadow-soft">
+        <p class="text-sand-400 mb-2">모서리 · 컨트롤12 / 카드16</p>
+        <div class="flex gap-2 items-end"><span class="w-9 h-9 bg-sand-100 border border-sand-200 rounded-ctl"></span><span class="w-9 h-9 bg-sand-100 border border-sand-200 rounded-card"></span><span class="w-9 h-9 bg-sand-100 border border-sand-200 rounded-full"></span></div>
+      </div>
+      <div class="bg-white border border-sand-200 rounded-card p-4 shadow-soft">
+        <p class="text-sand-400 mb-2">섀도 · 옅게/호버</p>
+        <div class="flex gap-3"><span class="w-9 h-9 bg-white border border-sand-200 rounded-card shadow-soft"></span><span class="w-9 h-9 bg-white border border-sand-200 rounded-card shadow-soft-lg"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section id="buttons" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">버튼</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">primary는 그라데이션+소프트섀도. 나머지는 차분하게.</p>
+    <div class="bg-white border border-sand-200 rounded-card p-6 shadow-soft flex flex-wrap items-center gap-3">
+      <button class="btn-grad text-white font-bold px-4 py-2.5 text-sm rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all">primary</button>
+      <button class="bg-white text-ink font-bold px-4 py-2.5 text-sm rounded-ctl border border-sand-300 hover:bg-sand-50 transition-colors">secondary</button>
+      <button class="bg-transparent text-brand font-bold px-4 py-2.5 text-sm rounded-ctl hover:bg-brand-tint transition-colors">ghost</button>
+      <button class="bg-red-500 text-white font-bold px-4 py-2.5 text-sm rounded-ctl hover:bg-red-600 transition-colors">danger</button>
+      <button class="btn-grad text-white font-bold px-3 py-1.5 text-xs rounded-ctl shadow-btn">small</button>
+      <button disabled class="btn-grad text-white font-bold px-4 py-2.5 text-sm rounded-ctl opacity-40 cursor-not-allowed">disabled</button>
+      <a class="inline-flex items-center gap-2 btn-grad text-white font-black px-6 py-3.5 text-base rounded-card shadow-btn hover:-translate-y-1 transition-all cursor-pointer">🚀 우리 동아리 시작하기 →</a>
+    </div>
+  </section>
+
+  <!-- FORMS -->
+  <section id="forms" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">폼 요소 (가입·신청·등록)</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">인풋·셀렉트·체크·라디오·토글·파일·검증·단계표시 — ClubApply / ProfileSetup / CorpRegister 공통.</p>
+    <div class="bg-white border border-sand-200 rounded-card p-6 shadow-soft grid md:grid-cols-2 gap-6">
+      <!-- left -->
+      <div class="space-y-4">
+        <!-- step indicator -->
+        <div class="flex items-center gap-2 text-xs font-bold mb-1">
+          <span class="w-6 h-6 rounded-full btn-grad text-white flex items-center justify-center">1</span>
+          <span class="flex-1 h-0.5 bg-brand"></span>
+          <span class="w-6 h-6 rounded-full bg-brand-tint text-brand-dark flex items-center justify-center">2</span>
+          <span class="flex-1 h-0.5 bg-sand-200"></span>
+          <span class="w-6 h-6 rounded-full bg-sand-100 text-sand-400 flex items-center justify-center">3</span>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-1.5">동아리 이름 <span class="text-brand">*</span></label>
+          <input class="field w-full px-3 py-2.5 text-sm font-medium border border-sand-300 rounded-ctl transition" placeholder="예: 모노그램" />
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-1.5">카테고리</label>
+          <select class="field w-full px-3 py-2.5 text-sm font-medium border border-sand-300 rounded-ctl bg-white transition">
+            <option>마케팅/기획</option><option>IT/개발</option><option>문화/예술</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-1.5">한 줄 소개</label>
+          <textarea rows="2" class="field w-full px-3 py-2.5 text-sm font-medium border border-sand-300 rounded-ctl transition" placeholder="우리 동아리를 한 줄로"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-1.5">이메일 <span class="text-brand">*</span></label>
+          <input class="w-full px-3 py-2.5 text-sm font-medium border border-red-400 rounded-ctl" value="wrong-email" />
+          <p class="text-xs text-red-500 font-bold mt-1">올바른 이메일 형식이 아니에요.</p>
+        </div>
+      </div>
+      <!-- right -->
+      <div class="space-y-5">
+        <div>
+          <label class="block text-xs font-black mb-2">활동 요일 (체크박스)</label>
+          <div class="flex flex-wrap gap-2">
+            <label class="inline-flex items-center gap-2 px-3 py-2 border border-brand bg-brand-tint rounded-ctl text-sm font-bold cursor-pointer"><span class="w-4 h-4 rounded bg-brand text-white text-[10px] flex items-center justify-center">✓</span>월</label>
+            <label class="inline-flex items-center gap-2 px-3 py-2 border border-sand-300 rounded-ctl text-sm font-medium cursor-pointer"><span class="w-4 h-4 rounded border border-sand-400"></span>화</label>
+            <label class="inline-flex items-center gap-2 px-3 py-2 border border-sand-300 rounded-ctl text-sm font-medium cursor-pointer"><span class="w-4 h-4 rounded border border-sand-400"></span>수</label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-2">모집 형태 (라디오)</label>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2.5 text-sm font-bold cursor-pointer"><span class="w-4 h-4 rounded-full border-[5px] border-brand"></span>상시 모집</label>
+            <label class="flex items-center gap-2.5 text-sm font-medium cursor-pointer"><span class="w-4 h-4 rounded-full border-2 border-sand-400"></span>기간 모집</label>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-2">알림 받기 (토글)</label>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-6 rounded-full btn-grad relative cursor-pointer"><span class="absolute top-0.5 right-0.5 w-5 h-5 bg-white rounded-full shadow"></span></span>
+            <span class="text-sm font-medium text-sand-600">지원 알림 켜짐</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-black mb-2">로고 업로드</label>
+          <div class="border-2 border-dashed border-sand-300 rounded-card p-6 text-center bg-sand-50 hover:border-brand transition cursor-pointer">
+            <p class="text-2xl mb-1">📁</p>
+            <p class="text-xs font-bold text-sand-500">이미지를 드래그하거나 클릭</p>
+          </div>
+        </div>
+        <div class="flex gap-2 justify-end pt-1">
+          <button class="bg-white text-ink font-bold px-4 py-2.5 text-sm rounded-ctl border border-sand-300 hover:bg-sand-50">이전</button>
+          <button class="btn-grad text-white font-bold px-5 py-2.5 text-sm rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all">다음 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BADGES + TABS -->
+  <section id="badges" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">뱃지 · 칩 · 탭</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">상태색은 부드러운 톤으로 통일. 탭/세그먼트도 같은 결.</p>
+    <div class="bg-white border border-sand-200 rounded-card p-6 shadow-soft space-y-5">
+      <div class="flex flex-wrap gap-2 items-center">
+        <span class="b b-green">활동중</span><span class="b b-yellow">검토대기</span><span class="b b-blue">진행중</span><span class="b b-red">불합격</span><span class="b b-gray">휴면</span>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-ctl bg-ink text-white">카테고리</span>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-ctl bg-brand-tint text-brand-dark border border-brand-peach">D-3</span>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-ctl cta-grad text-brand-dark">🔶 모집중 · D-7</span>
+        <span class="inline-flex items-center justify-center w-7 h-7 bg-brand-accent text-white rounded-ctl shadow-soft text-sm">✓</span>
+      </div>
+      <!-- tabs -->
+      <div class="border-b border-sand-200 flex gap-6 text-sm font-bold">
+        <button class="pb-2.5 border-b-2 border-brand text-brand">소개</button>
+        <button class="pb-2.5 border-b-2 border-transparent text-sand-400 hover:text-ink">활동</button>
+        <button class="pb-2.5 border-b-2 border-transparent text-sand-400 hover:text-ink">모집</button>
+        <button class="pb-2.5 border-b-2 border-transparent text-sand-400 hover:text-ink">후기</button>
+      </div>
+      <!-- segmented -->
+      <div class="inline-flex bg-sand-100 rounded-ctl p-1 text-sm font-bold">
+        <button class="px-4 py-1.5 rounded-[9px] bg-white shadow-soft text-ink">전체</button>
+        <button class="px-4 py-1.5 rounded-[9px] text-sand-500">모집중</button>
+        <button class="px-4 py-1.5 rounded-[9px] text-sand-500">마감</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARDS -->
+  <section id="cards" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">카드 모음</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">동아리·프로젝트·스토리·통계·정보 카드. 호버 시 오렌지 소프트섀도로 살짝 떠오름.</p>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- club -->
+      <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+        <div class="h-32 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach">
+          모<span class="pin">문화/예술</span>
+          <span class="absolute top-2.5 right-2.5 bg-brand-accent text-white w-6 h-6 rounded-ctl flex items-center justify-center text-sm font-black shadow-soft">✓</span>
+        </div>
+        <div class="p-4">
+          <h3 class="font-black mb-1 group-hover:text-brand transition-colors">모노그램</h3>
+          <p class="text-xs font-medium text-sand-500 mb-3 line-clamp-2">브랜드·그래픽 디자인 동아리.</p>
+          <div class="cta-grad text-brand-dark text-center py-2 text-xs font-bold rounded-ctl">🔶 모집중 · D-7</div>
+        </div>
+      </a>
+      <!-- project -->
+      <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+        <div class="px-4 py-3 bg-brand-tint flex justify-between items-center">
+          <span class="text-xs font-bold text-sand-600 truncate mr-2">㈜라운드테이블</span>
+          <span class="text-[10px] font-black px-2 py-0.5 rounded-ctl bg-white text-green-700 border border-green-300">OPEN</span>
+        </div>
+        <div class="p-4">
+          <div class="flex gap-1.5 mb-2 flex-wrap"><span class="text-[10px] font-black px-2 py-0.5 rounded-ctl bg-ink text-white">마케팅</span><span class="text-[10px] font-bold px-2 py-0.5 rounded-ctl bg-brand-tint text-brand-dark border border-brand-peach">D-3</span></div>
+          <h3 class="text-sm font-black mb-2 leading-snug group-hover:text-brand transition-colors">신제품 SNS 프로모션 협업</h3>
+          <p class="text-xs font-medium text-sand-500">활동비 300만원</p>
+        </div>
+      </a>
+      <!-- story -->
+      <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+        <div class="h-32 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach">
+          코<span class="pin">IT/개발</span>
+        </div>
+        <div class="p-4"><h3 class="text-sm font-black leading-tight group-hover:text-brand transition-colors">출석·회비 자동화로 운영 70% 절약</h3></div>
+      </a>
+      <!-- stat -->
+      <div class="stat-grad border border-sand-200 rounded-card shadow-soft p-4 flex flex-col justify-center">
+        <span class="text-[11px] font-bold text-sand-500 tracking-wide">한 곳에서 운영 중</span>
+        <div class="text-3xl font-black mt-1">128<span class="text-base text-brand ml-1">팀</span></div>
+        <p class="text-[11px] font-medium text-sand-500 mt-1">동아리·학회가 OURCLUB으로 운영을 해결 중.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOARD: 동아리 찾기 -->
+  <section id="board" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">게시판형 — 동아리 찾기</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">검색바 + 필터칩 + 정렬 + 카드 그리드 + 페이지네이션. 목록형 화면(동아리/프로젝트/스토리)의 표준 레이아웃.</p>
+    <div class="bg-white border border-sand-200 rounded-card shadow-soft p-6">
+      <!-- search + sort -->
+      <div class="flex flex-col md:flex-row gap-3 md:items-center justify-between mb-5">
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sand-400">🔍</span>
+          <input class="field w-full pl-9 pr-3 py-2.5 text-sm font-medium border border-sand-300 rounded-ctl transition" placeholder="동아리 이름·키워드 검색" />
+        </div>
+        <select class="field px-3 py-2.5 text-sm font-bold border border-sand-300 rounded-ctl bg-white"><option>최신순</option><option>인기순</option><option>마감임박순</option></select>
+      </div>
+      <!-- filter chips -->
+      <div class="flex gap-2 flex-wrap mb-6">
+        <span class="px-4 py-2 text-sm font-bold rounded-ctl bg-ink text-white cursor-pointer">전체</span>
+        <span class="px-4 py-2 text-sm font-bold rounded-ctl bg-white border border-sand-300 hover:bg-sand-50 cursor-pointer">마케팅/기획</span>
+        <span class="px-4 py-2 text-sm font-bold rounded-ctl bg-white border border-sand-300 hover:bg-sand-50 cursor-pointer">IT/개발</span>
+        <span class="px-4 py-2 text-sm font-bold rounded-ctl bg-white border border-sand-300 hover:bg-sand-50 cursor-pointer">창업</span>
+        <span class="px-4 py-2 text-sm font-bold rounded-ctl bg-white border border-sand-300 hover:bg-sand-50 cursor-pointer">문화/예술</span>
+        <span class="ml-auto inline-flex items-center px-3 py-2 text-xs font-bold rounded-ctl bg-brand-tint text-brand-dark">🔶 모집중만</span>
+      </div>
+      <!-- grid -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- 6 club cards -->
+        <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+          <div class="h-36 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach">모<span class="pin">문화/예술</span><span class="absolute top-2.5 right-2.5 bg-brand-accent text-white w-6 h-6 rounded-ctl flex items-center justify-center text-sm font-black shadow-soft">✓</span></div>
+          <div class="p-4"><h3 class="font-black mb-1 group-hover:text-brand transition-colors">디자인 동아리 모노그램</h3><p class="text-xs font-medium text-sand-500 mb-3 line-clamp-2">브랜드·그래픽 디자인.</p><div class="cta-grad text-brand-dark text-center py-2 text-xs font-bold rounded-ctl">🔶 모집중 · D-7</div></div>
+        </a>
+        <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+          <div class="h-36 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach">코<span class="pin">IT/개발</span><span class="absolute top-2.5 right-2.5 bg-brand-accent text-white w-6 h-6 rounded-ctl flex items-center justify-center text-sm font-black shadow-soft">✓</span></div>
+          <div class="p-4"><h3 class="font-black mb-1 group-hover:text-brand transition-colors">코드크래프트</h3><p class="text-xs font-medium text-sand-500 mb-3 line-clamp-2">웹·앱 개발 동아리.</p><div class="bg-sand-100 text-sand-400 text-center py-2 text-xs font-bold rounded-ctl">모집 마감</div></div>
+        </a>
+        <a class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all cursor-pointer block">
+          <div class="h-36 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach">마<span class="pin">마케팅</span></div>
+          <div class="p-4"><h3 class="font-black mb-1 group-hover:text-brand transition-colors">마제스티</h3><p class="text-xs font-medium text-sand-500 mb-3 line-clamp-2">브랜드 마케팅 실전.</p><div class="cta-grad text-brand-dark text-center py-2 text-xs font-bold rounded-ctl">🔶 모집중 · D-2</div></div>
+        </a>
+      </div>
+      <!-- pagination -->
+      <div class="flex justify-center items-center gap-1.5 mt-7 text-sm font-bold">
+        <button class="w-9 h-9 rounded-ctl border border-sand-300 hover:bg-sand-50">‹</button>
+        <button class="w-9 h-9 rounded-ctl btn-grad text-white">1</button>
+        <button class="w-9 h-9 rounded-ctl border border-sand-300 hover:bg-sand-50">2</button>
+        <button class="w-9 h-9 rounded-ctl border border-sand-300 hover:bg-sand-50">3</button>
+        <button class="w-9 h-9 rounded-ctl border border-sand-300 hover:bg-sand-50">›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABLE -->
+  <section id="table" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">테이블 (운영진 명단·지원자)</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">헤더는 연한 면, 행 구분은 옅은 라인. 상태는 동일 뱃지.</p>
+    <div class="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-sand-50 text-sand-500 text-xs font-black">
+          <tr><th class="text-left px-5 py-3">이름</th><th class="text-left px-5 py-3">기수</th><th class="text-left px-5 py-3">상태</th><th class="text-left px-5 py-3">가입일</th><th class="px-5 py-3"></th></tr>
+        </thead>
+        <tbody class="font-medium">
+          <tr class="border-t border-sand-200 hover:bg-sand-50"><td class="px-5 py-3 font-bold">김민준</td><td class="px-5 py-3 text-sand-500">13기</td><td class="px-5 py-3"><span class="b b-green">활동중</span></td><td class="px-5 py-3 text-sand-500">2026.03.01</td><td class="px-5 py-3 text-right"><button class="text-brand font-bold text-xs">관리</button></td></tr>
+          <tr class="border-t border-sand-200 hover:bg-sand-50"><td class="px-5 py-3 font-bold">이서연</td><td class="px-5 py-3 text-sand-500">13기</td><td class="px-5 py-3"><span class="b b-yellow">검토대기</span></td><td class="px-5 py-3 text-sand-500">2026.05.12</td><td class="px-5 py-3 text-right"><button class="text-brand font-bold text-xs">관리</button></td></tr>
+          <tr class="border-t border-sand-200 hover:bg-sand-50"><td class="px-5 py-3 font-bold">박지후</td><td class="px-5 py-3 text-sand-500">12기</td><td class="px-5 py-3"><span class="b b-gray">휴면</span></td><td class="px-5 py-3 text-sand-500">2025.09.03</td><td class="px-5 py-3 text-right"><button class="text-brand font-bold text-xs">관리</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- FEEDBACK: modal, toast, empty, skeleton -->
+  <section id="feedback" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">모달 · 알림 · 빈 상태 · 로딩</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">피드백 요소도 같은 톤. 하드섀도 대신 소프트섀도.</p>
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- modal -->
+      <div class="bg-sand-100 rounded-card p-8 flex justify-center">
+        <div class="bg-white w-full max-w-sm rounded-card shadow-soft-lg overflow-hidden border border-sand-200">
+          <div class="flex justify-between items-center p-4 border-b border-sand-200 btn-grad text-white">
+            <h3 class="font-black text-sm">동아리 가입 신청</h3><button class="opacity-80 hover:opacity-100">✕</button>
+          </div>
+          <div class="p-5">
+            <p class="text-sm font-medium text-sand-600 mb-4">신청서를 작성하면 운영진이 검토 후 알려드려요.</p>
+            <div class="flex gap-2 justify-end"><button class="bg-white text-ink font-bold px-4 py-2 text-sm rounded-ctl border border-sand-300">취소</button><button class="btn-grad text-white font-bold px-4 py-2 text-sm rounded-ctl shadow-btn">신청하기</button></div>
+          </div>
+        </div>
+      </div>
+      <!-- toasts + empty + skeleton -->
+      <div class="space-y-3">
+        <div class="flex items-center gap-3 bg-white border border-green-200 rounded-card p-3.5 shadow-soft"><span class="ico w-8 h-8 bg-green-100 text-green-700 text-lg">✓</span><p class="text-sm font-bold">신청이 완료됐어요.</p></div>
+        <div class="flex items-center gap-3 bg-white border border-yellow-200 rounded-card p-3.5 shadow-soft"><span class="ico w-8 h-8 bg-yellow-100 text-yellow-700 text-lg">!</span><p class="text-sm font-bold">프로필을 먼저 완성해 주세요.</p></div>
+        <div class="flex items-center gap-3 bg-white border border-red-200 rounded-card p-3.5 shadow-soft"><span class="ico w-8 h-8 bg-red-100 text-red-700 text-lg">✕</span><p class="text-sm font-bold">잠시 후 다시 시도해 주세요.</p></div>
+        <!-- empty -->
+        <div class="bg-white border border-sand-200 rounded-card p-6 text-center shadow-soft">
+          <div class="text-3xl mb-2">🗂️</div><p class="font-black text-sand-600">아직 등록된 동아리가 없어요</p><p class="text-xs text-sand-400 mt-1 mb-3">첫 동아리를 시작해 보세요.</p>
+          <button class="btn-grad text-white font-bold px-4 py-2 text-sm rounded-ctl shadow-btn">동아리 시작하기</button>
+        </div>
+        <!-- skeleton -->
+        <div class="bg-white border border-sand-200 rounded-card p-4 shadow-soft flex gap-3 items-center">
+          <div class="w-12 h-12 rounded-ctl bg-sand-100 animate-pulse"></div>
+          <div class="flex-1 space-y-2"><div class="h-3 bg-sand-100 rounded w-2/3 animate-pulse"></div><div class="h-3 bg-sand-100 rounded w-1/3 animate-pulse"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEB BUILDER BLOCKS -->
+  <section id="builder" class="scroll-mt-20">
+    <h2 class="text-2xl font-black mb-1">웹빌더 블록 (동아리 홈페이지)</h2>
+    <p class="text-sand-500 font-medium mb-6 text-sm">Workspace로 만드는 동아리 페이지의 기본 블록도 같은 토큰. 제목·본문·버튼·이미지·구분선·인용·리스트·2컬럼.</p>
+    <div class="bg-white border border-sand-200 rounded-card shadow-soft p-8 space-y-6">
+      <div>
+        <p class="text-[10px] font-bold text-sand-400 mb-1">제목 블록</p>
+        <h3 class="text-3xl font-black tracking-tight">우리 동아리를 <span class="text-brand">소개합니다</span></h3>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-sand-400 mb-1">본문 블록</p>
+        <p class="text-sand-600 font-medium leading-relaxed max-w-2xl">모노그램은 2014년 시작한 디자인 동아리입니다. 매 학기 브랜드 프로젝트를 진행하고, 기업과 실전 협업으로 포트폴리오를 만듭니다.</p>
+      </div>
+      <div class="flex gap-3 items-center">
+        <div><p class="text-[10px] font-bold text-sand-400 mb-1">버튼 블록</p><button class="btn-grad text-white font-bold px-5 py-2.5 text-sm rounded-ctl shadow-btn">지원하기 →</button></div>
+        <div class="self-end"><button class="bg-white text-ink font-bold px-5 py-2.5 text-sm rounded-ctl border border-sand-300">인스타그램</button></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><p class="text-[10px] font-bold text-sand-400 mb-1">이미지 블록</p><div class="h-36 thumb-grad rounded-card border border-sand-200 flex items-center justify-center text-4xl text-brand-peach font-black">IMG</div></div>
+        <div><p class="text-[10px] font-bold text-sand-400 mb-1">인용 블록</p><blockquote class="border-l-4 border-brand bg-brand-tint rounded-r-card p-4 text-sand-700 font-medium italic">"활동이 결과로 남는 동아리."</blockquote></div>
+      </div>
+      <div>
+        <p class="text-[10px] font-bold text-sand-400 mb-1">구분선 블록</p>
+        <hr class="border-t border-sand-200" />
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div><p class="text-[10px] font-bold text-sand-400 mb-1">리스트 블록</p>
+          <ul class="space-y-1.5 text-sm font-medium text-sand-600">
+            <li class="flex gap-2"><span class="text-brand">●</span>매주 화요일 정기 세션</li>
+            <li class="flex gap-2"><span class="text-brand">●</span>학기당 2개 브랜드 프로젝트</li>
+            <li class="flex gap-2"><span class="text-brand">●</span>기업 협업 포트폴리오</li>
+          </ul>
+        </div>
+        <div><p class="text-[10px] font-bold text-sand-400 mb-1">통계 블록</p>
+          <div class="stat-grad border border-sand-200 rounded-card p-4 text-center"><div class="text-2xl font-black">13<span class="text-brand">기</span></div><p class="text-xs font-medium text-sand-500">누적 활동</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-sand-200 pt-8 pb-16 text-sm text-sand-400 font-medium">
+    OURCLUB 마스터 디자인 시스템 (AB · 따뜻한 세련) · 이 데모로 토큰을 확정한 뒤 공개 영역부터 실제 코드에 반영합니다.
+  </footer>
+</main>
+</body>
+</html>

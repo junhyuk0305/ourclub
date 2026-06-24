@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Heart, CheckCircle, Bell, RefreshCcw, Filter, Loader, AlertCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useClubAlert } from '../../hooks/useClubAlert';
@@ -30,7 +30,7 @@ interface ClubDisplay {
 }
 
 function toDisplay(row: ClubRow): ClubDisplay {
-  const active = row.recruitments.filter(r => ['진행중', '모집중'].includes(r.status));
+  const active = row.recruitments.filter(r => ['진행중'].includes(r.status));
   const nearest = active
     .filter(r => r.deadline)
     .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0];
@@ -51,113 +51,140 @@ function toDisplay(row: ClubRow): ClubDisplay {
 }
 
 const CATEGORIES = ['전체', 'IT/개발', '마케팅/기획', '창업', '문화/예술'];
+const SORT_OPTIONS = ['최신순', '인기순', '마감임박순'] as const;
+type SortKey = (typeof SORT_OPTIONS)[number];
+
+// 마감임박순: 모집중 우선 → 가까운 dDay 순.
+function byDeadline(a: ClubDisplay, b: ClubDisplay): number {
+  if (a.isRecruiting !== b.isRecruiting) return a.isRecruiting ? -1 : 1;
+  const ad = a.dDay ?? Infinity;
+  const bd = b.dDay ?? Infinity;
+  if (ad !== bd) return ad - bd;
+  return a.name.localeCompare(b.name);
+}
+
+// 디스커버리 정렬: 지금 지원할 수 있는 곳을 위로 — 모집중 우선 → 마감 임박순 → 인증 → 이름.
+// (단순 나열 대신 '살아있는' 탐색 경험을 위해 클라이언트에서 정렬)
+function byDiscovery(a: ClubDisplay, b: ClubDisplay): number {
+  if (a.isRecruiting !== b.isRecruiting) return a.isRecruiting ? -1 : 1;
+  const ad = a.dDay ?? Infinity;
+  const bd = b.dDay ?? Infinity;
+  if (ad !== bd) return ad - bd;
+  if (a.badge !== b.badge) return a.badge ? -1 : 1;
+  return a.name.localeCompare(b.name);
+}
 
 // 카드마다 useClubAlert hook 호출이 필요해 별도 컴포넌트로 분리
-const ClubCard = ({ club }: { club: ClubDisplay }) => {
-  const navigate = useNavigate();
+const ClubCard = ({ club, onLoginRequired }: { club: ClubDisplay; onLoginRequired: () => void }) => {
   const { active, toggle, loading: alertLoading } = useClubAlert(club.id);
 
   const handleAlert = async (e: React.MouseEvent) => {
     e.preventDefault();
     const result = await toggle();
-    if (result === 'login_required') navigate('/login');
+    if (result === 'login_required') onLoginRequired();
   };
 
   return (
     <Link
       to={`/clubs/${club.slug}`}
-      className="w-full border border-black bg-white group cursor-pointer hover:shadow-[6px_6px_0px_0px_rgba(249,115,22,1)] hover:-translate-y-1 transition-all duration-300 flex flex-col relative overflow-hidden"
+      className="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden group hover:shadow-soft-lg hover:-translate-y-1 transition-all block"
     >
       {/* 썸네일 */}
-      <div className="h-40 border-b border-black relative overflow-hidden bg-gray-100">
+      <div className="h-36 thumb-grad relative flex items-center justify-center text-3xl font-black text-brand-peach overflow-hidden">
         {club.img ? (
           <img
             src={club.img}
             alt={club.name}
-            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-            <span className="text-4xl font-black text-gray-400">{club.name[0]}</span>
+          <span>{club.name[0]}</span>
+        )}
+
+        {/* 카테고리 핀 */}
+        <div className="absolute top-2.5 left-2.5 bg-ink text-white text-[10px] font-bold px-2 py-0.5 rounded-md leading-tight">
+          {club.category}
+        </div>
+
+        {/* 인증 칩 */}
+        {club.badge && (
+          <div className="absolute top-2.5 right-2.5 bg-brand-accent text-white w-6 h-6 rounded-ctl flex items-center justify-center text-sm font-black shadow-soft" title="인증 동아리">
+            <CheckCircle className="w-4 h-4" strokeWidth={2.5} />
           </div>
         )}
 
-        {/* 모집 상태 뱃지 */}
-        <div className="absolute top-3 left-3 bg-black text-white px-3 py-1.5 text-xs font-bold border border-white flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${club.isRecruiting ? 'bg-green-400' : 'bg-gray-400'}`} />
-          {club.isRecruiting
-            ? club.dDay !== null ? `모집중 (D-${club.dDay})` : '모집중'
-            : '모집마감'}
-        </div>
-
         {/* 알림/스크랩 버튼 */}
         <button
-          className={`absolute top-3 right-3 w-8 h-8 border border-black flex items-center justify-center transition-colors z-10 ${
-            active ? 'bg-orange-500 text-white' : 'bg-white hover:bg-orange-500 hover:text-white'
+          className={`absolute bottom-2.5 right-2.5 w-8 h-8 rounded-ctl border border-sand-200 shadow-soft flex items-center justify-center transition-colors z-10 ${
+            active ? 'bg-brand text-white' : 'bg-white/90 hover:bg-brand hover:text-white'
           }`}
           onClick={handleAlert}
           disabled={alertLoading}
-          title={active ? '알림 해제' : '알림 설정'}
+          title={active ? '관심 해제 (스크랩·알림)' : '관심 등록 (스크랩·알림)'}
         >
           <Heart className={`w-4 h-4 ${active ? 'fill-current' : ''}`} />
         </button>
       </div>
 
       {/* 클럽 정보 */}
-      <div className="p-5 flex-1 bg-white">
-        <p className="text-xs font-bold text-orange-500 mb-1">{club.category}</p>
-        <h3 className="text-xl font-black flex items-center gap-2 mb-2 group-hover:text-orange-600 transition-colors leading-tight">
+      <div className="p-4">
+        <h3 className="font-black mb-1 flex items-center gap-2 group-hover:text-brand transition-colors leading-tight">
           {club.name}
-          {club.badge && (
-            <div className="bg-orange-500 w-4 h-4 flex items-center justify-center border border-black shrink-0" title="인증 동아리">
-              <CheckCircle className="w-3 h-3 text-white" />
-            </div>
-          )}
         </h3>
         {club.oneLineDesc && (
-          <p className="text-sm font-medium text-gray-500 line-clamp-2">{club.oneLineDesc}</p>
+          <p className="text-xs font-medium text-sand-500 mb-3 line-clamp-2">{club.oneLineDesc}</p>
         )}
-      </div>
 
-      {/* 인증 여부 푸터 */}
-      <div className="px-5 py-3 border-t border-black bg-gray-50 flex items-center gap-2">
-        {club.badge ? (
-          <>
-            <CheckCircle className="w-4 h-4 text-orange-500 shrink-0" />
-            <span className="text-xs font-bold text-orange-600">OURCLUB 인증 완료</span>
-          </>
+        {/* 모집 상태 블록 */}
+        {club.isRecruiting ? (
+          <div className="cta-grad text-brand-dark text-center py-2 text-xs font-bold rounded-ctl">
+            🔶 모집중{club.dDay !== null ? ` · D-${club.dDay}` : ''}
+          </div>
         ) : (
-          <span className="text-xs font-bold text-gray-400">미인증 동아리</span>
+          <div className="bg-sand-100 text-sand-400 text-center py-2 text-xs font-bold rounded-ctl">
+            모집 마감
+          </div>
         )}
+
+        {/* 인증 여부 */}
+        <div className="flex items-center gap-1.5 mt-3">
+          {club.badge ? (
+            <>
+              <CheckCircle className="w-3.5 h-3.5 text-brand shrink-0" />
+              <span className="text-xs font-bold text-brand">OURCLUB 인증 완료</span>
+            </>
+          ) : (
+            <span className="text-xs font-bold text-sand-400">미인증 동아리</span>
+          )}
+        </div>
       </div>
     </Link>
   );
 };
 
 const SkeletonCard = () => (
-  <div className="w-full border border-black bg-white flex flex-col animate-pulse">
-    <div className="h-40 bg-gray-200 border-b border-black" />
-    <div className="p-5 flex-1">
-      <div className="h-3 bg-gray-200 rounded w-1/4 mb-3" />
-      <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-      <div className="h-3 bg-gray-200 rounded w-full" />
+  <div className="bg-white border border-sand-200 rounded-card shadow-soft overflow-hidden flex flex-col animate-pulse">
+    <div className="h-36 bg-sand-100" />
+    <div className="p-4 flex-1">
+      <div className="h-5 bg-sand-100 rounded-ctl w-3/4 mb-2" />
+      <div className="h-3 bg-sand-100 rounded-ctl w-full mb-3" />
+      <div className="h-8 bg-sand-100 rounded-ctl w-full" />
     </div>
-    <div className="h-10 bg-gray-100 border-t border-black" />
   </div>
 );
 
 const EmptyState = ({ onReset }: { onReset: () => void }) => (
   <div className="p-10 md:p-20 flex items-center justify-center w-full">
-    <div className="border-2 border-dashed border-black bg-white p-10 max-w-lg w-full text-center flex flex-col items-center">
-      <div className="w-16 h-16 border border-black bg-gray-100 flex items-center justify-center mb-6">
-        <Filter className="w-8 h-8 text-gray-400" />
+    <div className="border-2 border-dashed border-sand-300 bg-white rounded-card p-10 max-w-lg w-full text-center flex flex-col items-center">
+      <div className="w-16 h-16 rounded-ctl bg-sand-100 flex items-center justify-center mb-6">
+        <Filter className="w-8 h-8 text-sand-400" />
       </div>
       <h3 className="text-xl font-black mb-2">조건에 맞는 동아리가 없습니다</h3>
-      <p className="text-gray-600 font-medium mb-8">선택하신 필터 조건에 부합하는 동아리가 현재 없습니다.</p>
+      <p className="text-sand-600 font-medium mb-8">선택하신 필터 조건에 부합하는 동아리가 현재 없습니다.</p>
       <div className="flex flex-col w-full gap-3">
         <button
           onClick={onReset}
-          className="w-full bg-black text-white font-bold py-3 border border-black hover:bg-orange-500 hover:text-black transition-colors flex items-center justify-center gap-2"
+          className="w-full btn-grad text-white shadow-btn rounded-ctl font-bold py-3 transition-all flex items-center justify-center gap-2"
         >
           <RefreshCcw className="w-4 h-4" /> 검색 초기화
         </button>
@@ -174,6 +201,13 @@ export default function Clubs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('전체');
   const [onlyRecruiting, setOnlyRecruiting] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>('최신순');
+  const [toast, setToast] = useState('');
+
+  const showLoginToast = () => {
+    setToast('관심 등록은 로그인 후 이용할 수 있어요.');
+    setTimeout(() => setToast(''), 2500);
+  };
 
   useEffect(() => {
     (async () => {
@@ -186,7 +220,7 @@ export default function Clubs() {
       if (err) {
         setError('동아리 목록을 불러오지 못했습니다.');
       } else {
-        setClubs((data as ClubRow[]).map(toDisplay));
+        setClubs((data as ClubRow[]).map(toDisplay).sort(byDiscovery));
       }
       setLoading(false);
     })();
@@ -200,32 +234,44 @@ export default function Clubs() {
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return clubs.filter(club => {
+    const list = clubs.filter(club => {
       if (q && !club.name.toLowerCase().includes(q) && !club.oneLineDesc?.toLowerCase().includes(q)) return false;
       if (onlyRecruiting && !club.isRecruiting) return false;
       if (activeCategory !== '전체' && club.category !== activeCategory) return false;
       return true;
     });
-  }, [clubs, searchQuery, onlyRecruiting, activeCategory]);
+    // 최신순: 생성일 필드가 없어 기본 디스커버리 순서를 '최신순'으로 노출.
+    // 인기순: 인기/스크랩/멤버수 필드가 없어 디스커버리 순서로 폴백.
+    // TODO: 인기 지표 필드 확정 시 연결
+    const comparator =
+      sortBy === '마감임박순' ? byDeadline : byDiscovery;
+    return list.sort(comparator);
+  }, [clubs, searchQuery, onlyRecruiting, activeCategory, sortBy]);
+
+  const recruitingCount = useMemo(() => clubs.filter(c => c.isRecruiting).length, [clubs]);
 
   return (
-    <div className="bg-gray-100 min-h-screen py-10 md:py-16 border-b border-black">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="bg-white border border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col mb-10">
+    <div className="bg-sand-50 min-h-screen py-10 md:py-16">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="bg-white border border-sand-200 rounded-card shadow-soft flex flex-col mb-10 overflow-hidden">
 
           {/* 헤더 & 검색 */}
-          <div className="border-b border-black p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gray-50">
+          <div className="border-b border-sand-200 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-sand-50">
             <div>
               <FadeInText as="h2" className="text-3xl font-black tracking-tight flex items-center gap-3">
-                <span className="w-4 h-4 bg-orange-500 border border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] block" />
-                동아리 전체보기
+                <span className="w-4 h-4 bg-brand-accent rounded-md block" />
+                동아리·학회 둘러보기
               </FadeInText>
-              <p className="text-gray-500 font-bold mt-2">
-                안전하고 능력 있는 동아리를 탐색해보세요.
-                {!loading && <span className="ml-2 text-orange-500">({clubs.length}개 동아리)</span>}
+              <p className="text-sand-500 font-bold mt-2">
+                관심 분야의 동아리·학회를 찾아 둘러보세요.
+                {!loading && (
+                  <span className="ml-2 text-brand">
+                    전체 {clubs.length}곳 · 지금 모집중 {recruitingCount}곳
+                  </span>
+                )}
               </p>
             </div>
-            <div className="flex w-full md:w-96 border border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="flex w-full md:w-96 border border-sand-300 rounded-ctl bg-white overflow-hidden">
               <input
                 type="text"
                 placeholder="키워드 검색 (예: 마케팅, IT)"
@@ -233,54 +279,64 @@ export default function Clubs() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              <button className="bg-black text-white px-4 hover:bg-orange-500 hover:text-black transition-colors border-l border-black">
+              <button className="btn-grad text-white px-4 transition-all">
                 <Search className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* 필터 바 */}
-          <div className="border-b border-black flex flex-wrap bg-white relative z-10">
-            <div className="flex flex-wrap flex-1">
+          <div className="border-b border-sand-200 p-4 md:p-5 flex flex-wrap items-center gap-3 bg-white relative z-10">
+            <div className="flex flex-wrap gap-2 flex-1">
               {CATEGORIES.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-6 py-4 font-black border-r border-black hover:bg-gray-100 transition-colors ${
-                    activeCategory === cat ? 'bg-black text-white hover:bg-black' : 'text-gray-500'
+                  className={`px-4 py-2.5 text-sm font-black rounded-ctl transition-colors ${
+                    activeCategory === cat
+                      ? 'bg-ink text-white'
+                      : 'bg-white border border-sand-300 text-sand-500 hover:bg-sand-50'
                   }`}
                 >
                   {cat}
                 </button>
               ))}
             </div>
-            <div className="flex border-t md:border-t-0 border-black w-full md:w-auto">
-              <button
-                onClick={() => setOnlyRecruiting(!onlyRecruiting)}
-                className={`flex-1 md:flex-none px-6 py-4 font-black flex items-center justify-center gap-2 transition-colors ${
-                  onlyRecruiting ? 'bg-orange-500 text-black' : 'bg-white hover:bg-gray-100'
-                }`}
-              >
-                <CheckCircle className="w-5 h-5" /> 모집중인 동아리만 보기
-              </button>
-            </div>
+            <button
+              onClick={() => setOnlyRecruiting(!onlyRecruiting)}
+              className={`px-4 py-2.5 text-sm font-black rounded-ctl flex items-center justify-center gap-2 transition-colors ${
+                onlyRecruiting ? 'bg-brand-tint text-brand-dark' : 'bg-white border border-sand-300 hover:bg-sand-50'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4" /> 모집중만 보기
+            </button>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as SortKey)}
+              className="field px-3 py-2.5 text-sm font-bold border border-sand-300 rounded-ctl bg-white"
+              aria-label="정렬"
+            >
+              {SORT_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
           </div>
 
           {/* 콘텐츠 */}
-          <div className="p-8 md:p-10 bg-gray-50 min-h-[500px]">
+          <div className="p-8 md:p-10 bg-sand-50 min-h-[500px]">
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <AlertCircle className="w-10 h-10 text-orange-500" />
-                <p className="font-bold text-gray-600">{error}</p>
+                <AlertCircle className="w-10 h-10 text-brand" />
+                <p className="font-bold text-sand-600">{error}</p>
               </div>
             ) : filtered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filtered.map(club => (
-                  <ClubCard key={club.id} club={club} />
+                  <ClubCard key={club.id} club={club} onLoginRequired={showLoginToast} />
                 ))}
               </div>
             ) : (
@@ -289,6 +345,12 @@ export default function Clubs() {
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white px-5 py-3 font-bold text-sm rounded-ctl shadow-soft flex items-center gap-2">
+          <Bell className="w-4 h-4 text-brand-peach" /> {toast}
+        </div>
+      )}
     </div>
   );
 }

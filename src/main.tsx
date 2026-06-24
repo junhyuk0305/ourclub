@@ -14,3 +14,8 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+// Sentry는 엔트리 번들에서 제외하고 첫 페인트 이후 비동기 로드(PROD 전용).
+if (import.meta.env.PROD) {
+  import('./lib/sentry').then((m) => m.initSentry()).catch(() => {});
+}

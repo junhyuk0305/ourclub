@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /admin
+Disallow: /corp
+Disallow: /master
+Disallow: /mypage
+Disallow: /workspace
+Disallow: /club-setup
+Disallow: /club-join
+Disallow: /club-register
+
+Allow: /
+
+Sitemap: https://ourclub-univ.com/sitemap.xml

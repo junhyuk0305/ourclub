@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, Loader,
   Upload, FileText, X, Shield,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { useAuth } from '../../contexts/AuthContext';
 
 const CLUB_TYPES = ['IT/개발', '마케팅/기획', '창업', '문화/예술', '사회공헌', '스포츠', '기타'];
@@ -40,17 +41,17 @@ function FileField({ label, hint, accept, value, uploading, onUpload, onRemove }
 
   return (
     <div className="flex flex-col gap-1">
-      <label className="font-black text-sm">
-        {label} <span className="text-orange-500">*</span>
+      <label className="font-bold text-sm text-ink">
+        {label} <span className="text-brand">*</span>
       </label>
-      <p className="text-xs font-bold text-gray-400 mb-1">{hint}</p>
+      <p className="text-xs font-medium text-sand-400 mb-1">{hint}</p>
 
       {value ? (
-        <div className="flex items-center gap-3 border-2 border-black bg-green-50 px-4 py-3">
-          <FileText className="w-5 h-5 text-green-600 flex-shrink-0" />
-          <span className="font-bold text-sm flex-1 truncate">{value.name}</span>
-          <button type="button" onClick={onRemove} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">
-            <X className="w-4 h-4" />
+        <div className="flex items-center gap-3 rounded-ctl bg-ok-bg px-4 py-3">
+          <FileText className="w-5 h-5 text-ok-fg flex-shrink-0" strokeWidth={2.5} />
+          <span className="font-bold text-sm text-ink flex-1 truncate">{value.name}</span>
+          <button type="button" onClick={onRemove} className="text-sand-400 hover:text-bad-fg transition-colors flex-shrink-0">
+            <X className="w-4 h-4" strokeWidth={2.5} />
           </button>
         </div>
       ) : (
@@ -58,9 +59,9 @@ function FileField({ label, hint, accept, value, uploading, onUpload, onRemove }
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="flex items-center justify-center gap-2 border-2 border-dashed border-black px-4 py-4 font-bold text-sm hover:bg-orange-50 hover:border-orange-500 transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-2 border border-dashed border-sand-300 rounded-ctl px-4 py-4 font-bold text-sm text-sand-600 hover:bg-brand-tint hover:border-brand transition-colors disabled:opacity-50"
         >
-          {uploading ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {uploading ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" strokeWidth={2.5} />}
           {uploading ? '업로드 중...' : '파일 선택'}
         </button>
       )}
@@ -78,10 +79,10 @@ function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boole
           key={String(v)}
           type="button"
           onClick={() => onChange(v)}
-          className={`flex-1 py-3 font-black border-2 transition-colors ${
+          className={`flex-1 py-3 font-bold rounded-ctl border transition-colors ${
             value === v
-              ? 'bg-black text-white border-black'
-              : 'bg-white text-black border-black hover:bg-gray-100'
+              ? 'btn-grad text-white border-transparent'
+              : 'bg-white text-ink border-sand-300 hover:bg-sand-50'
           }`}
         >
           {v ? '예' : '아니오'}
@@ -99,6 +100,12 @@ export default function ClubRegister() {
   const [step, setStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState('');
   const [pageState, setPageState] = useState<'form' | 'success'>('form');
+  // 보완요청 건 재제출 모드 (해당 신청서 id를 담으면 UPDATE 모드)
+  const [editId, setEditId] = useState<string | null>(null);
+  // 로드 상태: 진행중 신청 차단(pending) / 보완 재제출(edit) / 신규(fresh)
+  const [loadState, setLoadState] = useState<'loading' | 'fresh' | 'pending' | 'edit'>('loading');
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Step 1
   const [clubName, setClubName] = useState('');
@@ -124,6 +131,105 @@ export default function ClubRegister() {
   const [accidentDescription, setAccidentDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const draftKey = user ? `clubreg_draft_${user.id}` : null;
+
+  // ── 진행중 신청 차단(중복 방지) · 보완 재제출 · 임시저장 복원 ──
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('club_registration_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['보완요청', '검토대기', '검토중'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const req = data?.[0];
+
+      // 이미 심사 진행 중 → 중복 신청 차단
+      if (req && (req.status === '검토대기' || req.status === '검토중')) {
+        setPendingStatus(req.status);
+        setLoadState('pending');
+        return;
+      }
+
+      // 보완요청 건 → 재제출(UPDATE) 모드로 기존 값 로드
+      if (req && req.status === '보완요청') {
+        setEditId(req.id);
+        setClubName(req.club_name ?? '');
+        setClubType(req.club_type ?? '');
+        setOneLineDesc(req.one_line_desc ?? '');
+        setDescription(req.description ?? '');
+        setLocation(req.location ?? '');
+        if (req.registration_doc_url) setRegistrationDoc({ name: '기존 제출 파일', path: req.registration_doc_url });
+        if (req.activity_doc_url) setActivityDoc({ name: '기존 제출 파일', path: req.activity_doc_url });
+        if (req.member_list_doc_url) setMemberListDoc({ name: '기존 제출 파일', path: req.member_list_doc_url });
+        if (req.representative_id_url) setRepresentativeId({ name: '기존 제출 파일', path: req.representative_id_url });
+        if (req.member_count != null) setMemberCount(String(req.member_count));
+        setHasRegularMeeting(req.has_regular_meeting);
+        setMeetingLocation(req.meeting_location ?? '');
+        setHasMembershipFee(req.has_membership_fee);
+        if (req.membership_fee_amount != null) setMembershipFeeAmount(String(req.membership_fee_amount));
+        setHasAccidentHistory(req.has_accident_history);
+        setAccidentDescription(req.accident_description ?? '');
+        setLoadState('edit');
+        return;
+      }
+
+      // 신규 → 로컬 임시저장 복원
+      try {
+        const raw = draftKey ? localStorage.getItem(draftKey) : null;
+        if (raw) {
+          const d = JSON.parse(raw);
+          setClubName(d.clubName ?? '');
+          setClubType(d.clubType ?? '');
+          setOneLineDesc(d.oneLineDesc ?? '');
+          setDescription(d.description ?? '');
+          setLocation(d.location ?? '');
+          setRegistrationDoc(d.registrationDoc ?? null);
+          setActivityDoc(d.activityDoc ?? null);
+          setMemberListDoc(d.memberListDoc ?? null);
+          setRepresentativeId(d.representativeId ?? null);
+          setMemberCount(d.memberCount ?? '');
+          setHasRegularMeeting(d.hasRegularMeeting ?? null);
+          setMeetingLocation(d.meetingLocation ?? '');
+          setHasMembershipFee(d.hasMembershipFee ?? null);
+          setMembershipFeeAmount(d.membershipFeeAmount ?? '');
+          setHasAccidentHistory(d.hasAccidentHistory ?? null);
+          setAccidentDescription(d.accidentDescription ?? '');
+          if (d.step) setStep(d.step);
+          setDraftSaved(true);
+        }
+      } catch { /* 손상된 임시저장 무시 */ }
+      setLoadState('fresh');
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // ── 임시저장 자동저장 (신규 모드에서만) ──
+  useEffect(() => {
+    if (loadState !== 'fresh' || !draftKey) return;
+    const isEmpty =
+      !clubName && !clubType && !oneLineDesc && !description && !location &&
+      !registrationDoc && !activityDoc && !memberListDoc && !representativeId &&
+      !memberCount && hasRegularMeeting === null && hasMembershipFee === null && hasAccidentHistory === null;
+    if (isEmpty) return;
+    localStorage.setItem(draftKey, JSON.stringify({
+      clubName, clubType, oneLineDesc, description, location,
+      registrationDoc, activityDoc, memberListDoc, representativeId,
+      memberCount, hasRegularMeeting, meetingLocation, hasMembershipFee,
+      membershipFeeAmount, hasAccidentHistory, accidentDescription, step,
+    }));
+    setDraftSaved(true);
+  }, [
+    loadState, clubName, clubType, oneLineDesc, description, location,
+    registrationDoc, activityDoc, memberListDoc, representativeId,
+    memberCount, hasRegularMeeting, meetingLocation, hasMembershipFee,
+    membershipFeeAmount, hasAccidentHistory, accidentDescription, step,
+  ]);
+
   // ── 파일 업로드 ──────────────────────────────────────────────
   const uploadFile = async (file: File, fieldKey: string): Promise<string> => {
     const ext = file.name.split('.').pop() ?? 'bin';
@@ -139,8 +245,12 @@ export default function ClubRegister() {
     fieldKey: string,
     setter: (v: UploadedFile | null) => void,
   ) => async (file: File) => {
-    setUploadingField(fieldKey);
     setErrorMsg('');
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg(`${file.name} — 파일은 최대 10MB까지 업로드할 수 있어요.`);
+      return;
+    }
+    setUploadingField(fieldKey);
     try {
       const path = await uploadFile(file, fieldKey);
       setter({ name: file.name, path });
@@ -155,6 +265,7 @@ export default function ClubRegister() {
     if (!clubName.trim()) return '동아리 이름을 입력해주세요.';
     if (!clubType) return '동아리 유형을 선택해주세요.';
     if (!oneLineDesc.trim()) return '한 줄 소개를 입력해주세요.';
+    if (!description.trim()) return '동아리 소개를 입력해주세요.';
     return null;
   };
 
@@ -199,8 +310,7 @@ export default function ClubRegister() {
     setSubmitting(true);
     setErrorMsg('');
 
-    const { error } = await supabase.from('club_registration_requests').insert({
-      user_id: user!.id,
+    const payload = {
       club_name: clubName.trim(),
       club_type: clubType,
       one_line_desc: oneLineDesc.trim(),
@@ -217,7 +327,17 @@ export default function ClubRegister() {
       membership_fee_amount: hasMembershipFee ? Number(membershipFeeAmount) || null : null,
       has_accident_history: hasAccidentHistory,
       accident_description: hasAccidentHistory ? accidentDescription.trim() : null,
-    });
+    };
+
+    // 재제출(보완요청 건): 상태를 검토대기로 되돌리고 심사 메모 초기화
+    const { error } = editId
+      ? await supabase
+          .from('club_registration_requests')
+          .update({ ...payload, status: '검토대기', reviewer_note: null, reviewed_at: null })
+          .eq('id', editId)
+      : await supabase
+          .from('club_registration_requests')
+          .insert({ user_id: user!.id, ...payload });
 
     setSubmitting(false);
 
@@ -226,38 +346,39 @@ export default function ClubRegister() {
       return;
     }
 
+    if (draftKey) localStorage.removeItem(draftKey);
     setPageState('success');
   };
 
   // ── 완료 화면 ────────────────────────────────────────────────
   if (pageState === 'success') {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-sand-50 flex flex-col items-center justify-center p-6 font-sans">
         <div className="w-full max-w-lg">
-          <div className="bg-white border-4 border-black p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] text-center">
-            <div className="w-16 h-16 bg-orange-100 border-4 border-black rounded-full flex items-center justify-center mx-auto mb-6">
-              <Shield className="w-8 h-8 text-orange-500" />
+          <div className="bg-white border border-sand-200 rounded-card p-8 shadow-soft text-center">
+            <div className="w-16 h-16 bg-brand-tint rounded-full flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-8 h-8 text-brand" strokeWidth={2.5} />
             </div>
-            <h1 className="text-2xl font-black mb-3">등록 신청 완료!</h1>
-            <p className="font-bold text-gray-500 mb-2">
-              <span className="text-black font-black">{clubName}</span> 등록 신청이 접수됐어요.
+            <h1 className="text-2xl font-black text-ink mb-3">{editId ? '재제출 완료!' : '등록 신청 완료!'}</h1>
+            <p className="font-medium text-sand-600 mb-2">
+              <span className="text-ink font-black">{clubName}</span> {editId ? '보완 내용이 다시 접수됐어요.' : '등록 신청이 접수됐어요.'}
             </p>
-            <p className="text-sm font-bold text-gray-400 mb-2">
-              안전 인증 심사는 보통 <span className="text-black font-black">2~3주</span> 소요돼요.
+            <p className="text-sm font-medium text-sand-400 mb-2">
+              안전 인증 심사는 보통 <span className="text-ink font-bold">2~3주</span> 소요돼요.
             </p>
-            <p className="text-sm font-bold text-gray-400 mb-8">
-              심사 결과는 이메일로 안내되며, 승인 시 오렌지 배찌와 함께 운영 페이지가 열려요.
+            <p className="text-sm font-medium text-sand-400 mb-8">
+              심사 결과는 알림으로 안내되며, 승인 시 오렌지 배찌와 함께 운영 페이지가 열려요.
             </p>
             <div className="flex flex-col gap-3">
               <Link
                 to="/"
-                className="block w-full py-4 bg-black text-white font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors"
+                className="block w-full py-4 btn-grad text-white font-bold rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all"
               >
                 메인으로 돌아가기
               </Link>
               <Link
                 to="/clubs"
-                className="block w-full py-4 bg-white text-black font-black border-2 border-black hover:bg-gray-100 transition-colors"
+                className="block w-full py-4 bg-white text-ink font-bold rounded-ctl border border-sand-300 hover:bg-sand-50 transition-colors"
               >
                 동아리 둘러보기
               </Link>
@@ -268,15 +389,56 @@ export default function ClubRegister() {
     );
   }
 
+  // ── 로딩 ────────────────────────────────────────────────────
+  if (loadState === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  // ── 진행중 신청 차단(중복 방지) ──────────────────────────────
+  if (loadState === 'pending') {
+    return (
+      <div className="min-h-screen bg-sand-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-lg">
+          <div className="bg-white border border-sand-200 rounded-card p-8 shadow-soft text-center">
+            <div className="w-16 h-16 bg-brand-tint rounded-full flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-8 h-8 text-brand" strokeWidth={2.5} />
+            </div>
+            <h1 className="text-2xl font-black text-ink mb-3">이미 심사 중인 신청이 있어요</h1>
+            <p className="font-medium text-sand-600 mb-2">
+              현재 <span className="text-ink font-black">{pendingStatus}</span> 상태의 등록 신청이 진행 중이에요.
+            </p>
+            <p className="text-sm font-medium text-sand-400 mb-8">
+              한 번에 하나의 신청만 가능해요. 진행 상황은 동아리 운영 메뉴에서 확인할 수 있어요.
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link
+                to="/club-setup"
+                className="block w-full py-4 btn-grad text-white font-bold rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all"
+              >
+                신청 상태 확인하기
+              </Link>
+              <Link
+                to="/"
+                className="block w-full py-4 bg-white text-ink font-bold rounded-ctl border border-sand-300 hover:bg-sand-50 transition-colors"
+              >
+                메인으로 돌아가기
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── 폼 ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-sand-50 flex flex-col font-sans">
       <header className="p-6 max-w-2xl mx-auto w-full">
         <Link
           to="/club-setup"
-          className="inline-flex items-center gap-2 font-black text-xl hover:text-orange-500 transition-colors"
+          className="inline-flex items-center gap-2 font-black text-xl text-ink hover:text-brand transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" /> 돌아가기
+          <ArrowLeft className="w-5 h-5" strokeWidth={2.5} /> 돌아가기
         </Link>
       </header>
 
@@ -284,10 +446,17 @@ export default function ClubRegister() {
         <div className="w-full max-w-2xl">
           {/* 헤더 */}
           <div className="mb-8">
-            <h1 className="text-4xl font-black mb-2">새 동아리 등록</h1>
-            <p className="font-bold text-gray-500">
-              안전 인증 심사를 통과하면 오렌지 배찌와 모든 운영 기능이 열려요.
+            <h1 className="text-4xl font-black text-ink mb-2">{editId ? '보완 후 재제출' : '새 동아리 등록'}</h1>
+            <p className="font-medium text-sand-600">
+              {editId
+                ? '담당자 요청 사항을 반영해 수정한 뒤 다시 제출해주세요.'
+                : '안전 인증 심사를 통과하면 오렌지 배찌와 모든 운영 기능이 열려요.'}
             </p>
+            {!editId && draftSaved && (
+              <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-ok-fg">
+                <CheckCircle className="w-3.5 h-3.5" strokeWidth={2.5} /> 작성 중인 내용이 자동 저장됐어요. 나중에 이어서 작성할 수 있어요.
+              </p>
+            )}
           </div>
 
           {/* 스텝 인디케이터 */}
@@ -295,17 +464,17 @@ export default function ClubRegister() {
             {STEPS.map((s, i) => (
               <React.Fragment key={s.n}>
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 border-4 border-black flex items-center justify-center font-black text-lg transition-colors ${
-                    step > s.n ? 'bg-orange-500 text-white' : step === s.n ? 'bg-black text-white' : 'bg-white text-black'
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg transition-colors ${
+                    step >= s.n ? 'btn-grad text-white' : 'bg-sand-200 text-sand-400'
                   }`}>
-                    {step > s.n ? <CheckCircle className="w-5 h-5" /> : s.n}
+                    {step > s.n ? <CheckCircle className="w-5 h-5" strokeWidth={2.5} /> : s.n}
                   </div>
-                  <span className={`mt-1 text-xs font-black ${step === s.n ? 'text-black' : 'text-gray-400'}`}>
+                  <span className={`mt-1 text-xs font-bold ${step === s.n ? 'text-ink' : 'text-sand-400'}`}>
                     {s.label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-1 border-t-4 border-dashed mb-5 transition-colors ${step > s.n ? 'border-orange-500' : 'border-gray-300'}`} />
+                  <div className={`flex-1 h-1 rounded-full mb-5 transition-colors ${step > s.n ? 'bg-brand' : 'bg-sand-200'}`} />
                 )}
               </React.Fragment>
             ))}
@@ -314,31 +483,31 @@ export default function ClubRegister() {
           <form onSubmit={handleSubmit}>
             {/* ── Step 1: 기본 정보 ─────────────────────────────── */}
             {step === 1 && (
-              <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-5">
-                <h2 className="font-black text-lg border-b-2 border-black pb-3">동아리 기본 정보</h2>
+              <div className="bg-white border border-sand-200 rounded-card p-6 shadow-soft flex flex-col gap-5">
+                <h2 className="font-black text-lg text-ink border-b border-sand-200 pb-3">동아리 기본 정보</h2>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">동아리 이름 <span className="text-orange-500">*</span></label>
+                  <label className="font-bold text-sm text-ink">동아리 이름 <span className="text-brand">*</span></label>
                   <input
                     type="text"
                     value={clubName}
                     onChange={e => setClubName(e.target.value)}
                     placeholder="예: 데브허슬러"
                     maxLength={50}
-                    className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                    className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">동아리 유형 <span className="text-orange-500">*</span></label>
+                  <label className="font-bold text-sm text-ink">동아리 유형 <span className="text-brand">*</span></label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {CLUB_TYPES.map(t => (
                       <button
                         key={t}
                         type="button"
                         onClick={() => setClubType(t)}
-                        className={`py-2 px-3 text-sm font-black border-2 transition-colors ${
-                          clubType === t ? 'bg-black text-white border-black' : 'bg-white border-black hover:bg-gray-100'
+                        className={`py-2 px-3 text-sm font-bold rounded-ctl border transition-colors ${
+                          clubType === t ? 'btn-grad text-white border-transparent' : 'bg-white text-ink border-sand-300 hover:bg-sand-50'
                         }`}
                       >
                         {t}
@@ -348,8 +517,8 @@ export default function ClubRegister() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">
-                    한 줄 소개 <span className="text-orange-500">*</span>
+                  <label className="font-bold text-sm text-ink">
+                    한 줄 소개 <span className="text-brand">*</span>
                   </label>
                   <input
                     type="text"
@@ -357,33 +526,33 @@ export default function ClubRegister() {
                     onChange={e => setOneLineDesc(e.target.value)}
                     placeholder="동아리를 한 문장으로 소개해주세요"
                     maxLength={60}
-                    className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                    className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                   />
-                  <span className="text-xs font-bold text-gray-400 text-right">{oneLineDesc.length}/60</span>
+                  <span className="text-xs font-medium text-sand-400 text-right">{oneLineDesc.length}/60</span>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">동아리 소개 <span className="text-gray-400 font-bold">(선택)</span></label>
+                  <label className="font-bold text-sm text-ink">동아리 소개 <span className="text-brand">*</span></label>
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     placeholder="동아리의 활동, 목표, 분위기 등을 자유롭게 소개해주세요."
                     rows={4}
                     maxLength={500}
-                    className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors resize-none"
+                    className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors resize-none"
                   />
-                  <span className="text-xs font-bold text-gray-400 text-right">{description.length}/500</span>
+                  <span className="text-xs font-medium text-sand-400 text-right">{description.length}/500</span>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">활동 지역 <span className="text-gray-400 font-bold">(선택)</span></label>
+                  <label className="font-bold text-sm text-ink">활동 지역 <span className="text-sand-400 font-medium">(선택)</span></label>
                   <input
                     type="text"
                     value={location}
                     onChange={e => setLocation(e.target.value)}
                     placeholder="예: 서울 관악구, 부산 금정구"
                     maxLength={50}
-                    className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                    className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                   />
                 </div>
               </div>
@@ -391,10 +560,10 @@ export default function ClubRegister() {
 
             {/* ── Step 2: 안전 서류 ─────────────────────────────── */}
             {step === 2 && (
-              <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-5">
-                <div className="border-b-2 border-black pb-3">
-                  <h2 className="font-black text-lg">안전 인증 서류</h2>
-                  <p className="text-sm font-bold text-gray-400 mt-1">
+              <div className="bg-white border border-sand-200 rounded-card p-6 shadow-soft flex flex-col gap-5">
+                <div className="border-b border-sand-200 pb-3">
+                  <h2 className="font-black text-lg text-ink">안전 인증 서류</h2>
+                  <p className="text-sm font-medium text-sand-400 mt-1">
                     PDF, 이미지(JPG/PNG), 엑셀 파일을 첨부해주세요. 각 파일은 10MB 이하.
                   </p>
                 </div>
@@ -439,7 +608,7 @@ export default function ClubRegister() {
                   onRemove={() => setRepresentativeId(null)}
                 />
 
-                <div className="bg-orange-50 border-2 border-orange-300 p-3 text-xs font-bold text-orange-700">
+                <div className="bg-brand-tint rounded-ctl p-3 text-xs font-medium text-brand-dark">
                   제출된 서류는 안전 인증 심사 목적으로만 사용되며, 심사 완료 후 안전하게 폐기됩니다.
                 </div>
               </div>
@@ -447,17 +616,17 @@ export default function ClubRegister() {
 
             {/* ── Step 3: 안전 설문 ─────────────────────────────── */}
             {step === 3 && (
-              <div className="bg-white border-4 border-black p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-5">
-                <div className="border-b-2 border-black pb-3">
-                  <h2 className="font-black text-lg">안전 설문조사</h2>
-                  <p className="text-sm font-bold text-gray-400 mt-1">
+              <div className="bg-white border border-sand-200 rounded-card p-6 shadow-soft flex flex-col gap-5">
+                <div className="border-b border-sand-200 pb-3">
+                  <h2 className="font-black text-lg text-ink">안전 설문조사</h2>
+                  <p className="text-sm font-medium text-sand-400 mt-1">
                     모든 항목에 솔직하게 답변해주세요.
                   </p>
                 </div>
 
                 {/* 회원 수 */}
                 <div className="flex flex-col gap-1">
-                  <label className="font-black text-sm">현재 회원 수 <span className="text-orange-500">*</span></label>
+                  <label className="font-bold text-sm text-ink">현재 회원 수 <span className="text-brand">*</span></label>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -466,15 +635,15 @@ export default function ClubRegister() {
                       placeholder="0"
                       min={1}
                       max={9999}
-                      className="w-32 border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                      className="field w-32 border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                     />
-                    <span className="font-black text-gray-500">명</span>
+                    <span className="font-bold text-sand-500">명</span>
                   </div>
                 </div>
 
                 {/* 정기 모임 */}
                 <div className="flex flex-col gap-2">
-                  <label className="font-black text-sm">정기 모임을 진행하나요? <span className="text-orange-500">*</span></label>
+                  <label className="font-bold text-sm text-ink">정기 모임을 진행하나요? <span className="text-brand">*</span></label>
                   <YesNo value={hasRegularMeeting} onChange={setHasRegularMeeting} />
                   {hasRegularMeeting && (
                     <input
@@ -483,35 +652,35 @@ export default function ClubRegister() {
                       onChange={e => setMeetingLocation(e.target.value)}
                       placeholder="주요 활동 장소 (예: 서울대학교 공학관 101호)"
                       maxLength={100}
-                      className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                      className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                     />
                   )}
                 </div>
 
                 {/* 회비 */}
                 <div className="flex flex-col gap-2">
-                  <label className="font-black text-sm">회비를 받고 있나요? <span className="text-orange-500">*</span></label>
+                  <label className="font-bold text-sm text-ink">회비를 받고 있나요? <span className="text-brand">*</span></label>
                   <YesNo value={hasMembershipFee} onChange={setHasMembershipFee} />
                   {hasMembershipFee && (
                     <div className="flex items-center gap-2">
-                      <span className="font-black text-gray-500">월</span>
+                      <span className="font-bold text-sand-500">월</span>
                       <input
                         type="number"
                         value={membershipFeeAmount}
                         onChange={e => setMembershipFeeAmount(e.target.value)}
                         placeholder="0"
                         min={0}
-                        className="w-36 border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors"
+                        className="field w-36 border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors"
                       />
-                      <span className="font-black text-gray-500">원</span>
+                      <span className="font-bold text-sand-500">원</span>
                     </div>
                   )}
                 </div>
 
                 {/* 사고 이력 */}
                 <div className="flex flex-col gap-2">
-                  <label className="font-black text-sm">
-                    과거 안전 사고 이력이 있나요? <span className="text-orange-500">*</span>
+                  <label className="font-bold text-sm text-ink">
+                    과거 안전 사고 이력이 있나요? <span className="text-brand">*</span>
                   </label>
                   <YesNo value={hasAccidentHistory} onChange={setHasAccidentHistory} />
                   {hasAccidentHistory && (
@@ -521,7 +690,7 @@ export default function ClubRegister() {
                       placeholder="사고 일시, 내용, 조치 결과를 구체적으로 설명해주세요."
                       rows={4}
                       maxLength={500}
-                      className="border-2 border-black px-4 py-3 font-bold outline-none focus:border-orange-500 transition-colors resize-none"
+                      className="field border border-sand-300 rounded-ctl px-4 py-3 font-medium text-ink placeholder:text-sand-400 transition-colors resize-none"
                     />
                   )}
                 </div>
@@ -530,7 +699,7 @@ export default function ClubRegister() {
 
             {/* 에러 */}
             {errorMsg && (
-              <p className="mt-4 text-red-600 font-bold text-sm border-2 border-red-300 bg-red-50 px-4 py-3">
+              <p className="mt-4 text-bad-fg font-bold text-sm bg-bad-bg rounded-ctl px-4 py-3">
                 {errorMsg}
               </p>
             )}
@@ -541,9 +710,9 @@ export default function ClubRegister() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="flex-1 py-4 bg-white font-black border-2 border-black hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-4 bg-white text-ink font-bold rounded-ctl border border-sand-300 hover:bg-sand-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  <ArrowLeft className="w-5 h-5" /> 이전
+                  <ArrowLeft className="w-5 h-5" strokeWidth={2.5} /> 이전
                 </button>
               )}
               {step < 3 ? (
@@ -551,19 +720,19 @@ export default function ClubRegister() {
                   type="button"
                   onClick={goNext}
                   disabled={uploadingField !== null}
-                  className="flex-1 py-4 bg-black text-white font-black border-2 border-black hover:bg-orange-500 hover:text-black transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 py-4 btn-grad text-white font-bold rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
-                  다음 <ArrowRight className="w-5 h-5" />
+                  다음 <ArrowRight className="w-5 h-5" strokeWidth={2.5} />
                 </button>
               ) : (
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-4 bg-orange-500 text-black font-black border-2 border-black hover:bg-black hover:text-orange-500 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 py-4 btn-grad text-white font-bold rounded-ctl shadow-btn hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {submitting && <Loader className="w-5 h-5 animate-spin" />}
-                  <Shield className="w-5 h-5" />
-                  안전 인증 신청 제출
+                  <Shield className="w-5 h-5" strokeWidth={2.5} />
+                  {editId ? '보완 내용 재제출' : '안전 인증 신청 제출'}
                 </button>
               )}
             </div>

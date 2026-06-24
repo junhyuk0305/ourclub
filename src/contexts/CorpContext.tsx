@@ -32,8 +32,6 @@ export function CorpProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        console.log("CorpContext: Attempting to fetch corporation for user ID:", user.id, "isMaster:", isMaster);
-
         if (isMaster) {
           // 마스터 계정: 모든 기업 조회, 첫 번째 기업으로 초기화
           const { data, error } = await supabase
@@ -49,10 +47,8 @@ export function CorpProvider({ children }: { children: React.ReactNode }) {
 
           if (data && data.length > 0) {
             setCorporation(data[0] as Corporation);
-            console.log("CorpContext: Master user initialized with corporation:", data[0].name);
           } else {
             setCorporation(null);
-            console.log("CorpContext: No corporations found for master user");
           }
         } else {
           // 일반 기업담당자: 본인이 속한 기업 조회
@@ -68,11 +64,9 @@ export function CorpProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (data && data.corporations) {
-            setCorporation(data.corporations as Corporation);
-            console.log("CorpContext: Corporation found:", (data.corporations as Corporation).name);
+            setCorporation(data.corporations as unknown as Corporation);
           } else {
             setCorporation(null);
-            console.log("CorpContext: No corporation found for user ID:", user.id);
           }
         }
 
@@ -85,7 +79,9 @@ export function CorpProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchCorp();
-  }, [user, isMaster]);
+    // user?.id 기준 비교: TOKEN_REFRESHED·포커스 복귀로 user 객체 참조만 바뀔 때 재실행 방지
+    // (AdminContext 와 동일 패턴 — 미적용 시 자동저장/포커스 시 컨텍스트가 churn 되어 화면이 새로고침되는 체감)
+  }, [user?.id, isMaster]);
 
   return (
     <CorpContext.Provider value={{
