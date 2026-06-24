@@ -66,8 +66,12 @@
 
 우선순위(사용자 지정): **① 합격/불합격 통보 강화, ② 동아리 단위 탈퇴**.
 
-- **합격/불합격 통보 강화**: 운영진 상태변경(`move_application_stage`) 시 이메일/푸시 자동 통보, 지원자 결과 인지율↑. (RPC/이메일 발송/설정 토글)
-- **동아리 단위 탈퇴**: 계정 삭제 없이 특정 동아리만 나가기(`club_members.status='탈퇴'`). (RLS 정책 + MembershipHistory UI)
+- **합격/불합격 통보 강화** — ✅ **부분 구현 (2026-06-24, feat6)**. 코드 실측 결과 감사 주장 일부 정정:
+  - 인앱 알림 인프라(`notifications` + 헤더 알림벨 unread 점)는 이미 존재. **합격은 이미 보장**(`promote_applicant_to_member` 가 최종합격 시 토글 무관 'membership' 알림).
+  - **갭: 불합격 고스팅** — `notify_applicant_stage_move` 가 `email_sent=true`("알림 보내고 이동")일 때만 발송 → '알림 없이 이동'으로 불합격(탈락/거절 키워드 단계) 처리 시 지원자가 결과를 영영 모름.
+  - **수정**: [20260624010000_guarantee_reject_notification.sql](supabase/migrations/20260624010000_guarantee_reject_notification.sql) — 통지 조건을 `email_sent` OR `불합격 키워드 단계`로 확장(함수 본문만 교체, 무중복·멱등). UI([EmailMoveModal](src/components/admin/recruitment/applicants/EmailMoveModal.tsx))는 불합격 단계에서 '알림 없이 이동' → '기본 메시지로 통보'로 정직화.
+  - **범위 외(별도 결정)**: 이메일/푸시 **자동 발송** — 외부 인프라(메일 프로바이더·시크릿·엣지펑션) 부재로 surgical 변경 불가. 추후 `application_stage_log`(email_subject/body 저장됨)를 소스로 엣지펑션 추가 시 활용.
+- **동아리 단위 탈퇴**: 계정 삭제 없이 특정 동아리만 나가기(`club_members.status='탈퇴'`). (RLS 정책 + MembershipHistory UI) — 미착수
 - 운영진↔부원 문의 채널(신규 테이블·RLS·UI).
 - 강퇴(활동정지) 알림+사유+이의제기 경로.
 - 운영진 신규 0건 온보딩 체크리스트, 합격자 일괄처리, 출석 대상 명단 재사용.

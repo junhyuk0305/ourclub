@@ -16,6 +16,11 @@ export function EmailMoveModal({
   const [tplName, setTplName] = useState('');
   const [asDefault, setAsDefault] = useState(true);
 
+  // 불합격(탈락/거절) 단계는 '알림 없이 이동'을 골라도 결과가 항상 통보된다(고스팅 방지).
+  // 분석/대시보드의 REJECT_KEYWORDS 와 동일 규칙.
+  const isReject = ['불합격', '탈락', '거절', 'reject'].some(k =>
+    state.toStage.toLowerCase().includes(k.toLowerCase()));
+
   const applyTemplate = (tpl: EmailTemplate) => {
     const fill = (s: string) => s
       .replace(/{{\s*name\s*}}/g, state.applicant.profiles?.name ?? '지원자')
@@ -123,10 +128,15 @@ export function EmailMoveModal({
           <p className="text-xs text-gray-400 font-bold border-t border-gray-200 pt-3">
             ℹ 이 메시지는 지원자의 마이페이지에 인앱 알림으로 전송됩니다. (이메일 발송은 추후 지원 예정)
           </p>
+          {isReject && (
+            <p className="text-xs font-bold text-orange-600 -mt-2">
+              ℹ 불합격 결과는 지원자가 알 수 있도록 항상 통보됩니다. '기본 메시지로 통보'를 선택하면 기본 안내 문구로 전송돼요.
+            </p>
+          )}
         </div>
         <div className="p-6 border-t border-black bg-gray-50 flex justify-end gap-3 shrink-0">
           <button onClick={() => onConfirm(false)} className="px-6 py-2.5 border border-black font-bold bg-white hover:bg-gray-100 text-sm">
-            알림 없이 이동
+            {isReject ? '기본 메시지로 통보' : '알림 없이 이동'}
           </button>
           <button onClick={() => onConfirm(true)} className="px-6 py-2.5 bg-black text-white font-black hover:bg-orange-500 hover:text-black transition-colors flex items-center gap-2 text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,0.2)] hover:shadow-none">
             <Bell className="w-4 h-4" /> 알림 보내고 이동
